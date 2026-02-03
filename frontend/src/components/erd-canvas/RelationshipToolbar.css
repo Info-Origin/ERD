@@ -1,0 +1,223 @@
+/* MySQL Workbench Style Relationship Toolbar - Interactive */
+.relationship-toolbar {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 280px;
+  max-width: 320px;
+  z-index: 1000;
+}
+
+.relationship-toolbar-header {
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 12px;
+}
+
+.relationship-toolbar-header h3 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.toolbar-subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.relationship-icons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.relationship-icon {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--bg-secondary);
+}
+
+.relationship-icon:hover {
+  background: var(--bg-hover);
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.relationship-icon.active {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.relationship-icon.special {
+  border-color: var(--warning-color);
+  background: rgba(255, 193, 7, 0.05);
+}
+
+.relationship-icon.special:hover {
+  border-color: var(--warning-hover);
+  background: rgba(255, 193, 7, 0.1);
+}
+
+.icon-visual {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 80px;
+}
+
+.line {
+  width: 30px;
+  height: 2px;
+  position: relative;
+}
+
+.line.solid {
+  background: currentColor;
+}
+
+.line.dashed {
+  background: transparent;
+  border-top: 2px dashed currentColor;
+}
+
+.line.auto {
+  background: linear-gradient(90deg, currentColor 50%, transparent 50%);
+  background-size: 8px 2px;
+  background-repeat: repeat-x;
+}
+
+.cardinality {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  min-width: 24px;
+  text-align: center;
+}
+
+.existing-column-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--warning-color);
+}
+
+.icon-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  flex: 1;
+  display: block !important; /* Override any hiding */
+}
+
+.relationship-mode-details {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  border-left: 3px solid var(--primary-color);
+}
+
+.relationship-mode-details h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.mode-description {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.mode-details {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  display: block;
+}
+
+.relationship-toolbar-footer {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+  text-align: center;
+}
+
+.relationship-toolbar-footer small {
+  display: block;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.relationship-toolbar-footer .note {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] .relationship-toolbar {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .relationship-icon:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Focus states */
+.relationship-icon:focus {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .relationship-toolbar {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+    min-width: auto;
+  }
+  
+  .relationship-icons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  
+  .relationship-icon {
+    flex-direction: column;
+    text-align: center;
+    padding: 8px;
+  }
+  
+  .icon-visual {
+    min-width: auto;
+    justify-content: center;
+  }
+  
+  .icon-label {
+    font-size: 11px;
+    margin-top: 4px;
+  }
+}

@@ -1,0 +1,53 @@
+.constraint-menu {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  min-width: 180px;
+  padding: var(--spacing-xs);
+}
+
+.constraint-menu-header {
+  padding: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: var(--spacing-xs);
+}
+
+.constraint-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+}
+
+.constraint-menu-item:hover {
+  background-color: var(--bg-hover);
+}
+
+.constraint-menu-item-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.constraint-menu-item-disabled:hover {
+  background-color: transparent;
+}
+
+.constraint-menu-icon {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.constraint-menu-check {
+  margin-left: auto;
+  font-size: 14px;
+  color: var(--primary);
+}

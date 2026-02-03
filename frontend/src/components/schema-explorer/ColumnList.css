@@ -1,0 +1,264 @@
+.column-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.column-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-sm) var(--spacing-md);
+  padding-left: calc(var(--spacing-md) + var(--spacing-lg) + var(--spacing-xs));  /* More balanced indentation: 44px */
+  font-size: var(--font-size-sm);
+  border-bottom: 1px solid var(--border-color);
+  transition: background-color var(--transition-fast);
+  position: relative; /* Add positioning context */
+}
+
+.column-item:last-child {
+  border-bottom: none;
+}
+
+.column-item:hover {
+  background-color: var(--bg-hover);
+}
+
+/* When editing, give the item higher z-index and highlight */
+.column-item--editing {
+  z-index: 100;
+  background-color: var(--primary-bg) !important;
+  border-radius: var(--radius-sm);
+  margin: 2px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.column-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);  /* Increased gap for better spacing */
+  flex: 1;
+  min-width: 0;
+  margin-right: var(--spacing-md); /* Add margin to create space from meta section */
+}
+
+.column-icon {
+  flex-shrink: 0;
+  font-size: 13px;  /* Slightly smaller for better proportion */
+  width: 16px;
+  height: 16px;
+}
+
+.pk-icon {
+  color: var(--pk-color);
+}
+
+.fk-icon {
+  color: var(--fk-color);
+}
+
+.column-name {
+  font-family: var(--font-family);  /* Use main font instead of mono */
+  font-weight: 400;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.column-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+  margin-left: var(--spacing-sm); /* Add left margin for extra separation */
+}
+
+.column-type {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+}
+
+.column-empty {
+  padding: var(--spacing-md);
+  padding-left: calc(var(--spacing-md) + var(--spacing-lg) + var(--spacing-xs));  /* Match column item indentation: 44px */
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+.badge-clickable {
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity var(--transition-fast);
+}
+
+.badge-clickable:hover {
+  opacity: 0.75;
+}
+
+.badge-clickable.badge-active {
+  opacity: 1;
+}
+/* Inline editing styles */
+.column-name {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.column-name:hover {
+  background-color: var(--bg-hover);
+}
+
+.column-name-input {
+  background: var(--bg-primary);
+  border: 2px solid var(--primary);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-family: var(--font-family);  /* Use main font instead of mono */
+  font-weight: 400;
+  color: var(--text-primary);
+  outline: none;
+  min-width: 100px;
+  max-width: 160px; /* Reduce max width to prevent overlap */
+  width: 100%;
+  position: relative;
+  z-index: 101;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), 0 0 0 3px var(--primary-bg);
+  font-size: var(--font-size-sm);
+  margin-right: var(--spacing-sm); /* Add right margin for extra space */
+}
+
+.column-name-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15), 0 0 0 3px var(--primary-bg);
+}
+
+.column-type-select {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  padding: 2px 4px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: border-color var(--transition-fast);
+}
+
+.column-type-select:hover {
+  border-color: var(--primary);
+}
+
+.column-type-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-bg);
+}
+
+.column-badges {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+}
+/* Constraint badge states */
+.constraint-badge {
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+  font-size: 9px;
+  padding: 1px 3px;
+}
+
+.constraint-badge:hover {
+  opacity: 0.8;
+}
+
+.constraint-badge-readonly {
+  cursor: default;
+  opacity: 0.9;
+  font-size: 9px;
+  padding: 1px 3px;
+}
+
+.constraint-active {
+  opacity: 1;
+}
+
+.constraint-inactive {
+  opacity: 0.3;
+}
+
+.constraint-disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+.constraint-disabled:hover {
+  opacity: 0.2;
+}
+/* Column name layout - simplified, just the name */
+.column-constraints-and-name {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.column-name {
+  font-weight: 400; /* Lighter than table names (500) for clear hierarchy */
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 1;
+  opacity: 0.85; /* Slightly less opaque than table names for subtle contrast */
+}
+
+.column-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex: 1;
+  min-width: 0;
+  margin-right: var(--spacing-md); /* Add margin to create space from meta section */
+}
+
+.column-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+  margin-left: var(--spacing-sm);
+}
+
+.column-badges {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+  margin-right: var(--spacing-xs); /* Small gap between constraints and data type */
+}
+
+/* Data type display - Positioned on the right for clear visibility */
+.column-type-display {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  cursor: help;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.column-type-display:hover {
+  opacity: 1;
+  color: var(--text-primary);
+}

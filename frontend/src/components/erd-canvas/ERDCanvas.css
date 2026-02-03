@@ -1,0 +1,294 @@
+.erd-canvas-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-primary);
+  /* Prevent cursor sticking issues */
+  cursor: default !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.erd-canvas-content {
+  flex: 1;
+  position: relative;
+  margin-top: 60px; /* Account for header height */
+}
+
+/* Prevent cursor sticking during drag operations */
+.erd-canvas-container * {
+  cursor: inherit !important;
+}
+
+.erd-canvas-container .react-flow {
+  cursor: default !important;
+}
+
+.erd-canvas-container .react-flow__node {
+  cursor: grab !important;
+}
+
+.erd-canvas-container .react-flow__node:active {
+  cursor: grabbing !important;
+}
+
+.erd-canvas-container .react-flow__node.dragging {
+  cursor: grabbing !important;
+}
+
+/* Reset cursor after drag operations */
+.erd-canvas-container .react-flow__pane {
+  cursor: default !important;
+}
+
+/* Force ReactFlow edges to be visible */
+.erd-canvas-container .react-flow__edge {
+  pointer-events: all !important;
+}
+
+.erd-canvas-container .react-flow__edge-path {
+  stroke: var(--erd-line-color) !important;
+  stroke-width: 1.5px !important;
+  fill: none !important;
+  shape-rendering: geometricPrecision !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
+
+.erd-canvas-container .react-flow__edge-path:hover {
+  stroke: var(--erd-line-hover) !important;
+  stroke-width: 1.5px !important;
+}
+
+.erd-canvas-container .react-flow__arrowhead {
+  fill: var(--erd-line-color) !important;
+  shape-rendering: geometricPrecision !important;
+}
+
+.connection-instructions {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  z-index: 1000;
+  box-shadow: var(--shadow-sm);
+  max-width: 600px;
+  text-align: center;
+}
+
+.connection-instructions strong {
+  color: var(--text-primary);
+}
+
+.erd-canvas-empty,
+.erd-canvas-loading,
+.erd-canvas-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-primary);
+}
+
+.empty-state,
+.erd-canvas-error {
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.empty-state h2,
+.erd-canvas-error h2 {
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+/* React Flow Customization */
+.react-flow {
+  background-color: var(--bg-primary);
+}
+
+.react-flow__attribution {
+  display: none !important;
+}
+
+.react-flow__minimap {
+  border-radius: var(--radius-md);
+}
+
+.react-flow__controls {
+  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-lg);
+}
+
+.react-flow__controls-button {
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.react-flow__controls-button:hover {
+  background-color: var(--bg-hover);
+}
+
+/* Selection Box */
+.react-flow__selection {
+  background-color: var(--primary-bg);
+  border: 1px solid var(--primary);
+}
+
+/* Edge styling */
+.react-flow__edge {
+  pointer-events: all;
+}
+
+.react-flow__edge .react-flow__edge-path {
+  stroke: var(--erd-line-color);
+  stroke-width: 1.5px;
+  fill: none;
+  shape-rendering: geometricPrecision;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #3b82f6;
+  stroke-width: 1.5px;
+  shape-rendering: geometricPrecision;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: var(--erd-line-hover);
+  stroke-width: 1.5px;
+  shape-rendering: geometricPrecision;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.react-flow__edge-label {
+  font-size: 12px;
+  background: white;
+  padding: 2px 4px;
+  border-radius: 3px;
+  border: 1px solid #ccc;
+}
+.erd-toolbar {
+  position: absolute;
+  top: var(--spacing-md);
+  left: var(--spacing-md);
+  z-index: var(--z-dropdown);
+}
+
+/* Relationship Info Panel */
+.relationship-info-panel {
+  position: absolute;
+  top: 120px; /* Position below the legend */
+  right: 20px;
+  background: var(--bg-primary);
+  border: 2px solid #3b82f6;
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 300px;
+  max-width: 350px;
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
+  z-index: 999; /* Slightly lower than legend to maintain hierarchy */
+  animation: slideInRight 0.3s ease-out;
+}
+
+.relationship-info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.relationship-info-title {
+  font-weight: 600;
+  color: #3b82f6;
+  font-size: 14px;
+}
+
+.relationship-info-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.relationship-info-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.relationship-info-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.relationship-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.relationship-info-label {
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-size: 12px;
+  min-width: 40px;
+}
+
+.relationship-info-value {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+}
+
+.relationship-info-value.pk-highlight {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: #3b82f6;
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.relationship-info-value.fk-highlight {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: #10b981;
+  color: #10b981;
+  font-weight: 600;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

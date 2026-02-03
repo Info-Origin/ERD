@@ -1,0 +1,76 @@
+.schema-node {
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.schema-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.schema-header:hover {
+  background-color: transparent; /* Remove hover effect */
+}
+
+.schema-selected {
+  background-color: transparent !important;
+}
+
+.schema-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+  font-family: var(--font-family);  /* Ensure consistent font */
+}
+
+.schema-toggle:hover {
+  color: var(--text-primary);
+}
+
+.schema-icon {
+  color: var(--primary);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.schema-name {
+  flex: 1;
+  font-family: var(--font-family);  /* Use main font instead of mono */
+  font-size: var(--font-size-md);
+  color: var(--text-primary);
+  font-weight: 500;  /* Lighter for cleaner look */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schema-count {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  font-family: var(--font-family);  /* Use main font instead of default */
+  font-weight: 400;
+  flex-shrink: 0;
+}
+
+.schema-content {
+  background-color: var(--bg-primary);
+  flex: 1;
+  overflow-y: auto;
+  max-height: calc(100vh - 200px); /* Adjust based on your layout */
+}

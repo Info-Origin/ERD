@@ -1,0 +1,383 @@
+import { memo, useState } from "react";
+import { useApp } from "../../context/AppContext";
+import { useTheme } from "../../context/ThemeContext";
+import "./RelationshipEdge.css";
+
+/**
+ * MySQL Workbench Style: Orthogonal routing with column-level handle positioning
+ * Handles format: table.column.side or target.table.column.side
+ */
+const getMySQLWorkbenchPath = ({
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  portIndex = 1,
+  totalRelationships = 1,
+  sourceHandle,
+  targetHandle,
+}) => {
+  let path = `M ${sourceX} ${sourceY}`;
+  let labelX, labelY;
+
+  // MySQL Workbench spacing: Each relationship gets its own lane
+  const laneSpacing = 15; // Distance between parallel lines
+  const laneOffset = (portIndex - 1) * laneSpacing; // Offset for this specific lane
+
+  // Extract actual position from handle (remove table.column prefix)
+  const getPositionFromHandle = (handle) => {
+    if (!handle) return sourcePosition || targetPosition;
+    
+    // Handle formats: "table.column.side" or "target.table.column.side"
+    const parts = handle.split('.');
+    return parts[parts.length - 1]; // Get the last part (side)
+  };
+
+  const actualSourcePosition = getPositionFromHandle(sourceHandle);
+  const actualTargetPosition = getPositionFromHandle(targetHandle);
+
+  // Self-join handling with external loops (each gets its own lane)
+  if (actualSourcePosition === actualTargetPosition) {
+    const loopSize = 80 + laneOffset; // Each loop gets progressively larger
+    if (actualSourcePosition === "right") {
+      path += ` L ${sourceX + loopSize} ${sourceY} L ${sourceX + loopSize} ${targetY + loopSize} L ${targetX} ${targetY + loopSize} L ${targetX} ${targetY}`;
+      labelX = sourceX + loopSize + 20;
+      labelY = sourceY + loopSize / 2;
+    } else if (actualSourcePosition === "bottom") {
+      path += ` L ${sourceX} ${sourceY + loopSize} L ${targetX - loopSize} ${sourceY + loopSize} L ${targetX - loopSize} ${targetY} L ${targetX} ${targetY}`;
+      labelX = sourceX - loopSize / 2;
+      labelY = sourceY + loopSize + 20;
+    } else if (actualSourcePosition === "left") {
+      path += ` L ${sourceX - loopSize} ${sourceY} L ${sourceX - loopSize} ${targetY - loopSize} L ${targetX} ${targetY - loopSize} L ${targetX} ${targetY}`;
+      labelX = sourceX - loopSize - 20;
+      labelY = sourceY - loopSize / 2;
+    } else { // top
+      path += ` L ${sourceX} ${sourceY - loopSize} L ${targetX + loopSize} ${sourceY - loopSize} L ${targetX + loopSize} ${targetY} L ${targetX} ${targetY}`;
+      labelX = sourceX + loopSize / 2;
+      labelY = sourceY - loopSize - 20;
+    }
+    return [path, labelX, labelY];
+  }
+
+  // Standard orthogonal routing with lane-based parallel spacing
+  if (actualSourcePosition === 'right' && actualTargetPosition === 'left') {
+    // Horizontal connection with parallel lanes
+    if (Math.abs(sourceY - targetY) < 10) {
+      // Direct horizontal - add vertical offset for parallel lanes
+      const adjustedSourceY = sourceY + laneOffset;
+      const adjustedTargetY = targetY + laneOffset;
+      path = `M ${sourceX} ${adjustedSourceY} L ${targetX} ${adjustedTargetY}`;
+      labelX = (sourceX + targetX) / 2;
+      labelY = adjustedSourceY - 20;
+    } else {
+      // L-shaped with lane spacing
+      const midX = sourceX + 50 + laneOffset;
+      path += ` L ${midX} ${sourceY} L ${midX} ${targetY} L ${targetX} ${targetY}`;
+      labelX = midX + 20;
+      labelY = (sourceY + targetY) / 2;
+    }
+  } else if (actualSourcePosition === 'left' && actualTargetPosition === 'right') {
+    // Horizontal connection (opposite) with parallel lanes
+    if (Math.abs(sourceY - targetY) < 10) {
+      // Direct horizontal - add vertical offset for parallel lanes
+      const adjustedSourceY = sourceY + laneOffset;
+      const adjustedTargetY = targetY + laneOffset;
+      path = `M ${sourceX} ${adjustedSourceY} L ${targetX} ${adjustedTargetY}`;
+      labelX = (sourceX + targetX) / 2;
+      labelY = adjustedSourceY - 20;
+    } else {
+      // L-shaped with lane spacing
+      const midX = sourceX - 50 - laneOffset;
+      path += ` L ${midX} ${sourceY} L ${midX} ${targetY} L ${targetX} ${targetY}`;
+      labelX = midX - 20;
+      labelY = (sourceY + targetY) / 2;
+    }
+  } else if (actualSourcePosition === 'bottom' && actualTargetPosition === 'top') {
+    // Vertical connection with parallel lanes
+    if (Math.abs(sourceX - targetX) < 10) {
+      // Direct vertical - add horizontal offset for parallel lanes
+      const adjustedSourceX = sourceX + laneOffset;
+      const adjustedTargetX = targetX + laneOffset;
+      path = `M ${adjustedSourceX} ${sourceY} L ${adjustedTargetX} ${targetY}`;
+      labelX = adjustedSourceX + 30;
+      labelY = (sourceY + targetY) / 2;
+    } else {
+      // L-shaped with lane spacing
+      const midY = sourceY + 50 + laneOffset;
+      path += ` L ${sourceX} ${midY} L ${targetX} ${midY} L ${targetX} ${targetY}`;
+      labelX = (sourceX + targetX) / 2;
+      labelY = midY + 25;
+    }
+  } else if (actualSourcePosition === 'top' && actualTargetPosition === 'bottom') {
+    // Vertical connection (opposite) with parallel lanes
+    if (Math.abs(sourceX - targetX) < 10) {
+      // Direct vertical - add horizontal offset for parallel lanes
+      const adjustedSourceX = sourceX + laneOffset;
+      const adjustedTargetX = targetX + laneOffset;
+      path = `M ${adjustedSourceX} ${sourceY} L ${adjustedTargetX} ${targetY}`;
+      labelX = adjustedSourceX + 30;
+      labelY = (sourceY + targetY) / 2;
+    } else {
+      // L-shaped with lane spacing
+      const midY = sourceY - 50 - laneOffset;
+      path += ` L ${sourceX} ${midY} L ${targetX} ${midY} L ${targetX} ${targetY}`;
+      labelX = (sourceX + targetX) / 2;
+      labelY = midY - 20;
+    }
+  } else {
+    // Cross connections - use L-shaped routing with lane spacing
+    const midOffset = 50 + laneOffset; // Each lane gets progressively more offset
+    
+    if (actualSourcePosition === 'right') {
+      const bendX = sourceX + midOffset;
+      path += ` L ${bendX} ${sourceY} L ${bendX} ${targetY} L ${targetX} ${targetY}`;
+      labelX = bendX + 20;
+      labelY = (sourceY + targetY) / 2;
+    } else if (actualSourcePosition === 'left') {
+      const bendX = sourceX - midOffset;
+      path += ` L ${bendX} ${sourceY} L ${bendX} ${targetY} L ${targetX} ${targetY}`;
+      labelX = bendX - 20;
+      labelY = (sourceY + targetY) / 2;
+    } else if (actualSourcePosition === 'bottom') {
+      const bendY = sourceY + midOffset;
+      path += ` L ${sourceX} ${bendY} L ${targetX} ${bendY} L ${targetX} ${targetY}`;
+      labelX = (sourceX + targetX) / 2;
+      labelY = bendY + 25;
+    } else if (actualSourcePosition === 'top') {
+      const bendY = sourceY - midOffset;
+      path += ` L ${sourceX} ${bendY} L ${targetX} ${bendY} L ${targetX} ${targetY}`;
+      labelX = (sourceX + targetX) / 2;
+      labelY = bendY - 20;
+    }
+  }
+
+  return [path, labelX, labelY];
+};
+
+/**
+ * Get Crow's Foot symbols based on relationship type
+ */
+const getCrowsFootSymbols = (relationType) => {
+  switch (relationType) {
+    case "ONE_TO_ONE":
+      return { source: "one", target: "one" };
+    case "ONE_TO_MANY":
+      return { source: "one", target: "many" };
+    case "MANY_TO_ONE":
+      return { source: "many", target: "one" };
+    case "MANY_TO_MANY":
+      return { source: "many", target: "many" };
+    default:
+      return { source: "one", target: "many" };
+  }
+};
+
+/**
+ * Check if this is a self-join relationship
+ */
+const isSelfJoin = (data) => {
+  return data?.fromTable === data?.toTable;
+};
+
+export const RelationshipEdge = memo(
+  ({
+    id,
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    sourcePosition,
+    targetPosition,
+    label,
+    markerEnd,
+    data,
+    style,
+    source,
+    target,
+    sourceHandle,
+    targetHandle,
+  }) => {
+    const { setHighlightedRelationship, highlightedRelationship, routingMode } = useApp();
+    const { theme } = useTheme();
+    const [isClicked, setIsClicked] = useState(false);
+    
+    // Theme-aware colors
+    const lineColor = theme === 'dark' ? '#bdc3c7' : '#2c3e50';
+    
+    // Check if this edge is currently highlighted (with corrected semantics)
+    const isHighlighted = highlightedRelationship && 
+      data?.fromTable && data?.toTable && data?.fromColumn && data?.toColumn &&
+      // Compare with corrected semantic direction
+      highlightedRelationship.fromTable === data.toTable &&     // PK table
+      highlightedRelationship.toTable === data.fromTable &&     // FK table  
+      highlightedRelationship.fromColumn === data.toColumn &&   // PK column
+      highlightedRelationship.toColumn === data.fromColumn;     // FK column
+    
+    // Extract MySQL Workbench port lane data
+    const portIndex = data?.portIndex || 1;
+    const totalRelationships = data?.totalRelationships || 1;
+    
+    // Create MySQL Workbench style orthogonal path with column-level handle positioning
+    const [edgePath, labelX, labelY] = getMySQLWorkbenchPath({
+      sourceX,
+      sourceY,
+      targetX,
+      targetY,
+      sourcePosition,
+      targetPosition,
+      portIndex,
+      totalRelationships,
+      sourceHandle,
+      targetHandle,
+    });
+
+    // Create straight path for simple routing mode
+    const straightPath = `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
+    const straightLabelX = (sourceX + targetX) / 2;
+    const straightLabelY = (sourceY + targetY) / 2;
+
+    // Choose path based on routing mode
+    const pathToUse = routingMode === 'orthogonal' ? edgePath : straightPath;
+    const labelXToUse = routingMode === 'orthogonal' ? labelX : straightLabelX;
+    const labelYToUse = routingMode === 'orthogonal' ? labelY : straightLabelY;
+
+    const handleEdgeClick = (e) => {
+      e.stopPropagation();
+      
+      if (data) {
+        // Visual feedback - highlight the edge line itself
+        setIsClicked(true);
+        setTimeout(() => setIsClicked(false), 5000);
+        
+        let highlightData = null;
+        
+        // For all relationships, we should have column information
+        if (data.fromColumn && data.toColumn && data.fromTable && data.toTable) {
+          // IMPORTANT: Fix ERD semantic direction
+          // Database stores: FK → PK (for foreign key constraint direction)
+          // ERD semantics: PK → FK (for user display - parent to child)
+          
+          // Determine which side is PK and which is FK based on column names and relationship
+          // In most cases: fromTable.fromColumn is FK, toTable.toColumn is PK
+          // So we need to reverse for proper ERD semantics
+          
+          highlightData = {
+            // Semantic "From" = PK side (parent) - this is usually the "to" in database terms
+            fromTable: data.toTable,     // PK table (parent)
+            fromColumn: data.toColumn,   // PK column (parent)
+            // Semantic "To" = FK side (child) - this is usually the "from" in database terms
+            toTable: data.fromTable,     // FK table (child)
+            toColumn: data.fromColumn,   // FK column (child)
+            relationType: data.relationType || 'ONE_TO_MANY'
+          };
+          
+          // Set the highlighted relationship
+          setHighlightedRelationship(highlightData);
+          
+          // Clear highlight after 8 seconds
+          setTimeout(() => {
+            setHighlightedRelationship(null);
+          }, 8000);
+          
+        } else {
+          // Try to extract basic info for fallback highlighting
+          if (data.fromTable && data.toTable) {
+            const pkColumn = 'id';
+            const fkColumn = `${data.fromTable}_id`;
+            
+            highlightData = {
+              fromTable: data.fromTable,
+              fromColumn: pkColumn,
+              toTable: data.toTable,
+              toColumn: fkColumn,
+              relationType: 'ONE_TO_MANY'
+            };
+            
+            setHighlightedRelationship(highlightData);
+            
+            setTimeout(() => {
+              setHighlightedRelationship(null);
+            }, 8000);
+          } else {
+            console.warn('❌ Missing table data:', { fromTable: data.fromTable, toTable: data.toTable });
+          }
+        }
+      } else {
+        console.warn('❌ No data available for edge:', id);
+      }
+    };
+
+    // Get relationship type for self-join detection
+    const selfJoin = isSelfJoin(data);
+
+    // MySQL Workbench style: theme-aware lines, dashed for self-joins
+    const edgeStyle = {
+      // Remove hardcoded stroke - let CSS handle theme-aware colors
+      strokeWidth: 1,
+      strokeDasharray: selfJoin ? "5,5" : "none", // Dashed only for self-joins
+      cursor: "pointer",
+      filter: isClicked || isHighlighted ? "drop-shadow(0 0 6px #3b82f6)" : "none",
+      ...style,
+    };
+
+    // ROUTING MODE TOGGLE - Use orthogonal or straight paths
+    return (
+      <g key={`relationship-${id}`}>
+        {/* Main path with routing mode support */}
+        <path
+          d={pathToUse}
+          stroke={isHighlighted ? '#3b82f6' : lineColor}
+          strokeWidth={edgeStyle.strokeWidth}
+          strokeDasharray={edgeStyle.strokeDasharray}
+          fill="none"
+          style={{
+            cursor: 'pointer',
+            pointerEvents: 'all',
+            filter: edgeStyle.filter
+          }}
+          onClick={handleEdgeClick}
+          data-relationship-id={id}
+        />
+        
+        {/* Wider invisible clickable area that follows the chosen path */}
+        <path
+          d={pathToUse}
+          stroke="transparent"
+          strokeWidth="20"
+          fill="none"
+          style={{
+            cursor: 'pointer',
+            pointerEvents: 'all'
+          }}
+          onClick={handleEdgeClick}
+          data-relationship-id={id}
+        />
+        
+        {/* Optional: Relationship label at calculated position */}
+        {label && (
+          <text
+            x={labelXToUse}
+            y={labelYToUse}
+            textAnchor="middle"
+            fill={lineColor}
+            fontSize="12"
+            fontWeight="500"
+            style={{
+              cursor: 'pointer',
+              pointerEvents: 'all',
+              userSelect: 'none'
+            }}
+            onClick={handleEdgeClick}
+            data-relationship-id={id}
+          >
+            {label}
+          </text>
+        )}
+      </g>
+    );
+  },
+);
+
+RelationshipEdge.displayName = "RelationshipEdge";

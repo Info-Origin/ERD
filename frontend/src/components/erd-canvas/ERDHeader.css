@@ -1,0 +1,825 @@
+.erd-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+  z-index: 1000;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.erd-header-content {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 16px;
+  gap: 24px;
+}
+
+/* Search Section - Carousel Style */
+.erd-search-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 480px; /* Default width */
+  flex-shrink: 0; /* Prevent shrinking */
+  position: relative;
+  transition: width 0.3s ease; /* Smooth transition */
+}
+
+/* Expanded carousel when schema is collapsed */
+.erd-header.schema-collapsed .erd-search-section {
+  width: 580px; /* Expanded width when schema is collapsed */
+}
+
+.search-input-container {
+  position: relative;
+  width: 100%;
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 4px 8px;
+  gap: 6px;
+  transition: border-color 0.2s ease;
+}
+
+.search-input-wrapper:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+/* Chips inside search bar */
+.search-chips-container {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+  max-width: 200px; /* Limit width to allow space for input */
+  flex-shrink: 0;
+}
+
+.search-chips-container::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+.search-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--primary-bg);
+  border: 1px solid var(--primary);
+  border-radius: 12px;
+  padding: 2px 6px 2px 8px;
+  font-size: 11px;
+  color: var(--primary);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.search-chip:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.search-chip-text {
+  user-select: none;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-chip-remove {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1;
+  padding: 0;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.search-chip-remove:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.search-chip:hover .search-chip-remove:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.table-search-input {
+  flex: 1;
+  min-width: 120px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  user-select: text;
+  box-shadow: none;
+}
+
+.table-search-input:focus {
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
+.table-search-input::placeholder {
+  color: var(--text-secondary);
+  user-select: none;
+  pointer-events: none;
+}
+
+.search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1001;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.search-dropdown-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.search-dropdown-item:hover {
+  background: var(--bg-secondary);
+}
+
+.search-dropdown-item:last-child {
+  border-radius: 0 0 6px 6px;
+}
+
+/* Filter Section */
+.erd-filter-section {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+/* Filter Dropdown (like Legend) */
+.filter-dropdown {
+  position: relative;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  min-width: 140px;
+  z-index: 1001;
+}
+
+.filter-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.filter-dropdown-header:hover {
+  background-color: var(--bg-hover);
+}
+
+.filter-dropdown-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filter-dropdown-toggle {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.filter-dropdown-toggle:hover {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.filter-dropdown-content {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  z-index: 1002;
+  animation: fadeIn 0.2s ease;
+}
+
+.filter-table-list {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0;
+}
+
+.filter-table-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-primary);
+  user-select: none;
+  transition: background-color 0.2s ease;
+}
+
+.filter-table-item:hover {
+  background-color: var(--bg-hover);
+}
+
+.filter-table-item input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.filter-table-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.filter-table-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.filter-table-context {
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Remove old filter group styles */
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-group-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.filter-checkboxes {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* For filter groups, stack checkboxes vertically if there are many */
+.filter-group .filter-checkboxes {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+/* If only 1-2 items, keep horizontal */
+.filter-group .filter-checkboxes:has(label:nth-child(-n+2):last-child) {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-primary);
+  user-select: none;
+}
+
+.filter-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.filter-checkbox input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.filter-checkbox:has(input:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.checkbox-label {
+  font-weight: 500;
+}
+
+.show-all-button {
+  height: 36px;
+  padding: 8px 16px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  white-space: nowrap; /* Prevent text wrapping */
+  flex-shrink: 0; /* Prevent button from shrinking */
+}
+
+.show-all-button:hover {
+  background: var(--primary-hover);
+}
+
+.show-all-button:active {
+  transform: translateY(1px);
+}
+
+/* Legend Section */
+.erd-legend-section {
+  margin-left: auto;
+  position: relative; /* Allow legend to expand beyond header bounds */
+  display: flex;
+  align-items: center;
+  gap: 16px; /* Space between button and legend */
+  flex-shrink: 0; /* Prevent shrinking */
+  min-width: fit-content; /* Ensure proper width calculation */
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .erd-header-content {
+    gap: 16px;
+  }
+  
+  .erd-search-section {
+    width: 420px; /* Smaller but still expanded width for medium screens */
+  }
+  
+  .table-carousel-container {
+    width: 420px;
+  }
+  
+  /* Expanded carousel for medium screens when schema collapsed */
+  .erd-header.schema-collapsed .erd-search-section {
+    width: 500px;
+  }
+  
+  .erd-header.schema-collapsed .table-carousel-container {
+    width: 500px;
+  }
+}
+
+@media (max-width: 900px) {
+  .erd-header-content {
+    gap: 12px;
+    padding: 0 12px;
+  }
+  
+  .erd-search-section {
+    width: 360px; /* Reasonable width for small screens */
+  }
+  
+  .table-carousel-container {
+    width: 360px;
+  }
+  
+  .table-carousel {
+    min-width: 240px;
+  }
+  
+  /* Expanded carousel for small screens when schema collapsed */
+  .erd-header.schema-collapsed .erd-search-section {
+    width: 420px;
+  }
+  
+  .erd-header.schema-collapsed .table-carousel-container {
+    width: 420px;
+  }
+  
+  .erd-header.schema-collapsed .table-carousel {
+    min-width: 300px;
+  }
+  
+  .filter-checkboxes {
+    gap: 8px;
+  }
+  
+  .checkbox-label {
+    font-size: 13px;
+  }
+  
+  .show-all-button {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] .erd-header {
+  background: var(--bg-primary);
+  border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .table-search-input {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .search-dropdown {
+  background: var(--bg-primary);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .search-dropdown-item:hover {
+  background: var(--bg-secondary);
+}
+
+/* Table Carousel Container */
+.table-carousel-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px;
+  height: 40px;
+  width: 480px; /* Default width */
+  flex-shrink: 0; /* Prevent shrinking */
+  overflow: hidden; /* Prevent overflow from affecting layout */
+  transition: width 0.3s ease; /* Smooth transition */
+}
+
+/* Expanded carousel container when schema is collapsed */
+.erd-header.schema-collapsed .table-carousel-container {
+  width: 580px; /* Expanded width when schema is collapsed */
+}
+
+/* Carousel Arrows */
+.carousel-arrow {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.carousel-arrow:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--primary);
+}
+
+.carousel-arrow:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Table Carousel */
+.table-carousel {
+  flex: 1;
+  overflow: hidden;
+  height: 28px;
+  min-width: 300px; /* Default minimum space for chips */
+  transition: min-width 0.3s ease; /* Smooth transition */
+}
+
+/* Expanded carousel space when schema is collapsed */
+.erd-header.schema-collapsed .table-carousel {
+  min-width: 400px; /* More space when schema is collapsed */
+}
+
+.table-carousel-track {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  height: 100%;
+  align-items: center;
+  scroll-behavior: smooth; /* Smooth scrolling */
+  padding: 0 2px; /* Small padding to prevent cutoff */
+}
+
+.table-carousel-track::-webkit-scrollbar {
+  display: none;
+}
+
+/* Carousel Table Chips */
+.carousel-table-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--primary-bg);
+  border: 1px solid var(--primary);
+  border-radius: 12px;
+  padding: 2px 6px 2px 8px;
+  font-size: 11px;
+  color: var(--primary);
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.carousel-table-chip:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.carousel-chip-text {
+  user-select: none;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.carousel-chip-remove {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1;
+  padding: 0;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+}
+
+.carousel-chip-remove:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Carousel Placeholder */
+.carousel-placeholder {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-style: italic;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+/* Add and Dropdown Buttons */
+.carousel-add-button,
+.carousel-dropdown-button {
+  background: var(--primary);
+  border: none;
+  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  color: white;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.carousel-add-button:hover {
+  background: var(--primary-hover);
+}
+
+.carousel-dropdown-button:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.carousel-dropdown-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Add Dropdown */
+.carousel-add-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  z-index: 1002;
+  margin-top: 4px;
+}
+
+.carousel-add-dropdown input {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.carousel-add-dropdown input:focus {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.carousel-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  box-shadow: none; /* Remove any box shadow */
+}
+
+.carousel-search-input:focus {
+  outline: none;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: none; /* Remove focus box shadow */
+}
+
+.carousel-search-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.carousel-search-results {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.carousel-search-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.carousel-search-item:hover {
+  background: var(--bg-hover);
+}
+
+/* Manage Dropdown */
+.carousel-manage-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  z-index: 1002;
+  margin-top: 4px;
+  min-width: 200px;
+}
+
+.carousel-manage-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+.carousel-manage-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.carousel-manage-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-primary);
+  transition: background-color 0.2s ease;
+}
+
+.carousel-manage-item:hover {
+  background: var(--bg-hover);
+}
+
+.carousel-manage-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.carousel-manage-remove {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  padding: 2px;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+}
+
+.carousel-manage-remove:hover {
+  background: var(--danger-bg);
+  color: var(--danger-color);
+}
+
+.carousel-clear-all {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--danger-bg);
+  border: none;
+  border-top: 1px solid var(--border-color);
+  color: var(--danger-color);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.carousel-clear-all:hover {
+  background: var(--danger-color);
+  color: white;
+}

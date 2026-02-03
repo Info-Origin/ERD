@@ -1,0 +1,54 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  font-size: var(--font-size-xs);
+  font-weight: 500;  /* Lighter for cleaner look */
+  font-family: var(--font-mono);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.badge.constraint-badge,
+.badge.constraint-badge-readonly {
+  padding: 1px 3px;
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.badge-pk {
+  background-color: var(--pk-bg);
+  color: var(--pk-color);
+}
+
+.badge-fk {
+  background-color: var(--fk-bg);
+  color: var(--fk-color);
+}
+
+.badge-unique {
+  background-color: var(--unique-bg);
+  color: var(--unique-color);
+}
+
+.badge-not-null {
+  background-color: var(--not-null-bg);
+  color: var(--not-null-color);
+}
+
+.badge-auto-increment {
+  background-color: var(--auto-increment-bg);
+  color: var(--auto-increment-color);
+}
+
+.badge-composite-key {
+  background-color: var(--composite-key-bg);
+  color: var(--composite-key-color);
+}
+
+.badge-default {
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+}

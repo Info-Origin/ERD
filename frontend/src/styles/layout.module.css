@@ -1,0 +1,70 @@
+.appLayout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.header {
+  flex-shrink: 0;
+}
+
+.mainContent {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.resizablePanels {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.leftPanel {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  overflow: hidden;
+  transition: width var(--transition-base);
+}
+
+.rightPanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-primary);
+  overflow: hidden;
+}
+
+.resizeHandle {
+  width: 4px;
+  cursor: col-resize;
+  background-color: transparent;
+  transition: background-color var(--transition-fast);
+  position: relative;
+  z-index: var(--z-base);
+}
+
+.resizeHandle:hover,
+.resizeHandle:active {
+  background-color: var(--primary);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .resizablePanels {
+    flex-direction: column;
+  }
+
+  .leftPanel {
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .resizeHandle {
+    display: none;
+  }
+}

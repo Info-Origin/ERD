@@ -1,0 +1,332 @@
+/* MySQL Workbench Style ERD with ZERO OVERLAP */
+
+/* Pulse glow animation for highlighted relationships */
+@keyframes pulse-glow {
+  0%, 100% { 
+    filter: drop-shadow(0 0 8px #3b82f6) drop-shadow(0 0 16px rgba(59, 130, 246, 0.4));
+    stroke-width: 1.5px;
+  }
+  50% { 
+    filter: drop-shadow(0 0 12px #3b82f6) drop-shadow(0 0 24px rgba(59, 130, 246, 0.6));
+    stroke-width: 1.5px;
+  }
+}
+
+/* Invisible clickable interaction area - MySQL Workbench style */
+.relationship-click-area {
+  position: absolute;
+  cursor: pointer;
+  z-index: 1000;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0px;
+  transition: none;
+  pointer-events: all;
+  user-select: none;
+  background: transparent !important;
+  border: none !important;
+}
+
+.relationship-click-area:hover {
+  /* No visible changes on hover - just like MySQL Workbench */
+  background: transparent !important;
+  border: none !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+/* Edge styling - theme-aware colors */
+.react-flow__edge {
+  pointer-events: all !important;
+  z-index: 10 !important;
+}
+
+.react-flow__edge-path {
+  stroke: var(--erd-line-color) !important;
+  stroke-width: 1.5px !important;
+  fill: none !important;
+  pointer-events: all !important;
+  transition: stroke-width 0.2s ease, filter 0.2s ease;
+  cursor: pointer;
+  
+  /* Smooth, soft lines - like orthogonal reference */
+  shape-rendering: geometricPrecision;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.react-flow__edge-path:hover {
+  stroke: var(--erd-line-hover) !important;
+  stroke-width: 1.5px !important;
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.4));
+  z-index: 100 !important;
+}
+
+/* Self-join styling - dashed lines with higher z-index */
+.react-flow__edge[data-self-join="true"] .react-flow__edge-path,
+.react-flow__edge[data-is-self-join="true"] .react-flow__edge-path,
+.self-join-path {
+  stroke-dasharray: 5, 5 !important;
+  stroke: var(--erd-line-color) !important;
+  stroke-width: 1.5px !important;
+  z-index: 1000 !important; /* Ensure self-joins appear in front */
+}
+
+.self-join-path:hover {
+  stroke: var(--erd-line-hover) !important;
+  stroke-width: 1.5px !important;
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.4));
+  z-index: 1001 !important;
+}
+
+/* Self-join container with higher z-index */
+.react-flow__edge[data-self-join="true"] {
+  z-index: 1000 !important;
+}
+
+.self-join-group {
+  z-index: 1000 !important;
+}
+
+/* User-created edges - same styling but identifiable on hover */
+.react-flow__edge[data-user-created="true"] .react-flow__edge-path {
+  stroke: var(--erd-line-color) !important;
+  stroke-width: 1.5px !important;
+}
+
+.react-flow__edge[data-user-created="true"] .react-flow__edge-path:hover {
+  stroke: var(--erd-line-selected) !important;
+  stroke-width: 1.5px !important;
+  filter: drop-shadow(0 0 4px rgba(220, 38, 38, 0.5));
+}
+
+/* Connection line during drag - animated dashed line */
+.react-flow__connection-line {
+  stroke: #3b82f6 !important;
+  stroke-width: 1.5px !important;
+  stroke-dasharray: 6, 3;
+  animation: dash 1s linear infinite;
+  z-index: 200 !important;
+  shape-rendering: geometricPrecision;
+  stroke-linecap: round;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -9;
+  }
+}
+
+/* Crow's Foot markers - theme-aware */
+.react-flow__edge marker {
+  fill: none !important;
+  z-index: 101 !important;
+  overflow: visible;
+}
+
+.react-flow__edge marker g {
+  z-index: 101 !important;
+  shape-rendering: crispEdges;
+  stroke: var(--erd-line-color) !important;
+  stroke-width: 1px !important;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Highlighted edge - enhanced blue glow for relationship highlighting */
+.react-flow__edge.highlighted .react-flow__edge-path {
+  stroke: #3b82f6 !important;
+  stroke-width: 1.5px !important;
+  filter: drop-shadow(0 0 8px #3b82f6) drop-shadow(0 0 12px #3b82f6);
+  z-index: 100 !important;
+}
+
+/* Enhanced relationship edge highlighting */
+.react-flow__edge[data-highlighted="true"] .react-flow__edge-path {
+  stroke: #3b82f6 !important;
+  stroke-width: 1.5px !important;
+  filter: drop-shadow(0 0 10px #3b82f6) drop-shadow(0 0 20px rgba(59, 130, 246, 0.5));
+  z-index: 100 !important;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { 
+    filter: drop-shadow(0 0 10px #3b82f6) drop-shadow(0 0 20px rgba(59, 130, 246, 0.5));
+  }
+  50% { 
+    filter: drop-shadow(0 0 15px #3b82f6) drop-shadow(0 0 30px rgba(59, 130, 246, 0.8));
+  }
+}
+
+.react-flow__edge[data-route-type="diagonal"] .react-flow__edge-path:hover {
+  /* Diagonal routes get slightly different hover */
+  filter: drop-shadow(0 0 5px rgba(147, 51, 234, 0.4));
+}
+
+/* Layering - ensure proper z-index hierarchy */
+.react-flow__edges {
+  z-index: 10 !important;
+}
+
+.react-flow__nodes {
+  z-index: 50 !important;
+}
+
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:focus .react-flow__edge-path {
+  stroke: var(--erd-line-color) !important;
+  stroke-width: 1.5px !important;
+  filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.6));
+}
+
+/* Edge labels - clean and readable */
+.react-flow__edge-text {
+  font-size: 11px;
+  font-weight: 500;
+  fill: #374151;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  paint-order: stroke fill;
+  stroke: white;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+/* Connection handles - better visibility */
+.react-flow__handle {
+  width: 10px !important;
+  height: 10px !important;
+  background: #64748b !important;
+  border: 2px solid white !important;
+  opacity: 0 !important;
+  transition: opacity 0.2s ease, transform 0.2s ease !important;
+}
+
+.react-flow__handle:hover {
+  opacity: 1 !important;
+  transform: scale(1.3) !important;
+  background: #3b82f6 !important;
+}
+
+.react-flow__node:hover .react-flow__handle {
+  opacity: 0.7 !important;
+}
+
+/* Handle positioning - ensure they're clickable */
+.react-flow__handle-top {
+  top: -5px !important;
+}
+
+.react-flow__handle-bottom {
+  bottom: -5px !important;
+}
+
+.react-flow__handle-left {
+  left: -5px !important;
+}
+
+.react-flow__handle-right {
+  right: -5px !important;
+}
+
+/* Improved edge selection */
+.react-flow__edge.selected {
+  z-index: 99 !important;
+}
+
+/* Smooth transitions for all edge interactions */
+.react-flow__edge * {
+  transition: stroke 0.2s ease, stroke-width 0.2s ease, filter 0.2s ease;
+}
+
+/* Ensure edges don't interfere with node dragging */
+.react-flow__edge {
+  pointer-events: visibleStroke !important;
+}
+
+.react-flow__edge-path {
+  pointer-events: stroke !important;
+  stroke-width: 8px !important; /* Larger hit area */
+  stroke: transparent !important; /* Invisible hit area */
+}
+
+.react-flow__edge-path:hover {
+  stroke: var(--erd-line-hover) !important; /* Visible on hover */
+  stroke-width: 3px !important;
+}
+
+/* Actual visible edge line */
+.react-flow__edge svg path:not(.react-flow__edge-path) {
+  pointer-events: none !important;
+}
+
+/* Direct relationship edge styles */
+.direct-relationship-edge .react-flow__edge-path {
+  stroke-width: 1.5px;
+  stroke: var(--erd-line-color);
+  fill: none;
+  transition: all 0.2s ease;
+}
+
+.direct-relationship-edge .react-flow__edge-path.selected {
+  stroke: #3b82f6;
+  stroke-width: 1.5px;
+  filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.4));
+}
+
+.direct-relationship-edge:hover .react-flow__edge-path {
+  stroke: var(--erd-line-hover);
+  stroke-width: 1.5px;
+}
+
+/* Crow's foot edge styles */
+.crows-foot-edge-path {
+  stroke-width: 1.5px;
+  stroke: var(--erd-line-color);
+  fill: none;
+  transition: all 0.2s ease;
+  shape-rendering: geometricPrecision;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.crows-foot-edge-path:hover {
+  stroke: var(--erd-line-hover);
+  stroke-width: 1.5px;
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.4));
+}
+
+.crows-foot-edge-path.selected {
+  stroke: #3b82f6;
+  stroke-width: 1.5px;
+  filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.4));
+}
+
+/* Crow's foot markers */
+.react-flow__edge[data-crows-foot="true"] line {
+  stroke: var(--erd-line-color);
+  stroke-width: 1.5px;
+  stroke-linecap: round;
+}
+
+.react-flow__edge[data-crows-foot="true"] circle {
+  stroke: var(--erd-line-color);
+  stroke-width: 1.5px;
+  fill: var(--bg-primary);
+}
+
+.direct-edge-label {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: #374151;
+  text-align: center;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(4px);
+}

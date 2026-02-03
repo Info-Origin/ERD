@@ -1,0 +1,275 @@
+.table-node {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.table-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  padding-left: calc(var(--spacing-md) + var(--spacing-lg));
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.table-header-new {
+  display: grid;
+  grid-template-columns: 2fr 2fr 60px 60px 60px 60px 2fr 120px;
+  align-items: center;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dcdcdc;
+  border-top: 1px solid #dcdcdc;
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+}
+
+.table-header-new > div {
+  padding: 0 8px;
+  text-align: center;
+  border-right: 1px solid #e0e0e0;
+}
+
+.table-header-new > div:last-child {
+  border-right: none;
+}
+
+/* Align text properly */
+.col-name,
+.col-type,
+.col-default {
+  text-align: left;
+}
+
+.col-pk,
+.col-nn,
+.col-uq,
+.col-ai,
+.col-actions {
+  text-align: center;
+}
+
+.table-header-new1 {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1.5fr 1.5fr 120px 120px 120px;
+  align-items: center;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dcdcdc;
+  border-top: 1px solid #dcdcdc;
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+}
+
+.table-header-new1 > div {
+  padding: 0 8px;
+  text-align: center;
+  border-right: 1px solid #e0e0e0;
+}
+
+.table-header-new1 > div:last-child {
+  border-right: none;
+}
+
+/* Align text properly */
+.col-name,
+.col-type,
+.col-default {
+  text-align: left;
+}
+
+.col-pk,
+.col-nn,
+.col-uq,
+.col-ai,
+.col-actions {
+  text-align: center;
+}
+
+.table-header:hover {
+  background-color: transparent !important;
+}
+
+.table-selected {
+  background-color: transparent !important;
+  border-left: 3px solid transparent !important;
+  padding-left: calc(var(--spacing-md) + var(--spacing-lg) - 3px);
+}
+
+.table-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+  font-family: var(--font-family);  /* Ensure consistent font */
+}
+
+.table-toggle:hover {
+  color: var(--text-primary);
+}
+
+.table-icon {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.table-node .table-name {
+  flex: 1;
+  font-family: var(--font-family);  /* Use main font instead of mono */
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+  font-weight: 500;  /* Slightly bolder than column names (400) for better hierarchy */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.95; /* Slightly more opaque than column names for subtle darkening */
+  background: transparent; /* Ensure no background */
+}
+
+.table-count {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  background-color: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-family);  /* Use main font instead of mono */
+  font-weight: 400;
+  flex-shrink: 0;
+}
+
+.table-content {
+  background-color: var(--bg-primary);
+}
+.table-actions {
+  display: none;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-left: auto;
+}
+
+.table-header:hover .table-actions {
+  display: flex;
+}
+/* Inline editing styles - FIXED VERSION */
+.table-name-input {
+  background: transparent;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  font-family: var(--font-family);  /* Use main font instead of mono */
+  font-size: var(--font-size-base);
+  font-weight: 400;  /* Lighter weight */
+  color: var(--text-primary);
+  outline: none;
+  /* Fixed width to prevent expansion - all set to same value */
+  width: 120px !important;
+  max-width: 120px !important;
+  min-width: 120px !important;
+  /* flex: 0 0 120px !important; */
+  box-sizing: border-box !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table-name-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-bg);
+}
+
+.table-node .table-name {
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.table-node .table-name:hover {
+  background-color: var(--bg-hover);
+}
+
+.add-column-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  padding-left: calc(var(--spacing-md) + var(--spacing-lg) + var(--spacing-lg));
+  background-color: var(--primary-bg);
+  border-top: 1px dashed var(--primary);
+}
+
+.add-column-input {
+  flex: 1;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family);  /* Use main font instead of mono */
+  font-weight: 400;
+  color: var(--text-primary);
+}
+
+.add-column-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.add-column-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+/* Context Menu Styles */
+.context-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  background: transparent;
+}
+
+.context-menu {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 150px;
+  padding: 4px 0;
+  z-index: 10000;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease;
+}
+
+.context-menu-item:hover {
+  background-color: var(--bg-hover);
+}
+
+.context-menu-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+}
+
+.context-menu-item:hover .context-menu-icon {
+  color: var(--text-primary);
+}
