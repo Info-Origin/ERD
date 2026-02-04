@@ -12,8 +12,12 @@ import {
 } from '../../utils/mysqlDataTypes';
 import { analyzeColumnChange, applyCascadingChanges } from '../../utils/conflictDetection';
 import { ConflictWarningModal } from './ConflictWarningModal';
+import AlertModal from './AlertModal';
+import ConfirmModal from './ConfirmModal';
 import './Modal.css';
 import './EditTableModal.css';
+import './AlertModal.css';
+import './ConfirmModal.css';
 
 const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
   const {
@@ -38,6 +42,27 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
   
   // Pending constraint changes state
   const [pendingConstraintChanges, setPendingConstraintChanges] = useState({});
+  
+  // New modal states
+  const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', type: 'info' });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+  
+  // Helper functions for modals
+  const showAlert = (title, message, type = 'info') => {
+    setAlertModal({ isOpen: true, title, message, type });
+  };
+
+  const showConfirm = (title, message, onConfirm, type = 'warning') => {
+    setConfirmModal({ isOpen: true, title, message, onConfirm, type });
+  };
+
+  const closeAlert = () => {
+    setAlertModal({ isOpen: false, title: '', message: '', type: 'info' });
+  };
+
+  const closeConfirm = () => {
+    setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: null });
+  };
   
   // Conflict detection state
   const [conflictModal, setConflictModal] = useState({
@@ -110,7 +135,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       onClose();
     } catch (error) {
       console.error('Error saving constraints:', error);
-      alert(`Error saving constraints: ${error.message}`);
+      showAlert('Error', `Error saving constraints: ${error.message}`, 'error');
     }
   };
 
@@ -189,7 +214,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       applyColumnChanges(index, column, fullType, newProperties);
       
     } catch (error) {
-      alert(`Error updating column: ${error.message}`);
+      showAlert('Error', `Error updating column: ${error.message}`, 'error');
     }
   };
   
@@ -241,7 +266,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         const affectedTables = [...new Set(cascadingChanges.map(c => c.tableName))];
         
         // Show success message
-        alert(`Changes applied successfully!\nCascading updates applied to: ${affectedTables.join(', ')}\n\nChanges are saved in the virtual schema.`);
+        showAlert('Success', `Changes applied successfully!\nCascading updates applied to: ${affectedTables.join(', ')}\n\nChanges are saved in the virtual schema.`, 'success');
         
         // Don't close modal immediately - let user see the changes
         // They can close it manually or it will close when they click OK/Cancel
@@ -249,7 +274,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       
     } catch (error) {
       console.error('❌ Error applying changes:', error);
-      alert(`Error applying changes: ${error.message}`);
+      showAlert('Error', `Error applying changes: ${error.message}`, 'error');
     }
   };
   
@@ -550,11 +575,11 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       // Show success message if cascading changes were applied
       if (cascadingChanges.length > 0) {
         const affectedTables = [...new Set(cascadingChanges.map(c => c.tableName))];
-        alert(`Constraint updated successfully!\nCascading updates applied to: ${affectedTables.join(', ')}`);
+        showAlert('Success', `Constraint updated successfully!\nCascading updates applied to: ${affectedTables.join(', ')}`, 'success');
       }
       
     } catch (error) {
-      alert(`Error updating constraint: ${error.message}`);
+      showAlert('Error', `Error updating constraint: ${error.message}`, 'error');
     }
   };
 
@@ -605,19 +630,24 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
     try {
       const fk = foreignKeys[index];
       
-      if (window.confirm(`Delete foreign key "${fk.name}"?`)) {
-        // Delete from virtual schema if it's not a new FK
-        if (!fk.isNew && fk.id) {
-          deleteRelationship(fk.id);
-        }
-        
-        // Remove from local state
-        const newFKs = foreignKeys.filter((_, i) => i !== index);
-        setForeignKeys(newFKs);
-        setEditingFK(null);
-      }
+      showConfirm(
+        'Delete Foreign Key',
+        `Delete foreign key "${fk.name}"?`,
+        () => {
+          // Delete from virtual schema if it's not a new FK
+          if (!fk.isNew && fk.id) {
+            deleteRelationship(fk.id);
+          }
+          
+          // Remove from local state
+          const newFKs = foreignKeys.filter((_, i) => i !== index);
+          setForeignKeys(newFKs);
+          setEditingFK(null);
+        },
+        'danger'
+      );
     } catch (error) {
-      alert(`Error deleting foreign key: ${error.message}`);
+      showAlert('Error', `Error deleting foreign key: ${error.message}`, 'error');
     }
   };
 
@@ -660,17 +690,17 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       
       // Validation
       if (!fk.name.trim()) {
-        alert('Foreign key name is required');
+        showAlert('Validation Error', 'Foreign key name is required', 'warning');
         return;
       }
 
       if (!fk.toTable) {
-        alert('Please select a referenced table');
+        showAlert('Validation Error', 'Please select a referenced table', 'warning');
         return;
       }
 
       if (!fk.toColumn) {
-        alert('Please select a referenced column');
+        showAlert('Validation Error', 'Please select a referenced column', 'warning');
         return;
       }
 
@@ -679,7 +709,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       // Handle creating new column
       if (fk.fromColumn === '__CREATE_NEW__') {
         if (!fk.newColumnName || !fk.newColumnName.trim()) {
-          alert('Please enter a name for the new column');
+          showAlert('Validation Error', 'Please enter a name for the new column', 'warning');
           return;
         }
 
@@ -688,7 +718,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         // Check if column name already exists
         const existingColumn = columns.find(col => col.name === actualColumnName);
         if (existingColumn) {
-          alert(`Column "${actualColumnName}" already exists. Please choose a different name.`);
+          showAlert('Validation Error', `Column "${actualColumnName}" already exists. Please choose a different name.`, 'warning');
           return;
         }
 
@@ -733,14 +763,14 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       } else {
         // Using existing column - ADD DATA TYPE VALIDATION
         if (!fk.fromColumn) {
-          alert('Please select a column from the current table');
+          showAlert('Validation Error', 'Please select a column from the current table', 'warning');
           return;
         }
 
         // Check if the local column exists
         const localColumn = columns.find(col => col.name === fk.fromColumn);
         if (!localColumn) {
-          alert(`Column "${fk.fromColumn}" does not exist in table "${tableName}"`);
+          showAlert('Validation Error', `Column "${fk.fromColumn}" does not exist in table "${tableName}"`, 'warning');
           return;
         }
 
@@ -798,7 +828,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       
       setEditingFK(null);
     } catch (error) {
-      alert(`Error creating foreign key: ${error.message}`);
+      showAlert('Error', `Error creating foreign key: ${error.message}`, 'error');
       console.error('FK creation error:', error);
     }
   };
@@ -1204,6 +1234,25 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         cascadingChanges={conflictModal.cascadingChanges}
         affectedTables={conflictModal.affectedTables}
         changeDescription={conflictModal.changeDescription}
+      />
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={closeAlert}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={closeConfirm}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
       />
     </div>
   );
