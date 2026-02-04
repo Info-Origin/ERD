@@ -19,6 +19,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
   const {
     workingSchema,
     addRelationship,
+    addForeignKeyWithNewColumn, // NEW: Atomic FK creation
     deleteRelationship,
     togglePrimaryKey,
     toggleUnique,
@@ -620,6 +621,19 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
     }
   };
 
+  const handleCancelFK = (index) => {
+    const fk = foreignKeys[index];
+    
+    // If it's a new FK that was never saved, remove it from the array
+    if (fk.isNew) {
+      const newFKs = foreignKeys.filter((_, i) => i !== index);
+      setForeignKeys(newFKs);
+    }
+    
+    // Exit edit mode
+    setEditingFK(null);
+  };
+
   const handleFKChange = useCallback((index, field, value) => {
     
     setForeignKeys(prevFKs => {
@@ -678,21 +692,20 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
           return;
         }
 
-        // Create the new column first
-        
         // Determine appropriate data type based on referenced column
         const referencedTable = workingSchema.tables[fk.toTable];
         const referencedColumn = referencedTable?.columns[fk.toColumn];
         const columnType = referencedColumn?.type || 'INT';
 
-        addColumn(tableName, actualColumnName, {
-          type: columnType,
-          pk: false,
-          nullable: true, // FK columns can be nullable
-          unique: false,
-          fk: true, // Mark as FK immediately
-          defaultValue: null
-        });
+        // ATOMIC OPERATION: Create both column and relationship in single history entry
+        const relationshipId = addForeignKeyWithNewColumn(
+          tableName, 
+          actualColumnName, 
+          columnType, 
+          fk.toTable, 
+          fk.toColumn, 
+          'ONE_TO_MANY'
+        );
 
         // Update local columns state
         const newColumn = {
@@ -706,8 +719,19 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
           originalName: actualColumnName
         };
         setColumns([...columns, newColumn]);
+
+        // Update local FK state with the relationship ID
+        const newFKs = [...foreignKeys];
+        newFKs[index] = { 
+          ...fk, 
+          fromColumn: actualColumnName,
+          isNew: false,
+          id: relationshipId // Use the actual relationship ID
+        };
+        setForeignKeys(newFKs);
+
       } else {
-        // Using existing column
+        // Using existing column - ADD DATA TYPE VALIDATION
         if (!fk.fromColumn) {
           alert('Please select a column from the current table');
           return;
@@ -719,25 +743,46 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
           alert(`Column "${fk.fromColumn}" does not exist in table "${tableName}"`);
           return;
         }
+
+        // DATA TYPE VALIDATION - Check if data types are compatible
+        const referencedTable = workingSchema.tables[fk.toTable];
+        const referencedColumn = referencedTable?.columns[fk.toColumn];
+        
+        if (referencedColumn && localColumn.type !== referencedColumn.type) {
+          // Data type mismatch - show conflict modal
+          setConflictModal({
+            isOpen: true,
+            conflicts: [{
+              type: 'DATA_TYPE_MISMATCH',
+              message: `Cannot create foreign key: Data type mismatch`,
+              details: `Column "${tableName}.${localColumn.name}" (${localColumn.type}) cannot reference "${fk.toTable}.${fk.toColumn}" (${referencedColumn.type})`
+            }],
+            cascadingChanges: [],
+            affectedTables: [tableName, fk.toTable],
+            changeDescription: `Create foreign key ${tableName}.${localColumn.name} → ${fk.toTable}.${fk.toColumn}`,
+            pendingChange: null // No pending change, just block the action
+          });
+          return; // Block FK creation
+        }
       }
 
       if (fk.isNew) {
-        // Create the relationship in virtual schema
-        addRelationship(tableName, actualColumnName, fk.toTable, fk.toColumn, 'ONE_TO_MANY');
-        
-        // Update local state
-        const newFKs = [...foreignKeys];
-        newFKs[index] = { 
-          ...fk, 
-          fromColumn: actualColumnName, // Use the actual column name
-          isNew: false,
-          // Generate a temporary ID for tracking
-          id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-        };
-        setForeignKeys(newFKs);
-
-        // Update existing column to show FK status (if using existing column)
+        // For existing columns, create the relationship in virtual schema
         if (fk.fromColumn !== '__CREATE_NEW__') {
+          addRelationship(tableName, actualColumnName, fk.toTable, fk.toColumn, 'ONE_TO_MANY');
+          
+          // Update local state
+          const newFKs = [...foreignKeys];
+          newFKs[index] = { 
+            ...fk, 
+            fromColumn: actualColumnName, // Use the actual column name
+            isNew: false,
+            // Generate a temporary ID for tracking
+            id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+          };
+          setForeignKeys(newFKs);
+
+          // Update existing column to show FK status
           const newColumns = [...columns];
           const columnIndex = newColumns.findIndex(col => col.name === actualColumnName);
           if (columnIndex !== -1) {
@@ -748,7 +793,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
             setColumns(newColumns);
           }
         }
-
+        // For new columns, the relationship was already created atomically above
       }
       
       setEditingFK(null);
@@ -962,15 +1007,15 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                     <div className="edit-constraint-actions">
                       {editingColumn === index ? (
                         <>
-                          <button className="btn-save-small" onClick={() => handleColumnSave(index)} title="Save changes">
+                          <button className="btn-save-small" onClick={() => handleColumnSave(index)} title="Save changes" disabled>
                             ✓
                           </button>
-                          <button className="btn-cancel-small" onClick={handleColumnCancel} title="Cancel changes">
+                          <button className="btn-cancel-small" onClick={handleColumnCancel} title="Cancel changes" disabled>
                             ✕
                           </button>
                         </>
                       ) : (
-                        <button className="btn-edit-small" onClick={() => handleColumnEdit(index)} title="Edit data type and default">
+                        <button className="btn-edit-small" onClick={() => handleColumnEdit(index)} title="Data type editing temporarily disabled" disabled>
                           ✏️
                         </button>
                       )}
@@ -1104,7 +1149,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                           <button className="btn-save" onClick={() => handleSaveFK(index)}>
                             ✓
                           </button>
-                          <button className="btn-cancel" onClick={() => setEditingFK(null)}>
+                          <button className="btn-cancel" onClick={() => handleCancelFK(index)}>
                             ✕
                           </button>
                         </>
@@ -1129,20 +1174,24 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         </div>
 
         <div className="modal-footer">
-          <button 
-            className="btn-cancel" 
-            onClick={handleCancelConstraints}
-            disabled={Object.keys(pendingConstraintChanges).length === 0}
-          >
-            Cancel Changes
-          </button>
-          <button 
-            className="btn-save" 
-            onClick={handleApplyConstraints}
-            disabled={Object.keys(pendingConstraintChanges).length === 0}
-          >
-            Apply Constraints
-          </button>
+          {activeTab === 'constraints' && (
+            <>
+              <button 
+                className="btn-cancel" 
+                onClick={handleCancelConstraints}
+                disabled={Object.keys(pendingConstraintChanges).length === 0}
+              >
+                Cancel Changes
+              </button>
+              <button 
+                className="btn-save" 
+                onClick={handleApplyConstraints}
+                disabled={Object.keys(pendingConstraintChanges).length === 0}
+              >
+                Apply Constraints
+              </button>
+            </>
+          )}
         </div>
       </div>
       

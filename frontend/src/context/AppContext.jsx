@@ -64,6 +64,11 @@ export const AppProvider = ({ children }) => {
     }
   }, [erdData, erdLoading, selectedSchema, virtualSchema.initializeSchema]);
 
+  // Track workingSchema changes for debugging
+  useEffect(() => {
+    // Debug logging removed for production
+  }, [virtualSchema.workingSchema]);
+
   // Shared Edit Table Modal functions
   const openEditTableModal = (tableName, schemaName) => {
     setSharedEditTableModal({
@@ -96,7 +101,18 @@ export const AppProvider = ({ children }) => {
     refetchSchemas,
 
     // ERD Data (with race condition protection during schema switching)
-    erdData: virtualSchema.isSwitchingSchema ? null : (virtualSchema.workingSchema || erdData),
+    erdData: (() => {
+      // Priority: workingSchema > erdData (but not during schema switching)
+      let result;
+      if (virtualSchema.isSwitchingSchema) {
+        result = null;
+      } else if (virtualSchema.workingSchema) {
+        result = virtualSchema.workingSchema;
+      } else {
+        result = erdData;
+      }
+      return result;
+    })(),
     originalERDData: erdData,
     erdLoading: erdLoading || virtualSchema.isSwitchingSchema,
     erdError,

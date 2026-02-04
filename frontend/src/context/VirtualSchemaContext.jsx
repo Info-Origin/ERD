@@ -177,11 +177,16 @@ export const VirtualSchemaProvider = ({ children }) => {
   const [isSwitchingSchema, setIsSwitchingSchema] = useState(false);
   const [realDbHistory, setRealDbHistory] = useState([]); // Track real DB changes over time
   const historyIndexRef = useRef(-1);
+  const historyRef = useRef([]);
 
-  // Keep ref in sync with state
+  // Keep refs in sync with state
   useEffect(() => {
     historyIndexRef.current = historyIndex;
   }, [historyIndex]);
+
+  useEffect(() => {
+    historyRef.current = history;
+  }, [history]);
 
   // Auto-save to localStorage when working schema changes
   useEffect(() => {
@@ -435,6 +440,7 @@ export const VirtualSchemaProvider = ({ children }) => {
       setTablePositions(savedTablePositions);
       setWorkingSchema(newWorkingSchema);
       setHistory(newHistory);
+      historyRef.current = newHistory; // Update ref immediately
       setHistoryIndex(newHistoryIndex);
       historyIndexRef.current = newHistoryIndex;
       setIsModified(newIsModified);
@@ -577,14 +583,18 @@ export const VirtualSchemaProvider = ({ children }) => {
       // Apply FK detection to merged schema to ensure relationships are properly marked
       const updatedSchema = applyFKDetection(mergedSchema);
       setWorkingSchema(updatedSchema);
-      setHistory([JSON.parse(JSON.stringify(erdData)), updatedSchema]);
+      const newHistory = [JSON.parse(JSON.stringify(erdData)), updatedSchema];
+      setHistory(newHistory);
+      historyRef.current = newHistory; // Update ref immediately
       setHistoryIndex(1);
       historyIndexRef.current = 1;
       setIsModified(true);
     } else {
       const clonedSchema = JSON.parse(JSON.stringify(erdData));
       setWorkingSchema(clonedSchema);
-      setHistory([clonedSchema]);
+      const newHistory = [clonedSchema];
+      setHistory(newHistory);
+      historyRef.current = newHistory; // Update ref immediately
       setHistoryIndex(0);
       historyIndexRef.current = 0;
       setIsModified(false);
@@ -662,8 +672,11 @@ export const VirtualSchemaProvider = ({ children }) => {
       
       // Update state - DO NOT update originalSchema here, keep it as the stable baseline
       setWorkingSchema(finalSchema);
-      setHistory([JSON.parse(JSON.stringify(baselineSchema || newRealSchema)), finalSchema]);
+      const newHistory = [JSON.parse(JSON.stringify(baselineSchema || newRealSchema)), finalSchema];
+      setHistory(newHistory);
+      historyRef.current = newHistory; // Update ref immediately
       setHistoryIndex(1);
+      historyIndexRef.current = 1; // FIX: Update ref immediately
       setIsModified(true);
       
       return finalSchema;
@@ -678,8 +691,11 @@ export const VirtualSchemaProvider = ({ children }) => {
     if (originalSchema && currentSchemaName) {
       const clonedOriginal = JSON.parse(JSON.stringify(originalSchema));
       setWorkingSchema(clonedOriginal);
-      setHistory([clonedOriginal]);
+      const newHistory = [clonedOriginal];
+      setHistory(newHistory);
+      historyRef.current = newHistory; // Update ref immediately
       setHistoryIndex(0);
+      historyIndexRef.current = 0; // Update ref immediately
       setIsModified(false);
       clearFromStorage(currentSchemaName);
     }
@@ -692,9 +708,14 @@ export const VirtualSchemaProvider = ({ children }) => {
         const currentIndex = historyIndexRef.current;
         const newHistory = prevHistory.slice(0, currentIndex + 1);
         newHistory.push(JSON.parse(JSON.stringify(newSchema)));
+        historyRef.current = newHistory; // Update ref immediately
         return newHistory;
       });
-      setHistoryIndex(prevIndex => prevIndex + 1);
+      
+      // Update both state and ref immediately to prevent race conditions
+      const newIndex = historyIndexRef.current + 1;
+      historyIndexRef.current = newIndex; // Update ref immediately
+      setHistoryIndex(newIndex); // Update state
     },
     [],
   );
@@ -711,33 +732,44 @@ export const VirtualSchemaProvider = ({ children }) => {
 
   // Undo
   const undo = useCallback(() => {
-    if (historyIndex > 0) {
-      const newIndex = historyIndex - 1;
+    const currentIndex = historyIndexRef.current;
+    const currentHistory = historyRef.current;
+    
+    if (currentIndex > 0) {
+      const newIndex = currentIndex - 1;
       setHistoryIndex(newIndex);
-      const previousState = history[newIndex];
+      historyIndexRef.current = newIndex; // FIX: Update ref immediately
+      const previousState = currentHistory[newIndex];
       setWorkingSchema(JSON.parse(JSON.stringify(previousState)));
       setIsModified(newIndex !== 0);
     }
-  }, [history, historyIndex]);
+  }, []); // Remove dependencies to avoid stale closures
 
   // Redo
   const redo = useCallback(() => {
-    if (historyIndex < history.length - 1) {
-      const newIndex = historyIndex + 1;
+    const currentIndex = historyIndexRef.current;
+    const currentHistory = historyRef.current;
+    
+    if (currentIndex < currentHistory.length - 1) {
+      const newIndex = currentIndex + 1;
       setHistoryIndex(newIndex);
-      const nextState = history[newIndex];
+      historyIndexRef.current = newIndex; // FIX: Update ref immediately
+      const nextState = currentHistory[newIndex];
       setWorkingSchema(JSON.parse(JSON.stringify(nextState)));
       setIsModified(true);
     }
-  }, [history, historyIndex]);
+  }, []); // Remove dependencies to avoid stale closures
 
   // Reset to original
   const resetToOriginal = useCallback(() => {
     if (originalSchema && currentSchemaName) {
       const clonedOriginal = JSON.parse(JSON.stringify(originalSchema));
       setWorkingSchema(clonedOriginal);
-      setHistory([clonedOriginal]);
+      const newHistory = [clonedOriginal];
+      setHistory(newHistory);
+      historyRef.current = newHistory; // Update ref immediately
       setHistoryIndex(0);
+      historyIndexRef.current = 0; // FIX: Update ref immediately
       setIsModified(false);
       clearFromStorage(currentSchemaName);
       clearBaselineSchema(currentSchemaName); // Clear baseline so it gets reset
@@ -754,7 +786,9 @@ export const VirtualSchemaProvider = ({ children }) => {
     setWorkingSchema(null);
     setOriginalSchema(null);
     setHistory([]);
+    historyRef.current = []; // Update ref immediately
     setHistoryIndex(-1);
+    historyIndexRef.current = -1; // FIX: Update ref immediately
     setIsModified(false);
     setCurrentSchemaName(null);
     setRealDbHistory([]);
@@ -766,7 +800,9 @@ export const VirtualSchemaProvider = ({ children }) => {
     setWorkingSchema(null);
     setOriginalSchema(null);
     setHistory([]);
+    historyRef.current = []; // Update ref immediately
     setHistoryIndex(-1);
+    historyIndexRef.current = -1; // FIX: Update ref immediately
     setIsModified(false);
     setCurrentSchemaName(null);
   }, []);
@@ -878,15 +914,33 @@ export const VirtualSchemaProvider = ({ children }) => {
     (tableName, columnName) => {
       if (!workingSchema || !workingSchema.tables[tableName]) return;
 
-      const newSchema = { ...workingSchema };
-      delete newSchema.tables[tableName].columns[columnName];
+      // Create new columns object without the deleted column
+      const currentColumns = workingSchema.tables[tableName].columns;
+      const newColumns = Object.keys(currentColumns).reduce((acc, key) => {
+        if (key !== columnName) {
+          acc[key] = currentColumns[key];
+        }
+        return acc;
+      }, {});
 
-      // Remove relationships involving this column
-      newSchema.relationships = (newSchema.relationships || []).filter(
+      // Filter out relationships involving this column
+      const newRelationships = (workingSchema.relationships || []).filter(
         (rel) =>
           !(rel.fromTable === tableName && rel.fromColumn === columnName) &&
           !(rel.toTable === tableName && rel.toColumn === columnName),
       );
+
+      const newSchema = {
+        ...workingSchema,
+        relationships: newRelationships,
+        tables: {
+          ...workingSchema.tables,
+          [tableName]: {
+            ...workingSchema.tables[tableName],
+            columns: newColumns
+          }
+        }
+      };
 
       updateWorkingSchema(newSchema);
     },
@@ -958,20 +1012,32 @@ export const VirtualSchemaProvider = ({ children }) => {
     (tableName, columnName) => {
       if (!workingSchema || !workingSchema.tables[tableName]) return;
 
-      const newSchema = { ...workingSchema };
-      const column = newSchema.tables[tableName].columns[columnName];
+      const currentColumn = workingSchema.tables[tableName].columns[columnName];
+      const newColumns = { ...workingSchema.tables[tableName].columns };
 
       // Remove PK from other columns if setting this one as PK
-      if (!column.pk) {
-        Object.keys(newSchema.tables[tableName].columns).forEach((col) => {
-          newSchema.tables[tableName].columns[col].pk = false;
+      if (!currentColumn.pk) {
+        Object.keys(newColumns).forEach((col) => {
+          newColumns[col] = { ...newColumns[col], pk: false };
         });
       }
 
-      newSchema.tables[tableName].columns[columnName] = {
-        ...column,
-        pk: !column.pk,
-        nullable: !column.pk ? false : column.nullable, // PK cannot be nullable
+      // Update the target column
+      newColumns[columnName] = {
+        ...currentColumn,
+        pk: !currentColumn.pk,
+        nullable: !currentColumn.pk ? false : currentColumn.nullable, // PK cannot be nullable
+      };
+
+      const newSchema = {
+        ...workingSchema,
+        tables: {
+          ...workingSchema.tables,
+          [tableName]: {
+            ...workingSchema.tables[tableName],
+            columns: newColumns
+          }
+        }
       };
 
       updateWorkingSchema(newSchema);
@@ -983,12 +1049,21 @@ export const VirtualSchemaProvider = ({ children }) => {
     (tableName, columnName) => {
       if (!workingSchema || !workingSchema.tables[tableName]) return;
 
-      const newSchema = { ...workingSchema };
-      const column = newSchema.tables[tableName].columns[columnName];
-
-      newSchema.tables[tableName].columns[columnName] = {
-        ...column,
-        unique: !column.unique,
+      const newSchema = {
+        ...workingSchema,
+        tables: {
+          ...workingSchema.tables,
+          [tableName]: {
+            ...workingSchema.tables[tableName],
+            columns: {
+              ...workingSchema.tables[tableName].columns,
+              [columnName]: {
+                ...workingSchema.tables[tableName].columns[columnName],
+                unique: !workingSchema.tables[tableName].columns[columnName].unique,
+              }
+            }
+          }
+        }
       };
 
       updateWorkingSchema(newSchema);
@@ -1000,12 +1075,21 @@ export const VirtualSchemaProvider = ({ children }) => {
     (tableName, columnName) => {
       if (!workingSchema || !workingSchema.tables[tableName]) return;
 
-      const newSchema = { ...workingSchema };
-      const column = newSchema.tables[tableName].columns[columnName];
-
-      newSchema.tables[tableName].columns[columnName] = {
-        ...column,
-        nullable: !column.nullable,
+      const newSchema = {
+        ...workingSchema,
+        tables: {
+          ...workingSchema.tables,
+          [tableName]: {
+            ...workingSchema.tables[tableName],
+            columns: {
+              ...workingSchema.tables[tableName].columns,
+              [columnName]: {
+                ...workingSchema.tables[tableName].columns[columnName],
+                nullable: !workingSchema.tables[tableName].columns[columnName].nullable,
+              }
+            }
+          }
+        }
       };
 
       updateWorkingSchema(newSchema);
@@ -1019,14 +1103,10 @@ export const VirtualSchemaProvider = ({ children }) => {
     (fromTable, fromColumn, toTable, toColumn, type = "ONE_TO_MANY") => {
       if (!workingSchema) return;
 
-      const newSchema = { ...workingSchema };
-
-      if (!newSchema.relationships) {
-        newSchema.relationships = [];
-      }
+      const currentRelationships = workingSchema.relationships || [];
 
       // Check if relationship already exists
-      const exists = newSchema.relationships.some(
+      const exists = currentRelationships.some(
         (rel) =>
           rel.fromTable === fromTable &&
           rel.fromColumn === fromColumn &&
@@ -1038,21 +1118,101 @@ export const VirtualSchemaProvider = ({ children }) => {
         throw new Error("Relationship already exists");
       }
 
-      newSchema.relationships.push({
+      // Create new relationship
+      const newRelationship = {
         id: uuidv4(),
         fromTable,
         fromColumn,
         toTable,
         toColumn,
         type,
-      });
+      };
 
-      // Mark fromColumn as FK
-      if (newSchema.tables[fromTable]?.columns[fromColumn]) {
-        newSchema.tables[fromTable].columns[fromColumn].fk = true;
-      }
+      // Create deep copy with new relationship
+      const newSchema = {
+        ...workingSchema,
+        relationships: [...currentRelationships, newRelationship],
+        tables: {
+          ...workingSchema.tables,
+          [fromTable]: {
+            ...workingSchema.tables[fromTable],
+            columns: {
+              ...workingSchema.tables[fromTable].columns,
+              [fromColumn]: {
+                ...workingSchema.tables[fromTable].columns[fromColumn],
+                fk: true
+              }
+            }
+          }
+        }
+      };
 
       updateWorkingSchema(newSchema);
+    },
+    [workingSchema, updateWorkingSchema],
+  );
+
+  // NEW: Atomic FK creation with new column
+  const addForeignKeyWithNewColumn = useCallback(
+    (fromTable, newColumnName, columnType, toTable, toColumn, type = "ONE_TO_MANY") => {
+      if (!workingSchema) return;
+
+      // Check if column already exists
+      if (workingSchema.tables[fromTable]?.columns[newColumnName]) {
+        throw new Error(`Column "${newColumnName}" already exists in table "${fromTable}"`);
+      }
+
+      const currentRelationships = workingSchema.relationships || [];
+
+      // Check if relationship already exists
+      const exists = currentRelationships.some(
+        (rel) =>
+          rel.fromTable === fromTable &&
+          rel.fromColumn === newColumnName &&
+          rel.toTable === toTable &&
+          rel.toColumn === toColumn,
+      );
+
+      if (exists) {
+        throw new Error("Relationship already exists");
+      }
+
+      // Create new relationship
+      const newRelationship = {
+        id: uuidv4(),
+        fromTable,
+        fromColumn: newColumnName,
+        toTable,
+        toColumn,
+        type,
+      };
+
+      // ATOMIC OPERATION: Create both column and relationship in single schema update
+      const newSchema = {
+        ...workingSchema,
+        relationships: [...currentRelationships, newRelationship],
+        tables: {
+          ...workingSchema.tables,
+          [fromTable]: {
+            ...workingSchema.tables[fromTable],
+            columns: {
+              ...workingSchema.tables[fromTable].columns,
+              [newColumnName]: {
+                name: newColumnName,
+                type: columnType,
+                pk: false,
+                fk: true, // Mark as FK immediately
+                unique: false,
+                nullable: true, // FK columns can be nullable
+                defaultValue: null,
+              }
+            }
+          }
+        }
+      };
+
+      updateWorkingSchema(newSchema);
+      return newRelationship.id; // Return the relationship ID for tracking
     },
     [workingSchema, updateWorkingSchema],
   );
@@ -1061,29 +1221,39 @@ export const VirtualSchemaProvider = ({ children }) => {
     (relationshipId) => {
       if (!workingSchema) return;
 
-      const newSchema = { ...workingSchema };
+      const currentRelationships = workingSchema.relationships || [];
+      const rel = currentRelationships.find((r) => r.id === relationshipId);
+      
+      if (!rel) return;
 
-      const rel = newSchema.relationships.find((r) => r.id === relationshipId);
-      if (rel) {
-        // Check if this was the only FK reference for this column
-        const otherRefs = newSchema.relationships.filter(
-          (r) =>
-            r.id !== relationshipId &&
-            r.fromTable === rel.fromTable &&
-            r.fromColumn === rel.fromColumn,
-        );
+      // Filter out the relationship to delete
+      const newRelationships = currentRelationships.filter((r) => r.id !== relationshipId);
 
-        if (
-          otherRefs.length === 0 &&
-          newSchema.tables[rel.fromTable]?.columns[rel.fromColumn]
-        ) {
-          newSchema.tables[rel.fromTable].columns[rel.fromColumn].fk = false;
-        }
-      }
-
-      newSchema.relationships = newSchema.relationships.filter(
-        (r) => r.id !== relationshipId,
+      // Check if this was the only FK reference for this column
+      const otherRefs = newRelationships.filter(
+        (r) =>
+          r.fromTable === rel.fromTable &&
+          r.fromColumn === rel.fromColumn,
       );
+
+      // Create deep copy with updated relationships and FK status
+      const newSchema = {
+        ...workingSchema,
+        relationships: newRelationships,
+        tables: {
+          ...workingSchema.tables,
+          [rel.fromTable]: {
+            ...workingSchema.tables[rel.fromTable],
+            columns: {
+              ...workingSchema.tables[rel.fromTable].columns,
+              [rel.fromColumn]: {
+                ...workingSchema.tables[rel.fromTable].columns[rel.fromColumn],
+                fk: otherRefs.length > 0 // Keep FK true if other relationships exist
+              }
+            }
+          }
+        }
+      };
 
       updateWorkingSchema(newSchema);
     },
@@ -1199,6 +1369,7 @@ export const VirtualSchemaProvider = ({ children }) => {
 
     // Relationship operations
     addRelationship,
+    addForeignKeyWithNewColumn, // NEW: Atomic FK creation with new column
     deleteRelationship,
     createVirtualRelationship, // NEW: Advanced relationship creation
 

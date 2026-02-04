@@ -198,7 +198,7 @@
   border: 1px solid var(--border-color);
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  min-width: 140px;
+  min-width: 320px; /* Increased width to accommodate both button groups */
   z-index: 1001;
 }
 
@@ -214,6 +214,12 @@
 
 .filter-dropdown-header:hover {
   background-color: var(--bg-hover);
+}
+
+/* Expanded state styling for seamless connection */
+.filter-dropdown.expanded .filter-dropdown-header {
+  border-bottom: none; /* Remove border when expanded to create seamless connection */
+  border-radius: 6px 6px 0 0; /* Round only top corners when expanded */
 }
 
 .filter-dropdown-title {
@@ -254,11 +260,15 @@
   box-shadow: 0 4px 8px rgba(0,0,0,0.1);
   z-index: 1002;
   animation: fadeIn 0.2s ease;
+  width: 100%; /* Match parent width exactly */
+  box-sizing: border-box; /* Include borders in width calculation */
+  margin-top: -1px; /* Overlap by 1px to create seamless connection */
 }
 
 .filter-table-list {
-  max-height: 200px;
+  max-height: 300px; /* Increased height for better visibility */
   overflow-y: auto;
+  overflow-x: auto; /* Add horizontal scroll */
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -275,6 +285,8 @@
   color: var(--text-primary);
   user-select: none;
   transition: background-color 0.2s ease;
+  min-width: max-content; /* Prevent shrinking */
+  white-space: nowrap; /* Prevent text wrapping */
 }
 
 .filter-table-item:hover {
@@ -300,18 +312,19 @@
 .filter-table-name {
   font-weight: 600;
   color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: nowrap; /* Prevent wrapping */
+  overflow: visible; /* Allow overflow to be scrollable */
+  text-overflow: clip; /* Don't truncate, let it scroll */
+  min-width: max-content; /* Ensure full width */
 }
 
 .filter-table-context {
   font-size: 10px;
   color: var(--text-secondary);
   font-style: italic;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: nowrap; /* Prevent wrapping */
+  overflow: visible; /* Allow overflow to be scrollable */
+  text-overflow: clip; /* Don't truncate, let it scroll */
 }
 
 /* Remove old filter group styles */
@@ -481,7 +494,264 @@
   }
 }
 
-/* Dark theme adjustments */
+/* Hierarchy display styles */
+.hierarchy-group {
+  margin-bottom: 12px;
+}
+
+.hierarchy-parent-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 4px;
+  white-space: nowrap;
+}
+
+.hierarchy-item {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Base styles for filter table items */
+.filter-table-item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-primary);
+  user-select: none;
+  transition: background-color 0.2s ease;
+  min-width: max-content;
+  white-space: nowrap;
+}
+
+/* Hierarchy depth styling with proper tree lines */
+.hierarchy-depth-0 .filter-table-item {
+  padding-left: 12px;
+}
+
+.hierarchy-depth-1 .filter-table-item {
+  padding-left: 40px;
+  font-size: 11px;
+}
+
+.hierarchy-depth-2 .filter-table-item {
+  padding-left: 60px;
+  font-size: 10px;
+}
+
+.hierarchy-depth-3 .filter-table-item {
+  padding-left: 80px;
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+/* Vertical connecting lines */
+.hierarchy-depth-1::before {
+  content: '';
+  position: absolute;
+  left: 20px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: #666666;
+  z-index: 1;
+}
+
+.hierarchy-depth-2::before {
+  content: '';
+  position: absolute;
+  left: 20px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: #666666;
+  z-index: 1;
+}
+
+.hierarchy-depth-3::before {
+  content: '';
+  position: absolute;
+  left: 20px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: #666666;
+  z-index: 1;
+}
+
+/* Horizontal connecting lines */
+.hierarchy-depth-1 .filter-table-item::after {
+  content: '';
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  width: 16px;
+  height: 1px;
+  background-color: #666666;
+  z-index: 1;
+}
+
+.hierarchy-depth-2 .filter-table-item::after {
+  content: '';
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  width: 16px;
+  height: 1px;
+  background-color: #666666;
+  z-index: 1;
+}
+
+.hierarchy-depth-3 .filter-table-item::after {
+  content: '';
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  width: 16px;
+  height: 1px;
+  background-color: #666666;
+  z-index: 1;
+}
+
+/* Ensure content appears above lines */
+.filter-table-info {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.filter-table-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  min-width: max-content;
+}
+
+.filter-table-context {
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-style: italic;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+/* Different styling for hierarchy levels */
+.hierarchy-depth-1 .filter-table-name,
+.hierarchy-depth-2 .filter-table-name,
+.hierarchy-depth-3 .filter-table-name {
+  color: var(--text-secondary);
+}
+
+.hierarchy-depth-0 .filter-table-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Custom scrollbar for filter dropdown */
+.filter-table-list::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.filter-table-list::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 3px;
+}
+
+.filter-table-list::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.filter-table-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Hierarchy Toggle Buttons */
+.hierarchy-toggle-container {
+  display: flex;
+  align-items: center;
+  gap: 6px; /* Reduced gap to fit better */
+  margin: 8px 12px;
+  background: transparent;
+  flex-wrap: wrap; /* Allow wrapping if needed */
+  justify-content: flex-start;
+}
+
+.toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 4px; /* Reduced gap inside groups */
+  padding: 4px 6px; /* Reduced padding */
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.hide-direct-checkbox,
+.hide-nested-checkbox {
+  width: 14px; /* Slightly smaller checkbox */
+  height: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.hide-direct-checkbox:disabled,
+.hide-nested-checkbox:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.hierarchy-toggle-btn {
+  padding: 4px 8px; /* Reduced padding */
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 10px; /* Slightly smaller font */
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.3px; /* Reduced letter spacing */
+  white-space: nowrap;
+  min-width: fit-content;
+}
+
+.hierarchy-toggle-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-radius: 3px;
+}
+
+.hierarchy-toggle-btn.active {
+  background: var(--primary);
+  color: white;
+  font-weight: 600;
+  border-radius: 3px;
+}
+
+.hierarchy-toggle-btn.active:hover {
+  background: var(--primary-hover);
+}
 [data-theme="dark"] .erd-header {
   background: var(--bg-primary);
   border-bottom-color: var(--border-color);
@@ -596,11 +866,29 @@
   white-space: nowrap;
   flex-shrink: 0;
   transition: all 0.2s ease;
+  cursor: pointer; /* Make chips clickable */
+  user-select: none; /* Prevent text selection */
 }
 
 .carousel-table-chip:hover {
   background: var(--primary);
   color: white;
+  transform: translateY(-1px); /* Subtle lift on hover */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Active chip styling */
+.carousel-table-chip.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary-hover);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  font-weight: 600;
+}
+
+.carousel-table-chip.active:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
 }
 
 .carousel-chip-text {
@@ -626,10 +914,21 @@
   justify-content: center;
   border-radius: 50%;
   transition: background-color 0.2s ease;
+  flex-shrink: 0;
 }
 
 .carousel-chip-remove:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+/* Active chip remove button styling */
+.carousel-table-chip.active .carousel-chip-remove:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Non-active chip remove button styling */
+.carousel-table-chip:not(.active):hover .carousel-chip-remove:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* Carousel Placeholder */

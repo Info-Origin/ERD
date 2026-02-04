@@ -8,18 +8,90 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTables, setSelectedTables] = useState(new Set()); // Changed to Set for multiple tables
   const [lastSelectedTable, setLastSelectedTable] = useState(null); // Track most recently selected table
-  const [selectedParents, setSelectedParents] = useState(new Set());
   const [selectedChildren, setSelectedChildren] = useState(new Set());
   const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
   const [isManageDropdownOpen, setIsManageDropdownOpen] = useState(false);
-  const [parentsExpanded, setParentsExpanded] = useState(true);
   const [childrenExpanded, setChildrenExpanded] = useState(true);
+  const [showDirectChildrenOnly, setShowDirectChildrenOnly] = useState(false); // Toggle between direct and full hierarchy
+  const [hideNestedChildren, setHideNestedChildren] = useState(false); // Checkbox to hide all nested children (depth > 0)
+  const [hideDirectChildren, setHideDirectChildren] = useState(false); // Checkbox to hide all direct children
   const carouselRef = useRef(null);
 
   // Get all table names for autocomplete
   const tableNames = useMemo(() => {
     if (!workingSchema?.tables) return [];
     return Object.keys(workingSchema.tables).sort();
+  }, [workingSchema]);
+
+  // Filter tables based on search query
+  const filteredTableNames = useMemo(() => {
+    if (!searchQuery) return tableNames;
+    return tableNames.filter(name => 
+      name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [tableNames, searchQuery]);
+
+  // Analyze child hierarchy for multiple tables with full depth
+  const analyzeChildHierarchy = useCallback((tableNames) => {
+    if (!workingSchema?.relationships || !tableNames || tableNames.size === 0) {
+      return [];
+    }
+
+    // Build a map of parent -> children relationships
+    const parentToChildren = new Map();
+    workingSchema.relationships.forEach(rel => {
+      if (!parentToChildren.has(rel.toTable)) {
+        parentToChildren.set(rel.toTable, []);
+      }
+      parentToChildren.get(rel.toTable).push({
+        childTable: rel.fromTable,
+        fromColumn: rel.fromColumn,
+        toColumn: rel.toColumn
+      });
+    });
+
+    // Recursive function to build hierarchy
+    const buildHierarchy = (tableName, depth = 0, visited = new Set()) => {
+      // Prevent infinite loops in circular references
+      if (visited.has(tableName) || depth > 10) {
+        return [];
+      }
+
+      visited.add(tableName);
+      const children = parentToChildren.get(tableName) || [];
+      
+      return children.map(child => {
+        const childHierarchy = buildHierarchy(child.childTable, depth + 1, new Set(visited));
+        return {
+          table: child.childTable,
+          depth: depth,
+          parentTable: tableName,
+          fromColumn: child.fromColumn,
+          toColumn: child.toColumn,
+          children: childHierarchy,
+          // Flatten all descendant tables for easy access
+          allDescendants: [
+            child.childTable,
+            ...childHierarchy.flatMap(ch => ch.allDescendants)
+          ]
+        };
+      });
+    };
+
+    // Build hierarchy for all selected tables
+    const hierarchies = [];
+    tableNames.forEach(tableName => {
+      const hierarchy = buildHierarchy(tableName);
+      if (hierarchy.length > 0) {
+        hierarchies.push({
+          parentTable: tableName,
+          children: hierarchy,
+          allDescendants: hierarchy.flatMap(ch => ch.allDescendants)
+        });
+      }
+    });
+
+    return hierarchies;
   }, [workingSchema]);
 
   // Carousel scroll function
@@ -46,6 +118,42 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
     });
   }, []);
 
+  // Get current child hierarchy data for the active table
+  const hierarchyData = useMemo(() => {
+    if (selectedTables.size === 0) return [];
+    
+    // If there's a last selected table, show hierarchy for that table only
+    // Otherwise show hierarchy for all selected tables
+    const tablesToAnalyze = lastSelectedTable && selectedTables.has(lastSelectedTable) 
+      ? new Set([lastSelectedTable])
+      : selectedTables;
+    
+    return analyzeChildHierarchy(tablesToAnalyze);
+  }, [selectedTables, lastSelectedTable, analyzeChildHierarchy]);
+
+  // Check if there are any nested children (grandchildren and deeper) to enable/disable checkbox
+  const hasNestedChildren = useMemo(() => {
+    return hierarchyData.some(hierarchy => 
+      hierarchy.children.some(child => child.children.length > 0)
+    );
+  }, [hierarchyData]);
+  const displayHierarchyData = useMemo(() => {
+    if (!showDirectChildrenOnly) {
+      return hierarchyData; // Show full hierarchy
+    }
+    
+    // Show only direct children (depth 0)
+    return hierarchyData.map(hierarchy => ({
+      ...hierarchy,
+      children: hierarchy.children.map(child => ({
+        ...child,
+        children: [], // Remove nested children for direct-only view
+        allDescendants: [child.table] // Only include the direct child itself
+      })),
+      allDescendants: hierarchy.children.map(child => child.table) // Only direct children
+    }));
+  }, [hierarchyData, showDirectChildrenOnly]);
+
   // Handle table selection from add dropdown
   const handleTableSelectFromDropdown = useCallback((tableName) => {
     // Simple table selection without relationship analysis to avoid circular dependency
@@ -61,102 +169,34 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
     setSelectedTables(newSelectedTables);
     setLastSelectedTable(tableName); // Track the most recently selected table
     
+    // IMMEDIATE HIERARCHY ANALYSIS AND FILTER UPDATE
+    const hierarchy = analyzeChildHierarchy(newSelectedTables);
+    const allDescendants = new Set();
+    hierarchy.forEach(h => {
+      h.allDescendants.forEach(descendant => {
+        allDescendants.add(descendant);
+      });
+    });
+    
+    // Update children immediately
+    setSelectedChildren(allDescendants);
+    
+    // IMMEDIATE FILTER UPDATE: Update ERD immediately
+    const visibleTables = [...newSelectedTables, ...allDescendants];
+    onTableFilter([...new Set(visibleTables)], tableName);
+    
     setIsAddDropdownOpen(false);
     setSearchQuery("");
-  }, [selectedTables]);
+  }, [selectedTables, analyzeChildHierarchy, onTableFilter]);
 
   // Handle clear all tables
   const handleClearAll = useCallback(() => {
     setSelectedTables(new Set());
-    setSelectedParents(new Set());
     setSelectedChildren(new Set());
     setLastSelectedTable(null); // Clear last selected table
     setIsManageDropdownOpen(false);
     onTableFilter(null, null);
   }, [onTableFilter]);
-
-  // Filter tables based on search query
-  const filteredTableNames = useMemo(() => {
-    if (!searchQuery) return tableNames;
-    return tableNames.filter(name => 
-      name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [tableNames, searchQuery]);
-
-  // Analyze relationships for multiple tables with context
-  const analyzeRelationships = useCallback((tableNames) => {
-    if (!workingSchema?.relationships || !tableNames || tableNames.size === 0) {
-      return { parents: [], children: [] };
-    }
-
-    const parentsMap = new Map(); // parent -> [selected tables that reference it]
-    const childrenMap = new Map(); // child -> [selected tables it references]
-
-    // Analyze relationships for all selected tables
-    tableNames.forEach(tableName => {
-      workingSchema.relationships.forEach(rel => {
-        if (rel.fromTable === tableName && !tableNames.has(rel.toTable)) {
-          // This table is the FK side (child), so toTable is parent
-          if (!parentsMap.has(rel.toTable)) {
-            parentsMap.set(rel.toTable, []);
-          }
-          parentsMap.get(rel.toTable).push(tableName);
-        }
-        if (rel.toTable === tableName && !tableNames.has(rel.fromTable)) {
-          // This table is the PK side (parent), so fromTable is child
-          if (!childrenMap.has(rel.fromTable)) {
-            childrenMap.set(rel.fromTable, []);
-          }
-          childrenMap.get(rel.fromTable).push(tableName);
-        }
-      });
-    });
-
-    // Convert to arrays with context
-    const parents = Array.from(parentsMap.entries()).map(([table, relatedTables]) => ({
-      table,
-      relatedTables: [...new Set(relatedTables)].sort()
-    })).sort((a, b) => a.table.localeCompare(b.table));
-
-    const children = Array.from(childrenMap.entries()).map(([table, relatedTables]) => ({
-      table,
-      relatedTables: [...new Set(relatedTables)].sort()
-    })).sort((a, b) => a.table.localeCompare(b.table));
-
-    return { parents, children };
-  }, [workingSchema]);
-
-  // Get current relationship data for all selected tables
-  const relationshipData = useMemo(() => {
-    if (selectedTables.size === 0) return { parents: [], children: [] };
-    return analyzeRelationships(selectedTables);
-  }, [selectedTables, analyzeRelationships]);
-
-  // Get tables to show based on current selection and filters
-  const getVisibleTables = useCallback(() => {
-    if (selectedTables.size === 0) {
-      // No tables selected, show all tables
-      return tableNames;
-    }
-
-    const visibleTables = Array.from(selectedTables); // Always include selected tables
-
-    // Add selected parent tables
-    selectedParents.forEach(parent => {
-      if (relationshipData.parents.includes(parent)) {
-        visibleTables.push(parent);
-      }
-    });
-
-    // Add selected child tables
-    selectedChildren.forEach(child => {
-      if (relationshipData.children.includes(child)) {
-        visibleTables.push(child);
-      }
-    });
-
-    return [...new Set(visibleTables)]; // Remove duplicates
-  }, [selectedTables, selectedParents, selectedChildren, relationshipData, tableNames]);
 
   // Handle table selection (add to carousel)
   const handleTableSelect = useCallback((tableName) => {
@@ -169,8 +209,33 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
     newSelectedTables.add(tableName);
     setSelectedTables(newSelectedTables);
     setLastSelectedTable(tableName); // Track the most recently selected table
-    // Relationship analysis will be handled by useEffect
-  }, [selectedTables]);
+    
+    // IMMEDIATE HIERARCHY ANALYSIS AND FILTER UPDATE
+    const hierarchy = analyzeChildHierarchy(newSelectedTables);
+    const allDescendants = new Set();
+    hierarchy.forEach(h => {
+      h.allDescendants.forEach(descendant => {
+        allDescendants.add(descendant);
+      });
+    });
+    
+    // Update children immediately
+    setSelectedChildren(allDescendants);
+    
+    // IMMEDIATE FILTER UPDATE: Update ERD immediately
+    const visibleTables = [...newSelectedTables, ...allDescendants];
+    onTableFilter([...new Set(visibleTables)], tableName);
+  }, [selectedTables, analyzeChildHierarchy, onTableFilter]);
+
+  // Handle chip click to switch active table
+  const handleChipClick = useCallback((tableName) => {
+    setLastSelectedTable(tableName);
+    
+    // Update visible tables with new highlight
+    const visibleTables = Array.from(selectedTables);
+    selectedChildren.forEach(child => visibleTables.push(child));
+    onTableFilter([...new Set(visibleTables)], tableName);
+  }, [selectedTables, selectedChildren, onTableFilter]);
 
   // Handle table removal (remove chip)
   const handleTableRemove = useCallback((tableName) => {
@@ -184,8 +249,27 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
       const remainingTables = Array.from(newSelectedTables);
       setLastSelectedTable(remainingTables.length > 0 ? remainingTables[remainingTables.length - 1] : null);
     }
-    // Relationship analysis will be handled by useEffect
-  }, [selectedTables, lastSelectedTable]);
+    
+    // IMMEDIATE CLEANUP: Remove children of the deleted table
+    const hierarchyForRemaining = analyzeChildHierarchy(newSelectedTables);
+    const validChildren = new Set();
+    hierarchyForRemaining.forEach(h => {
+      h.allDescendants.forEach(descendant => {
+        validChildren.add(descendant);
+      });
+    });
+    
+    // Update children to only include valid ones
+    setSelectedChildren(validChildren);
+    
+    // IMMEDIATE FILTER UPDATE: Update ERD immediately
+    const visibleTables = [...newSelectedTables, ...validChildren];
+    const newLastSelected = lastSelectedTable === tableName 
+      ? (Array.from(newSelectedTables)[0] || null)
+      : lastSelectedTable;
+    
+    onTableFilter(visibleTables.length > 0 ? [...new Set(visibleTables)] : null, newLastSelected);
+  }, [selectedTables, lastSelectedTable, analyzeChildHierarchy, onTableFilter]);
 
   // Handle search input change
   const handleSearchChange = useCallback((e) => {
@@ -194,91 +278,200 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
     setIsAddDropdownOpen(value.length > 0);
   }, []);
 
-  // Handle individual parent checkbox changes
-  const handleParentToggle = useCallback((parentTable) => {
-    const newSelectedParents = new Set(selectedParents);
-    if (newSelectedParents.has(parentTable)) {
-      newSelectedParents.delete(parentTable);
-    } else {
-      newSelectedParents.add(parentTable);
-    }
-    setSelectedParents(newSelectedParents);
+  // Handle bulk hide/show of all direct children
+  const handleHideDirectChildren = useCallback((shouldHide) => {
+    setHideDirectChildren(shouldHide);
     
-    // Update visible tables
-    const visibleTables = Array.from(selectedTables);
-    newSelectedParents.forEach(parent => visibleTables.push(parent));
-    selectedChildren.forEach(child => visibleTables.push(child));
-    onTableFilter([...new Set(visibleTables)], lastSelectedTable);
-  }, [selectedParents, selectedTables, selectedChildren, onTableFilter, lastSelectedTable]);
+    if (shouldHide) {
+      // Remove ALL direct children and their hierarchies
+      setSelectedChildren(new Set()); // Clear all children
+      
+      // Update visible tables immediately - only show selected parent tables
+      const visibleTables = Array.from(selectedTables);
+      onTableFilter([...new Set(visibleTables)], lastSelectedTable);
+    } else {
+      // Restore all children based on current hierarchy state
+      const newSelectedChildren = new Set();
+      
+      if (hideNestedChildren) {
+        // Only restore direct children
+        hierarchyData.forEach(hierarchy => {
+          hierarchy.children.forEach(child => {
+            newSelectedChildren.add(child.table);
+          });
+        });
+      } else {
+        // Restore all descendants
+        hierarchyData.forEach(hierarchy => {
+          hierarchy.allDescendants.forEach(descendant => {
+            newSelectedChildren.add(descendant);
+          });
+        });
+      }
+      
+      setSelectedChildren(newSelectedChildren);
+      
+      // Update visible tables immediately
+      const visibleTables = Array.from(selectedTables);
+      newSelectedChildren.forEach(child => visibleTables.push(child));
+      onTableFilter([...new Set(visibleTables)], lastSelectedTable);
+    }
+  }, [hierarchyData, selectedTables, onTableFilter, lastSelectedTable, hideNestedChildren]);
 
-  // Handle individual child checkbox changes
+  // Handle bulk hide/show of nested children (grandchildren and deeper)
+  const handleHideNestedChildren = useCallback((shouldHide) => {
+    setHideNestedChildren(shouldHide);
+    
+    if (shouldHide) {
+      // Remove all nested children (depth > 0) from selectedChildren
+      const newSelectedChildren = new Set();
+      
+      // Keep only direct children (depth 0)
+      hierarchyData.forEach(hierarchy => {
+        hierarchy.children.forEach(child => {
+          // Only keep direct children (depth 0)
+          newSelectedChildren.add(child.table);
+        });
+      });
+      
+      setSelectedChildren(newSelectedChildren);
+      
+      // Update visible tables immediately
+      const visibleTables = Array.from(selectedTables);
+      newSelectedChildren.forEach(child => visibleTables.push(child));
+      onTableFilter([...new Set(visibleTables)], lastSelectedTable);
+    } else {
+      // Restore all hierarchy children
+      const newSelectedChildren = new Set();
+      
+      // Add all descendants back
+      hierarchyData.forEach(hierarchy => {
+        hierarchy.allDescendants.forEach(descendant => {
+          newSelectedChildren.add(descendant);
+        });
+      });
+      
+      setSelectedChildren(newSelectedChildren);
+      
+      // Update visible tables immediately
+      const visibleTables = Array.from(selectedTables);
+      newSelectedChildren.forEach(child => visibleTables.push(child));
+      onTableFilter([...new Set(visibleTables)], lastSelectedTable);
+    }
+  }, [hierarchyData, selectedTables, onTableFilter, lastSelectedTable]);
   const handleChildToggle = useCallback((childTable) => {
     const newSelectedChildren = new Set(selectedChildren);
+    
     if (newSelectedChildren.has(childTable)) {
+      // Unchecking - remove this child and ALL its descendants
       newSelectedChildren.delete(childTable);
+      
+      // Find and remove all descendants of this child recursively
+      const removeAllDescendants = (tableName) => {
+        hierarchyData.forEach(hierarchy => {
+          const findAndRemoveRecursively = (children) => {
+            children.forEach(child => {
+              if (child.table === tableName) {
+                // Found the table, remove all its children
+                if (child.children.length > 0) {
+                  child.children.forEach(grandchild => {
+                    newSelectedChildren.delete(grandchild.table);
+                    removeAllDescendants(grandchild.table); // Recursively remove deeper levels
+                  });
+                }
+              } else if (child.children.length > 0) {
+                // Continue searching in nested children
+                findAndRemoveRecursively(child.children);
+              }
+            });
+          };
+          findAndRemoveRecursively(hierarchy.children);
+        });
+      };
+      
+      // Remove all descendants of the unchecked child
+      removeAllDescendants(childTable);
+      
     } else {
+      // Checking - add this child (but don't auto-add its descendants)
       newSelectedChildren.add(childTable);
     }
+    
     setSelectedChildren(newSelectedChildren);
     
     // Update visible tables
     const visibleTables = Array.from(selectedTables);
-    selectedParents.forEach(parent => visibleTables.push(parent));
     newSelectedChildren.forEach(child => visibleTables.push(child));
     onTableFilter([...new Set(visibleTables)], lastSelectedTable);
-  }, [selectedChildren, selectedTables, selectedParents, onTableFilter, lastSelectedTable]);
+  }, [selectedChildren, selectedTables, hierarchyData, onTableFilter, lastSelectedTable]);
 
-  // Handle show all tables
-  const handleShowAll = useCallback(() => {
-    setSearchQuery("");
-    setSelectedTables(new Set());
-    setSelectedParents(new Set());
-    setSelectedChildren(new Set());
-    setLastSelectedTable(null); // Clear last selected table
-    setIsAddDropdownOpen(false);
-    setIsManageDropdownOpen(false);
-    onTableFilter(null, null); // Show all tables
-  }, [onTableFilter]);
+  // Render child hierarchy with indentation
+  const renderChildHierarchy = useCallback((children, depth) => {
+    return children.map(child => (
+      <div key={child.table} className={`hierarchy-item hierarchy-depth-${Math.min(depth, 3)}`}>
+        <label className="filter-table-item">
+          <input
+            type="checkbox"
+            checked={selectedChildren.has(child.table)}
+            onChange={() => handleChildToggle(child.table)}
+          />
+          <div className="filter-table-info">
+            <span 
+              className="filter-table-name"
+              title={child.table} // Tooltip with full table name
+            >
+              {child.table}
+            </span>
+            <span 
+              className="filter-table-context"
+              title={`${child.fromColumn} → ${child.toColumn}`} // Tooltip with full relationship
+            >
+              {child.fromColumn} → {child.toColumn}
+            </span>
+          </div>
+        </label>
+        {child.children.length > 0 && renderChildHierarchy(child.children, depth + 1)}
+      </div>
+    ));
+  }, [selectedChildren, handleChildToggle]);
 
-  // Handle dropdown item click
-  const handleDropdownItemClick = useCallback((tableName) => {
-    handleTableSelect(tableName);
-  }, [handleTableSelect]);
-
-  // Handle input focus
-  const handleInputFocus = useCallback(() => {
-    if (searchQuery && filteredTableNames.length > 0) {
-      setIsAddDropdownOpen(true);
-    }
-  }, [searchQuery, filteredTableNames.length]);
-
-  // Handle input blur (with delay to allow dropdown clicks)
-  const handleInputBlur = useCallback(() => {
-    setTimeout(() => {
-      setIsAddDropdownOpen(false);
-    }, 200);
-  }, []);
-
-  // Effect to handle relationship analysis when selectedTables changes
+  // Simplified effect - only handle hierarchy analysis for display purposes
   useEffect(() => {
     if (selectedTables.size > 0) {
-      // Analyze relationships for all selected tables
-      const { parents, children } = analyzeRelationships(selectedTables);
-      const parentTables = parents.map(p => p.table);
-      const childTables = children.map(c => c.table);
-      setSelectedParents(new Set(parentTables));
-      setSelectedChildren(new Set(childTables));
+      // Analyze child hierarchy for display in dropdown
+      const hierarchy = analyzeChildHierarchy(selectedTables);
       
-      // Apply filter with all relationships and highlight info
-      const visibleTables = [...selectedTables, ...parentTables, ...childTables];
-      onTableFilter([...new Set(visibleTables)], lastSelectedTable);
+      // Check if there are nested children, if not, reset the checkbox
+      const hasNested = hierarchy.some(h => 
+        h.children.some(child => child.children.length > 0)
+      );
+      
+      if (!hasNested && hideNestedChildren) {
+        setHideNestedChildren(false); // Reset nested checkbox if no nested children
+      }
+      
+      // Handle direct children hiding
+      if (hideDirectChildren) {
+        setSelectedChildren(new Set()); // Keep all children hidden
+      } else if (hideNestedChildren && hasNested) {
+        // If hideNestedChildren is enabled, automatically filter out nested children
+        const directChildrenOnly = new Set();
+        hierarchy.forEach(h => {
+          h.children.forEach(child => {
+            // Only keep direct children (depth 0)
+            directChildrenOnly.add(child.table);
+          });
+        });
+        setSelectedChildren(directChildrenOnly);
+      }
     } else {
       // No tables selected, reset everything
-      setSelectedParents(new Set());
       setSelectedChildren(new Set());
+      setHideNestedChildren(false); // Reset nested checkbox when no tables selected
+      setHideDirectChildren(false); // Reset direct checkbox when no tables selected
       onTableFilter(null, null);
     }
-  }, [selectedTables, analyzeRelationships, onTableFilter, lastSelectedTable]);
+  }, [selectedTables, analyzeChildHierarchy, onTableFilter, hideNestedChildren, hideDirectChildren]);
 
   return (
     <div className={`erd-header ${isSchemaCollapsed ? 'schema-collapsed' : ''}`}>
@@ -300,11 +493,18 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
             <div className="table-carousel">
               <div className="table-carousel-track" ref={carouselRef}>
                 {Array.from(selectedTables).map(tableName => (
-                  <div key={tableName} className="carousel-table-chip">
+                  <div 
+                    key={tableName} 
+                    className={`carousel-table-chip ${tableName === lastSelectedTable ? 'active' : ''}`}
+                    onClick={() => handleChipClick(tableName)}
+                  >
                     <span className="carousel-chip-text">{tableName}</span>
                     <button
                       className="carousel-chip-remove"
-                      onClick={() => handleTableRemove(tableName)}
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent chip click when removing
+                        handleTableRemove(tableName);
+                      }}
                       aria-label={`Remove ${tableName}`}
                     >
                       ×
@@ -408,77 +608,72 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
 
         {/* Filter Section */}
         <div className="erd-filter-section">
-          {selectedTables.size > 0 && (
+          {selectedTables.size > 0 && displayHierarchyData.length > 0 && (
             <>
-              {/* Parent Tables */}
-              {relationshipData.parents.length > 0 && (
-                <div className="filter-dropdown">
-                  <div className="filter-dropdown-header" onClick={() => setParentsExpanded(!parentsExpanded)}>
-                    <span className="filter-dropdown-title">Parents ({relationshipData.parents.length})</span>
-                    <button className="filter-dropdown-toggle" aria-label={parentsExpanded ? 'Collapse parents' : 'Expand parents'}>
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-                        <path d={parentsExpanded ? "M2 4 L6 8 L10 4" : "M4 2 L8 6 L4 10"} stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </button>
-                  </div>
-                  {parentsExpanded && (
-                    <div className="filter-dropdown-content">
-                      <div className="filter-table-list">
-                        {relationshipData.parents.map(parentData => (
-                          <label key={parentData.table} className="filter-table-item">
-                            <input
-                              type="checkbox"
-                              checked={selectedParents.has(parentData.table)}
-                              onChange={() => handleParentToggle(parentData.table)}
-                            />
-                            <div className="filter-table-info">
-                              <span className="filter-table-name">{parentData.table}</span>
-                              <span className="filter-table-context">
-                                ← {parentData.relatedTables.join(', ')}
-                              </span>
-                            </div>
-                          </label>
-                        ))}
+              {/* Child Tables with Hierarchy */}
+              <div className="filter-dropdown">
+                <div className="filter-dropdown-header" onClick={() => setChildrenExpanded(!childrenExpanded)}>
+                  <span className="filter-dropdown-title">
+                    Children ({showDirectChildrenOnly 
+                      ? displayHierarchyData.reduce((total, h) => total + h.children.length, 0)
+                      : displayHierarchyData.reduce((total, h) => total + h.allDescendants.length, 0)
+                    })
+                  </span>
+                  <button className="filter-dropdown-toggle" aria-label={childrenExpanded ? 'Collapse children' : 'Expand children'}>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                      <path d={childrenExpanded ? "M2 4 L6 8 L10 4" : "M4 2 L8 6 L4 10"} stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                </div>
+                {childrenExpanded && (
+                  <div className="filter-dropdown-content">
+                    {/* Toggle Buttons with Associated Checkboxes */}
+                    <div className="hierarchy-toggle-container">
+                      <div className="toggle-group">
+                        <input
+                          type="checkbox"
+                          className="hide-nested-checkbox"
+                          checked={hideNestedChildren}
+                          disabled={!hasNestedChildren || hideDirectChildren}
+                          onChange={(e) => handleHideNestedChildren(e.target.checked)}
+                          title={hasNestedChildren ? "Hide nested children (grandchildren and deeper)" : "No nested children to hide"}
+                        />
+                        <button 
+                          className={`hierarchy-toggle-btn ${!showDirectChildrenOnly ? 'active' : ''}`}
+                          onClick={() => setShowDirectChildrenOnly(false)}
+                        >
+                          Full Hierarchy
+                        </button>
+                      </div>
+                      <div className="toggle-group">
+                        <input
+                          type="checkbox"
+                          className="hide-direct-checkbox"
+                          checked={hideDirectChildren}
+                          onChange={(e) => handleHideDirectChildren(e.target.checked)}
+                          title="Hide all direct children"
+                        />
+                        <button 
+                          className={`hierarchy-toggle-btn ${showDirectChildrenOnly ? 'active' : ''}`}
+                          onClick={() => setShowDirectChildrenOnly(true)}
+                        >
+                          Direct Children
+                        </button>
                       </div>
                     </div>
-                  )}
-                </div>
-              )}
-
-              {/* Child Tables */}
-              {relationshipData.children.length > 0 && (
-                <div className="filter-dropdown">
-                  <div className="filter-dropdown-header" onClick={() => setChildrenExpanded(!childrenExpanded)}>
-                    <span className="filter-dropdown-title">Children ({relationshipData.children.length})</span>
-                    <button className="filter-dropdown-toggle" aria-label={childrenExpanded ? 'Collapse children' : 'Expand children'}>
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-                        <path d={childrenExpanded ? "M2 4 L6 8 L10 4" : "M4 2 L8 6 L4 10"} stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </button>
-                  </div>
-                  {childrenExpanded && (
-                    <div className="filter-dropdown-content">
-                      <div className="filter-table-list">
-                        {relationshipData.children.map(childData => (
-                          <label key={childData.table} className="filter-table-item">
-                            <input
-                              type="checkbox"
-                              checked={selectedChildren.has(childData.table)}
-                              onChange={() => handleChildToggle(childData.table)}
-                            />
-                            <div className="filter-table-info">
-                              <span className="filter-table-name">{childData.table}</span>
-                              <span className="filter-table-context">
-                                → {childData.relatedTables.join(', ')}
-                              </span>
-                            </div>
-                          </label>
-                        ))}
-                      </div>
+                    <div className="filter-table-list">
+                      {displayHierarchyData.map(hierarchy => (
+                        <div key={hierarchy.parentTable} className="hierarchy-group">
+                          <div className="hierarchy-parent-label">
+                            Children of {hierarchy.parentTable}:
+                          </div>
+                          {renderChildHierarchy(hierarchy.children, 0)}
+                        </div>
+                      ))}
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
