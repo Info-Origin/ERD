@@ -165,6 +165,18 @@
   gap: var(--spacing-md);
 }
 
+@media (max-width: 1024px) {
+  .modal-content {
+    max-width: 90%;
+  }
+}
+
+@media (max-width: 900px) {
+  .modal-content {
+    max-width: 92%;
+  }
+}
+
 @media (max-width: 768px) {
   .modal-content {
     max-width: 95%;
@@ -172,5 +184,18 @@
 
   .form-row {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .modal-content {
+    max-width: 98%;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-content {
+    max-width: 100%;
+    border-radius: 0;
   }
 }

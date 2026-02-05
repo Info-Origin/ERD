@@ -54,6 +54,18 @@
 }
 
 /* Mobile Responsive */
+@media (max-width: 1024px) {
+  .leftPanel {
+    min-width: 200px; /* Ensure minimum usable width */
+  }
+}
+
+@media (max-width: 900px) {
+  .leftPanel {
+    min-width: 180px;
+  }
+}
+
 @media (max-width: 768px) {
   .resizablePanels {
     flex-direction: column;
@@ -62,9 +74,23 @@
   .leftPanel {
     border-right: none;
     border-bottom: 1px solid var(--border-color);
+    min-width: auto;
+    max-height: 40vh; /* Limit height on mobile */
   }
 
   .resizeHandle {
     display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .leftPanel {
+    max-height: 35vh;
+  }
+}
+
+@media (max-width: 480px) {
+  .leftPanel {
+    max-height: 30vh;
   }
 }

@@ -364,6 +364,23 @@
 }
 
 /* Responsive Design */
+@media (max-width: 1200px) {
+  .edit-table-modal {
+    width: 92vw;
+    height: 82vh;
+  }
+  
+  .columns-table .edit-table-header,
+  .columns-table .edit-table-row {
+    grid-template-columns: 1.8fr 1.8fr 55px 55px 55px 55px 1.8fr 110px;
+  }
+  
+  .fk-table .edit-fk-header,
+  .fk-table .edit-fk-row {
+    grid-template-columns: 1.8fr 1.2fr 1.2fr 1.2fr 110px 110px 110px;
+  }
+}
+
 @media (max-width: 1024px) {
   .edit-table-modal {
     width: 95vw;
@@ -378,6 +395,31 @@
   .fk-table .edit-fk-header,
   .fk-table .edit-fk-row {
     grid-template-columns: 1.5fr 1fr 1fr 1fr 100px 100px 100px;
+  }
+}
+
+@media (max-width: 900px) {
+  .edit-table-modal {
+    width: 96vw;
+    height: 87vh;
+  }
+  
+  .columns-table .edit-table-header,
+  .columns-table .edit-table-row {
+    grid-template-columns: 1.3fr 1.3fr 45px 45px 45px 45px 1.3fr 90px;
+  }
+  
+  .fk-table .edit-fk-header,
+  .fk-table .edit-fk-row {
+    grid-template-columns: 1.3fr 0.9fr 0.9fr 0.9fr 90px 90px 90px;
+  }
+  
+  .edit-table-header > div,
+  .edit-fk-header > div,
+  .edit-table-row > div,
+  .edit-fk-row > div {
+    padding: 0.6rem 0.4rem;
+    font-size: 0.85rem;
   }
 }
 
@@ -418,6 +460,94 @@
   .fk-table .edit-fk-header,
   .fk-table .edit-fk-row {
     grid-template-columns: 1fr 0.8fr 0.8fr 0.8fr 80px 80px 80px;
+  }
+}
+
+@media (max-width: 600px) {
+  .edit-table-modal {
+    width: 99vw;
+    height: 92vh;
+  }
+  
+  .edit-table-header > div,
+  .edit-fk-header > div,
+  .edit-table-row > div,
+  .edit-fk-row > div {
+    padding: 0.4rem 0.2rem;
+    font-size: 0.75rem;
+  }
+  
+  .columns-table .edit-table-header,
+  .columns-table .edit-table-row {
+    grid-template-columns: 0.8fr 0.8fr 35px 35px 35px 35px 0.8fr 70px;
+  }
+  
+  .fk-table .edit-fk-header,
+  .fk-table .edit-fk-row {
+    grid-template-columns: 0.8fr 0.7fr 0.7fr 0.7fr 70px 70px 70px;
+  }
+  
+  .btn-edit,
+  .btn-delete,
+  .btn-save,
+  .btn-cancel {
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0.3rem;
+  }
+  
+  .btn-edit svg,
+  .btn-delete svg,
+  .btn-edit-small svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .edit-table-modal {
+    width: 100vw;
+    height: 95vh;
+    border-radius: 0;
+  }
+  
+  .edit-table-header > div,
+  .edit-fk-header > div,
+  .edit-table-row > div,
+  .edit-fk-row > div {
+    padding: 0.3rem 0.15rem;
+    font-size: 0.7rem;
+  }
+  
+  .columns-table .edit-table-header,
+  .columns-table .edit-table-row {
+    grid-template-columns: 0.7fr 0.7fr 30px 30px 30px 30px 0.7fr 60px;
+  }
+  
+  .fk-table .edit-fk-header,
+  .fk-table .edit-fk-row {
+    grid-template-columns: 0.7fr 0.6fr 0.6fr 0.6fr 60px 60px 60px;
+  }
+  
+  .btn-edit,
+  .btn-delete,
+  .btn-save,
+  .btn-cancel {
+    min-width: 20px;
+    min-height: 20px;
+    padding: 0.2rem;
+  }
+  
+  .btn-edit svg,
+  .btn-delete svg,
+  .btn-edit-small svg {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .read-only-indicator {
+    font-size: 10px;
+    padding: 0.3rem;
   }
 }
 /* Edit mode highlighting */
