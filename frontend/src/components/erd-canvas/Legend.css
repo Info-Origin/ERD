@@ -4,7 +4,7 @@
   right: 16px;
   background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: 0; /* Completely removed border-radius for sharp corners */
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   z-index: var(--z-dropdown);
   min-width: 120px;
@@ -18,7 +18,7 @@
   right: 0;
   background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: 0; /* Completely removed border-radius for sharp corners */
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   z-index: 1001; /* Higher than header to appear above it */
   min-width: 160px; /* Increased width to prevent text wrapping */
@@ -57,6 +57,7 @@
   cursor: pointer;
   user-select: none;
   margin-bottom: 0; /* No margin since items are now absolute */
+  border-bottom: none; /* Remove any bottom border for seamless connection */
 }
 
 .legend-header:hover {
@@ -130,15 +131,16 @@
   animation: fadeIn 0.2s ease;
   position: absolute; /* Make items absolute to expand beyond header */
   top: 100%; /* Position below the legend header */
-  left: 0;
-  right: 0;
+  left: -1px; /* Align perfectly with header left edge */
+  right: -1px; /* Align perfectly with header right edge */
   background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-top: none;
-  border-radius: 0 0 6px 6px;
+  border-top: none; /* Remove top border to create seamless connection */
+  border-radius: 0; /* Completely removed border-radius for sharp corners */
   box-shadow: 0 4px 8px rgba(0,0,0,0.1);
   padding: 8px 12px;
   z-index: 1002;
+  margin-top: -1px; /* Overlap by 1px to eliminate any gap */
 }
 
 @keyframes fadeIn {

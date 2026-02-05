@@ -16,6 +16,8 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
   const [hideNestedChildren, setHideNestedChildren] = useState(false); // Checkbox to hide all nested children (depth > 0)
   const [hideDirectChildren, setHideDirectChildren] = useState(false); // Checkbox to hide all direct children
   const carouselRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   // Get all table names for autocomplete
   const tableNames = useMemo(() => {
@@ -117,6 +119,40 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
       behavior: 'smooth'
     });
   }, []);
+
+  // Check if carousel can scroll (has overflow)
+  const checkCarouselScroll = useCallback(() => {
+    if (!carouselRef.current) return;
+    
+    const container = carouselRef.current;
+    const hasOverflow = container.scrollWidth > container.clientWidth;
+    const currentScroll = container.scrollLeft;
+    const maxScroll = container.scrollWidth - container.clientWidth;
+    
+    setCanScrollLeft(hasOverflow && currentScroll > 0);
+    setCanScrollRight(hasOverflow && currentScroll < maxScroll);
+  }, []);
+
+  // Update scroll states when selectedTables changes or on scroll
+  useEffect(() => {
+    checkCarouselScroll();
+    
+    const container = carouselRef.current;
+    if (container) {
+      container.addEventListener('scroll', checkCarouselScroll);
+      return () => container.removeEventListener('scroll', checkCarouselScroll);
+    }
+  }, [selectedTables, checkCarouselScroll]);
+
+  // Also check on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setTimeout(checkCarouselScroll, 100); // Small delay to ensure layout is updated
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [checkCarouselScroll]);
 
   // Get current child hierarchy data for the active table
   const hierarchyData = useMemo(() => {
@@ -483,7 +519,7 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
             <button 
               className="carousel-arrow carousel-arrow-left"
               onClick={() => scrollCarousel('left')}
-              disabled={selectedTables.size <= 1}
+              disabled={!canScrollLeft}
               aria-label="Scroll left"
               title="Scroll table chips left"
             >
@@ -524,7 +560,7 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
             <button 
               className="carousel-arrow carousel-arrow-right"
               onClick={() => scrollCarousel('right')}
-              disabled={selectedTables.size <= 1}
+              disabled={!canScrollRight}
               aria-label="Scroll right"
               title="Scroll table chips right"
             >
@@ -535,10 +571,12 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
             <button 
               className="carousel-add-button"
               onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}
-              aria-label="Add table"
-              title="Search tables"
+              aria-label="Search tables"
+              title="Search and add tables to ERD"
             >
-              +
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" style={{width: '16px', height: '16px'}}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+              </svg>
             </button>
 
             {/* Dropdown Button */}
