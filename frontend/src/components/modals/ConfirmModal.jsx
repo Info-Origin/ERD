@@ -51,11 +51,11 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
         </div>
         
         <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>
-            {cancelText}
-          </button>
           <button className="btn-danger" onClick={handleConfirm}>
             {confirmText}
+          </button>
+          <button className="btn-secondary" onClick={onClose}>
+            {cancelText}
           </button>
         </div>
       </div>

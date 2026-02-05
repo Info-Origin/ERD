@@ -1126,6 +1126,7 @@ export const VirtualSchemaProvider = ({ children }) => {
         toTable,
         toColumn,
         type,
+        isVirtual: true, // Mark user-created relationships as virtual
       };
 
       // Create deep copy with new relationship
@@ -1185,6 +1186,7 @@ export const VirtualSchemaProvider = ({ children }) => {
         toTable,
         toColumn,
         type,
+        isVirtual: true, // Mark user-created relationships as virtual
       };
 
       // ATOMIC OPERATION: Create both column and relationship in single schema update

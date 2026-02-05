@@ -247,7 +247,7 @@
   opacity: 0.6;
 }
 
-/* Action Buttons */
+/* Action Buttons - Clean icon style */
 .edit-col-actions,
 .edit-fk-actions {
   display: flex;
@@ -261,36 +261,36 @@
 .btn-delete,
 .btn-save,
 .btn-cancel {
-  padding: 0.4rem 0.6rem;
+  padding: 0.4rem;
   border: none;
-  border-radius: 3px;
+  background: transparent;
   cursor: pointer;
-  font-size: 0.9rem;
+  border-radius: 4px;
   transition: all 0.2s ease;
-  min-width: 28px;
-  min-height: 28px;
+  min-width: 32px;
+  min-height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .btn-edit {
-  background: var(--warning-color);
-  color: white;
+  color: var(--text-secondary);
 }
 
 .btn-edit:hover {
-  background: var(--warning-hover);
+  background: var(--bg-hover);
+  color: var(--text-primary);
   transform: scale(1.05);
 }
 
 .btn-delete {
-  background: var(--danger-color);
-  color: white;
+  color: var(--text-secondary);
 }
 
 .btn-delete:hover {
-  background: var(--danger-hover);
+  background: var(--bg-hover);
+  color: var(--danger-color);
   transform: scale(1.05);
 }
 
@@ -313,6 +313,14 @@
 .btn-cancel:hover {
   background: var(--bg-hover);
   border-color: var(--text-secondary);
+}
+
+/* SVG icon sizing */
+.btn-edit svg,
+.btn-delete svg,
+.btn-edit-small svg {
+  width: 16px;
+  height: 16px;
 }
 
 .modal-footer {
@@ -631,46 +639,50 @@
   font-style: italic;
 }
 
-/* Action buttons */
+/* Action buttons - Clean icon style */
 .btn-edit-small,
 .btn-save-small,
 .btn-cancel-small {
-  padding: 4px 8px;
+  padding: 0.4rem;
   border: none;
-  border-radius: var(--radius-sm);
+  background: transparent;
   cursor: pointer;
-  font-size: 12px;
-  transition: all var(--transition-fast);
-  margin: 0 2px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  min-width: 32px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-edit-small {
-  background-color: var(--primary);
-  color: white;
+  color: var(--text-secondary);
 }
 
 .btn-edit-small:hover {
-  background-color: var(--primary-hover);
+  background: var(--bg-hover);
+  color: var(--text-primary);
   transform: scale(1.05);
 }
 
 .btn-save-small {
-  background-color: var(--success);
+  background: var(--success-color);
   color: white;
 }
 
 .btn-save-small:hover {
-  background-color: var(--success-hover);
+  background: var(--success-hover);
   transform: scale(1.05);
 }
 
 .btn-cancel-small {
-  background-color: var(--danger);
+  background: var(--danger-color);
   color: white;
 }
 
 .btn-cancel-small:hover {
-  background-color: var(--danger-hover);
+  background: var(--danger-hover);
   transform: scale(1.05);
 }
 
@@ -818,6 +830,33 @@
   font-family: var(--font-family);
   font-weight: 400;
 }
+/* Read-only FK styling */
+.edit-fk-row.read-only {
+  background-color: var(--bg-secondary);
+  opacity: 0.8;
+}
+
+.edit-fk-row.read-only input,
+.edit-fk-row.read-only select {
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+  border-color: var(--border-color);
+}
+
+.read-only-indicator {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  background-color: var(--bg-secondary);
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+}
+
 /* Pending changes indicator */
 .pending-changes-indicator {
   font-size: 12px;
