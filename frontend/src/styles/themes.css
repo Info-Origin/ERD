@@ -39,6 +39,7 @@
 
   --info: #17a2b8;
   --info-bg: #d1ecf1;
+  --info-border: #bee5eb;
 
   /* Additional color variables */
   --primary-color: #0066cc;
@@ -122,6 +123,7 @@
 
   --info: #5bc0de;
   --info-bg: #1e2e3a;
+  --info-border: #2e3e4a;
 
   /* Additional color variables */
   --primary-color: #4da3ff;

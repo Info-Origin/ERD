@@ -1350,6 +1350,8 @@ export const VirtualSchemaProvider = ({ children }) => {
     refreshAndMerge,
     clearVirtualSchema,
     clearAllVirtualSchemas,
+    updateWorkingSchema, // Add this method for FK comparison
+    setOriginalSchema, // Add this method for auto-refresh
     undo,
     redo,
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useVirtualSchema } from '../../context/VirtualSchemaContext';
+import { useApp } from '../../context/AppContext';
 import { formatDataTypeForDisplay, getFullDataType } from '../../utils/dataTypeFormatter';
 import { 
   ALL_MYSQL_DATA_TYPES, 
@@ -32,6 +33,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
     addColumn,
     forceRefreshFromBackend
   } = useVirtualSchema();
+
+  const { registerEditTableModalRefresh } = useApp();
 
   const [activeTab, setActiveTab] = useState('constraints');
   const [columns, setColumns] = useState([]);
@@ -129,6 +132,51 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       setEditingFK(null);
     }
   }, [isOpen, tableName, workingSchema]); // Add workingSchema back to dependencies to ensure updates
+
+  // Refresh function to reload foreign keys and columns from schema
+  const refreshForeignKeys = useCallback(() => {
+    if (workingSchema && tableName) {
+      // Reload columns (in case columns were added/removed)
+      const tableData = workingSchema.tables[tableName];
+      if (tableData && tableData.columns) {
+        const columnList = Object.entries(tableData.columns).map(([columnName, columnData]) => ({
+          name: columnName,
+          originalName: columnName,
+          type: columnData.type,
+          pk: Boolean(columnData.pk),
+          nullable: columnData.nullable !== false,
+          unique: Boolean(columnData.unique),
+          fk: Boolean(columnData.fk),
+          defaultValue: columnData.defaultValue || ''
+        }));
+        setColumns(columnList);
+      } else {
+        setColumns([]);
+      }
+
+      // Reload foreign keys
+      const tableFKs = (workingSchema.relationships || [])
+        .filter(rel => rel.fromTable === tableName)
+        .map(rel => ({
+          id: rel.id,
+          name: `FK_${rel.fromTable}_${rel.fromColumn}`,
+          fromColumn: rel.fromColumn,
+          toTable: rel.toTable,
+          toColumn: rel.toColumn,
+          onUpdate: rel.onUpdate || 'RESTRICT',
+          onDelete: rel.onDelete || 'RESTRICT',
+          isVirtual: rel.isVirtual || false
+        }));
+      setForeignKeys(tableFKs);
+    }
+  }, [workingSchema, tableName]);
+
+  // Register refresh callback with AppContext when modal opens
+  useEffect(() => {
+    if (isOpen && registerEditTableModalRefresh) {
+      registerEditTableModalRefresh(refreshForeignKeys);
+    }
+  }, [isOpen, registerEditTableModalRefresh, refreshForeignKeys]);
 
   const handleSave = () => {
     try {

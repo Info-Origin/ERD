@@ -1,0 +1,151 @@
+.notification {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 300px;
+  max-width: 500px;
+  opacity: 0;
+  transform: translateX(100%);
+  transition: all 0.3s ease-in-out;
+  position: relative;
+  z-index: 1000;
+}
+
+.notification-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.notification-content {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex: 1;
+}
+
+.notification-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.notification-message {
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.notification-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: var(--spacing-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.notification-close:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Notification Types */
+.notification-info {
+  background-color: var(--info-color);
+  color: white;
+}
+
+.notification-success {
+  background-color: var(--success-color);
+  color: white;
+}
+
+.notification-warning {
+  background-color: var(--warning-color);
+  color: var(--text-primary);
+}
+
+.notification-error {
+  background-color: var(--danger-color);
+  color: white;
+}
+
+/* Position Classes */
+.notification-top-right {
+  /* Positioned by container */
+}
+
+.notification-top-left {
+  /* Positioned by container */
+}
+
+.notification-bottom-right {
+  /* Positioned by container */
+}
+
+.notification-bottom-left {
+  /* Positioned by container */
+}
+
+/* Notification Container */
+.notification-container {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.notification-container > * {
+  pointer-events: auto;
+}
+
+.notification-container-top-right {
+  top: var(--spacing-lg);
+  right: var(--spacing-lg);
+}
+
+.notification-container-top-left {
+  top: var(--spacing-lg);
+  left: var(--spacing-lg);
+}
+
+.notification-container-bottom-right {
+  bottom: var(--spacing-lg);
+  right: var(--spacing-lg);
+}
+
+.notification-container-bottom-left {
+  bottom: var(--spacing-lg);
+  left: var(--spacing-lg);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .notification {
+    min-width: 280px;
+    max-width: calc(100vw - 2 * var(--spacing-lg));
+  }
+
+  .notification-container-top-right,
+  .notification-container-top-left,
+  .notification-container-bottom-right,
+  .notification-container-bottom-left {
+    left: var(--spacing-md);
+    right: var(--spacing-md);
+  }
+
+  .notification-container-top-right,
+  .notification-container-top-left {
+    top: var(--spacing-md);
+  }
+
+  .notification-container-bottom-right,
+  .notification-container-bottom-left {
+    bottom: var(--spacing-md);
+  }
+}

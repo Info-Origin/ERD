@@ -112,9 +112,11 @@
   background-color: var(--bg-hover);
 }
 .schema-item-selected {
-  background-color: var(--bg-hover);
-  border-left: 3px solid var(--primary);
-  padding-left: calc(var(--spacing-md) - 3px);
+  background-color: #d9eaf8;
+  border: 1px solid teal;
+  border-radius: var(--radius-md);
+  margin: 2px;
+  padding: calc(var(--spacing-sm) - 1px) calc(var(--spacing-md) - 1px);
   font-weight: 500;
 }
 
