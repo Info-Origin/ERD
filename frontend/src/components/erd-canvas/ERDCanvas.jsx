@@ -5,6 +5,7 @@ import {
   BackgroundVariant,
   useReactFlow,
   ReactFlowProvider,
+  MiniMap,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -345,6 +346,22 @@ const ERDCanvasInner = ({ isSchemaCollapsed }) => {
             size={0.8}
             color="var(--border-color)"
             style={{ opacity: 0.3 }}
+          />
+          <MiniMap
+            nodeStrokeColor="#4682B4"
+            nodeColor="#87CEEB"
+            nodeBorderRadius={2}
+            maskColor="transparent"
+            maskStrokeColor="#333333"
+            maskStrokeWidth={2}
+            style={{
+              backgroundColor: '#ffffff',
+              border: '2px solid var(--border-color)',
+            }}
+            pannable
+            zoomable
+            ariaLabel="Schema Overview"
+            position="bottom-right"
           />
         </ReactFlow>
 

@@ -119,7 +119,77 @@
 }
 
 .react-flow__minimap {
-  border-radius: var(--radius-md);
+  display: none; /* Hidden for now - MINIMAP */
+  border-radius: var(--radius-sm);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border: 2px solid var(--border-color);
+  background: #ffffff;
+  bottom: 20px;
+  right: 20px;
+  width: 200px;
+  height: 140px;
+  z-index: var(--z-dropdown);
+  overflow: hidden;
+}
+
+/* Clean viewport indicator like Workbench */
+.react-flow__minimap-mask {
+  fill: transparent;
+  stroke: #333333;
+  stroke-width: 2;
+  stroke-opacity: 1;
+  rx: 0;
+}
+
+/* Clean table nodes like Workbench */
+.react-flow__minimap-node {
+  fill: #87ceeb;
+  stroke: #4682b4;
+  stroke-width: 1;
+  rx: 2;
+}
+
+/* Remove all hover effects for clean professional look
+.react-flow__minimap:hover {
+  
+}
+
+.react-flow__minimap-node:hover {
+ 
+}
+
+.react-flow__minimap:hover .react-flow__minimap-mask {
+  
+} */
+
+/* Remove the gradient header */
+.react-flow__minimap::before {
+  display: none;
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] .react-flow__minimap {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .react-flow__minimap-mask {
+  stroke: var(--text-primary);
+}
+
+[data-theme="dark"] .react-flow__minimap-node {
+  fill: #4682b4;
+  stroke: #87ceeb;
+}
+
+/* Responsive behavior */
+@media (max-width: 768px) {
+  .react-flow__minimap {
+    width: 160px;
+    height: 110px;
+    bottom: 15px;
+    right: 15px;
+  }
 }
 
 .react-flow__controls {

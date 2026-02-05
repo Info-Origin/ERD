@@ -1086,6 +1086,16 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.carousel-manage-name.active {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.carousel-manage-name:hover {
+  color: var(--primary);
 }
 
 .carousel-manage-remove {

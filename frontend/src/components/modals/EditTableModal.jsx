@@ -699,6 +699,13 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         return;
       }
 
+      // Check if target table has any PK or UNIQUE columns available for referencing
+      const availableTargetColumns = getAvailableColumns(fk.toTable);
+      if (availableTargetColumns.length === 0) {
+        showAlert('Validation Error', `Table "${fk.toTable}" has no PRIMARY KEY or UNIQUE columns available for foreign key reference. Add a PRIMARY KEY or UNIQUE constraint to a column first.`, 'warning');
+        return;
+      }
+
       if (!fk.toColumn) {
         showAlert('Validation Error', 'Please select a referenced column', 'warning');
         return;
@@ -728,14 +735,24 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         const columnType = referencedColumn?.type || 'INT';
 
         // ATOMIC OPERATION: Create both column and relationship in single history entry
-        const relationshipId = addForeignKeyWithNewColumn(
-          tableName, 
-          actualColumnName, 
-          columnType, 
-          fk.toTable, 
-          fk.toColumn, 
-          'ONE_TO_MANY'
-        );
+        let relationshipId;
+        try {
+          relationshipId = addForeignKeyWithNewColumn(
+            tableName, 
+            actualColumnName, 
+            columnType, 
+            fk.toTable, 
+            fk.toColumn, 
+            'ONE_TO_MANY'
+          );
+        } catch (error) {
+          if (error.message === "Relationship already exists") {
+            showAlert('Validation Error', `Foreign key relationship already exists: ${tableName}.${actualColumnName} → ${fk.toTable}.${fk.toColumn}`, 'warning');
+            return;
+          } else {
+            throw error; // Re-throw other errors
+          }
+        }
 
         // Update local columns state
         const newColumn = {
@@ -767,9 +784,9 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
           return;
         }
 
-        // Check if the local column exists
-        const localColumn = columns.find(col => col.name === fk.fromColumn);
-        if (!localColumn) {
+        // Check if the column exists in working schema
+        const workingSchemaColumn = workingSchema.tables[tableName]?.columns[fk.fromColumn];
+        if (!workingSchemaColumn) {
           showAlert('Validation Error', `Column "${fk.fromColumn}" does not exist in table "${tableName}"`, 'warning');
           return;
         }
@@ -778,18 +795,18 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         const referencedTable = workingSchema.tables[fk.toTable];
         const referencedColumn = referencedTable?.columns[fk.toColumn];
         
-        if (referencedColumn && localColumn.type !== referencedColumn.type) {
+        if (referencedColumn && workingSchemaColumn.type !== referencedColumn.type) {
           // Data type mismatch - show conflict modal
           setConflictModal({
             isOpen: true,
             conflicts: [{
               type: 'DATA_TYPE_MISMATCH',
               message: `Cannot create foreign key: Data type mismatch`,
-              details: `Column "${tableName}.${localColumn.name}" (${localColumn.type}) cannot reference "${fk.toTable}.${fk.toColumn}" (${referencedColumn.type})`
+              details: `Column "${tableName}.${workingSchemaColumn.name}" (${workingSchemaColumn.type}) cannot reference "${fk.toTable}.${fk.toColumn}" (${referencedColumn.type})`
             }],
             cascadingChanges: [],
             affectedTables: [tableName, fk.toTable],
-            changeDescription: `Create foreign key ${tableName}.${localColumn.name} → ${fk.toTable}.${fk.toColumn}`,
+            changeDescription: `Create foreign key ${tableName}.${workingSchemaColumn.name} → ${fk.toTable}.${fk.toColumn}`,
             pendingChange: null // No pending change, just block the action
           });
           return; // Block FK creation
@@ -799,7 +816,16 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       if (fk.isNew) {
         // For existing columns, create the relationship in virtual schema
         if (fk.fromColumn !== '__CREATE_NEW__') {
-          addRelationship(tableName, actualColumnName, fk.toTable, fk.toColumn, 'ONE_TO_MANY');
+          try {
+            addRelationship(tableName, actualColumnName, fk.toTable, fk.toColumn, 'ONE_TO_MANY');
+          } catch (error) {
+            if (error.message === "Relationship already exists") {
+              showAlert('Validation Error', `Foreign key relationship already exists: ${tableName}.${actualColumnName} → ${fk.toTable}.${fk.toColumn}`, 'warning');
+              return;
+            } else {
+              throw error; // Re-throw other errors
+            }
+          }
           
           // Update local state
           const newFKs = [...foreignKeys];
@@ -841,7 +867,13 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
   const getAvailableColumns = (targetTable) => {
     if (!workingSchema || !targetTable) return [];
     const table = workingSchema.tables[targetTable];
-    return table ? Object.keys(table.columns) : [];
+    if (!table) return [];
+    
+    // Only return PK or UNIQUE columns (real DB behavior)
+    // Foreign keys can only reference columns with unique constraints
+    return Object.entries(table.columns)
+      .filter(([columnName, columnData]) => columnData.pk || columnData.unique)
+      .map(([columnName]) => columnName);
   };
 
   const getCurrentTableColumns = () => {
@@ -1144,9 +1176,13 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                         disabled={editingFK !== index}
                       >
                         <option value="">Select Column</option>
-                        {getAvailableColumns(fk.toTable).map(col => (
-                          <option key={col} value={col}>{col}</option>
-                        ))}
+                        {getAvailableColumns(fk.toTable).length === 0 && fk.toTable ? (
+                          <option value="" disabled>No PK/UNIQUE columns available</option>
+                        ) : (
+                          getAvailableColumns(fk.toTable).map(col => (
+                            <option key={col} value={col}>{col}</option>
+                          ))
+                        )}
                       </select>
                     </div>
                     <div className="edit-fk-on-update">

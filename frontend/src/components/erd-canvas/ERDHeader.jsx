@@ -485,6 +485,7 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
               onClick={() => scrollCarousel('left')}
               disabled={selectedTables.size <= 1}
               aria-label="Scroll left"
+              title="Scroll table chips left"
             >
               ‹
             </button>
@@ -525,6 +526,7 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
               onClick={() => scrollCarousel('right')}
               disabled={selectedTables.size <= 1}
               aria-label="Scroll right"
+              title="Scroll table chips right"
             >
               ›
             </button>
@@ -534,6 +536,7 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
               className="carousel-add-button"
               onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}
               aria-label="Add table"
+              title="Search tables"
             >
               +
             </button>
@@ -544,6 +547,7 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
               onClick={() => setIsManageDropdownOpen(!isManageDropdownOpen)}
               disabled={selectedTables.size === 0}
               aria-label="Manage selected tables"
+              title="Manage selected tables"
             >
               ▼
             </button>
@@ -585,7 +589,14 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
               <div className="carousel-manage-list">
                 {Array.from(selectedTables).map(tableName => (
                   <div key={tableName} className="carousel-manage-item">
-                    <span className="carousel-manage-name">{tableName}</span>
+                    <span 
+                      className={`carousel-manage-name ${tableName === lastSelectedTable ? 'active' : ''}`}
+                      onClick={() => handleChipClick(tableName)}
+                      style={{ cursor: 'pointer' }}
+                      title={`Click to highlight ${tableName} in ERD`}
+                    >
+                      {tableName}
+                    </span>
                     <button
                       className="carousel-manage-remove"
                       onClick={() => handleTableRemove(tableName)}
@@ -633,10 +644,10 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
                         <input
                           type="checkbox"
                           className="hide-nested-checkbox"
-                          checked={hideNestedChildren}
+                          checked={!hideNestedChildren}
                           disabled={!hasNestedChildren || hideDirectChildren}
-                          onChange={(e) => handleHideNestedChildren(e.target.checked)}
-                          title={hasNestedChildren ? "Hide nested children (grandchildren and deeper)" : "No nested children to hide"}
+                          onChange={(e) => handleHideNestedChildren(!e.target.checked)}
+                          title={hasNestedChildren ? "Show/hide nested children (grandchildren and deeper)" : "No nested children to show"}
                         />
                         <button 
                           className={`hierarchy-toggle-btn ${!showDirectChildrenOnly ? 'active' : ''}`}
@@ -649,9 +660,9 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
                         <input
                           type="checkbox"
                           className="hide-direct-checkbox"
-                          checked={hideDirectChildren}
-                          onChange={(e) => handleHideDirectChildren(e.target.checked)}
-                          title="Hide all direct children"
+                          checked={!hideDirectChildren}
+                          onChange={(e) => handleHideDirectChildren(!e.target.checked)}
+                          title="Show/hide all direct children"
                         />
                         <button 
                           className={`hierarchy-toggle-btn ${showDirectChildrenOnly ? 'active' : ''}`}

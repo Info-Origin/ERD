@@ -33,7 +33,11 @@ export const AddRelationshipModal = ({ isOpen, onClose, onAdd }) => {
 
   const toColumns = useMemo(() => {
     if (!toTable || !erdData?.tables[toTable]) return [];
-    return Object.keys(erdData.tables[toTable].columns);
+    // Only return PK or UNIQUE columns (real DB behavior)
+    // Foreign keys can only reference columns with unique constraints
+    return Object.entries(erdData.tables[toTable].columns)
+      .filter(([columnName, columnData]) => columnData.pk || columnData.unique)
+      .map(([columnName]) => columnName);
   }, [toTable, erdData]);
 
   const handleSubmit = (e) => {
@@ -42,6 +46,18 @@ export const AddRelationshipModal = ({ isOpen, onClose, onAdd }) => {
     if (!fromTable || !fromColumn || !toTable || !toColumn) {
       setError("All fields are required");
       return;
+    }
+
+    // Check if target table has any PK or UNIQUE columns available for referencing
+    if (toTable && erdData?.tables[toTable]) {
+      const availableTargetColumns = Object.entries(erdData.tables[toTable].columns)
+        .filter(([columnName, columnData]) => columnData.pk || columnData.unique)
+        .map(([columnName]) => columnName);
+      
+      if (availableTargetColumns.length === 0) {
+        setError(`Table "${toTable}" has no PRIMARY KEY or UNIQUE columns available for foreign key reference. Add a PRIMARY KEY or UNIQUE constraint to a column first.`);
+        return;
+      }
     }
 
     if (fromTable === toTable && fromColumn === toColumn) {
@@ -156,11 +172,15 @@ export const AddRelationshipModal = ({ isOpen, onClose, onAdd }) => {
                   disabled={!toTable}
                 >
                   <option value="">Select column...</option>
-                  {toColumns.map((col) => (
-                    <option key={col} value={col}>
-                      {col}
-                    </option>
-                  ))}
+                  {toColumns.length === 0 && toTable ? (
+                    <option value="" disabled>No PK/UNIQUE columns available</option>
+                  ) : (
+                    toColumns.map((col) => (
+                      <option key={col} value={col}>
+                        {col}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
             </div>
