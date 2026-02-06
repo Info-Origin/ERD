@@ -112,8 +112,8 @@
   background-color: var(--bg-hover);
 }
 .schema-item-selected {
-  background-color: #d9eaf8;
-  border: 1px solid teal;
+  background-color: var(--primary-bg);
+  border: 1px solid var(--primary);
   border-radius: var(--radius-md);
   margin: 2px;
   padding: calc(var(--spacing-sm) - 1px) calc(var(--spacing-md) - 1px);
