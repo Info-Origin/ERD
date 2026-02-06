@@ -122,10 +122,10 @@ export const TableNode = ({ tableName, tableData }) => {
         </button>
         <FiTable className="table-icon" />
         
-        {/* Table name - read-only, no editing */}
+        {/* Table name - read-only, shows full name on hover */}
         <span 
           className="table-name"
-          title="Table name (read-only)"
+          title={tableName}
         >
           {tableName}
         </span>

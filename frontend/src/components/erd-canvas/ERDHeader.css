@@ -15,7 +15,9 @@
   align-items: center;
   height: 100%;
   padding: 0 16px;
-  gap: 24px;
+  gap: 16px;
+  max-width: 100%;
+  overflow: visible; /* Allow dropdowns to expand */
 }
 
 /* Search Section - Carousel Style */
@@ -23,15 +25,63 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: 480px; /* Default width */
-  flex-shrink: 0; /* Prevent shrinking */
+  flex: 1; /* Take available space */
+  min-width: 300px; /* Minimum width */
+  max-width: 600px; /* Maximum width */
+  flex-shrink: 1; /* Allow shrinking */
   position: relative;
-  transition: width 0.3s ease; /* Smooth transition */
+  transition: all 0.3s ease;
 }
 
 /* Expanded carousel when schema is collapsed */
 .erd-header.schema-collapsed .erd-search-section {
-  width: 580px; /* Expanded width when schema is collapsed */
+  max-width: 700px; /* Larger max width when schema is collapsed */
+}
+
+/* Responsive breakpoints for search section */
+@media (max-width: 1400px) {
+  .erd-search-section {
+    max-width: 500px;
+  }
+  
+  .erd-header.schema-collapsed .erd-search-section {
+    max-width: 600px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .erd-search-section {
+    max-width: 400px;
+    min-width: 250px;
+  }
+  
+  .erd-header.schema-collapsed .erd-search-section {
+    max-width: 500px;
+  }
+}
+
+@media (max-width: 900px) {
+  .erd-search-section {
+    max-width: 350px;
+    min-width: 200px;
+  }
+  
+  .erd-header-content {
+    gap: 12px;
+    padding: 0 12px;
+  }
+}
+
+@media (max-width: 600px) {
+  .erd-search-section {
+    max-width: 250px;
+    min-width: 150px;
+  }
+  
+  .erd-header-content {
+    gap: 8px;
+    padding: 0 8px;
+  }
 }
 
 .search-input-container {
@@ -417,96 +467,35 @@
 /* Legend Section */
 .erd-legend-section {
   margin-left: auto;
-  position: relative; /* Allow legend to expand beyond header bounds */
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 16px; /* Space between button and legend */
-  flex-shrink: 0; /* Prevent shrinking */
-  min-width: fit-content; /* Ensure proper width calculation */
+  gap: 12px;
+  flex-shrink: 0;
+  min-width: fit-content;
 }
 
-/* Responsive adjustments */
-@media (max-width: 1200px) {
-  .erd-header-content {
-    gap: 16px;
-  }
-  
-  .erd-search-section {
-    width: 420px; /* Smaller but still expanded width for medium screens */
-  }
-  
-  .table-carousel-container {
-    width: 420px;
-  }
-  
-  /* Expanded carousel for medium screens when schema collapsed */
-  .erd-header.schema-collapsed .erd-search-section {
-    width: 500px;
-  }
-  
-  .erd-header.schema-collapsed .table-carousel-container {
-    width: 500px;
+/* Responsive adjustments for legend section */
+@media (max-width: 900px) {
+  .erd-legend-section {
+    gap: 8px;
   }
 }
 
+@media (max-width: 600px) {
+  .erd-legend-section {
+    gap: 6px;
+  }
+}
+
+/* Responsive adjustments for filter dropdown */
 @media (max-width: 1024px) {
-  .erd-header-content {
-    gap: 14px;
-    padding: 0 14px;
-  }
-  
-  .erd-search-section {
-    width: 380px;
-  }
-  
-  .table-carousel-container {
-    width: 380px;
-  }
-  
-  .erd-header.schema-collapsed .erd-search-section {
-    width: 460px;
-  }
-  
-  .erd-header.schema-collapsed .table-carousel-container {
-    width: 460px;
-  }
-  
   .filter-dropdown {
-    min-width: 280px; /* Smaller dropdown on medium screens */
+    min-width: 280px;
   }
 }
 
 @media (max-width: 900px) {
-  .erd-header-content {
-    gap: 12px;
-    padding: 0 12px;
-  }
-  
-  .erd-search-section {
-    width: 340px; /* Reasonable width for small screens */
-  }
-  
-  .table-carousel-container {
-    width: 340px;
-  }
-  
-  .table-carousel {
-    min-width: 220px;
-  }
-  
-  /* Expanded carousel for small screens when schema collapsed */
-  .erd-header.schema-collapsed .erd-search-section {
-    width: 400px;
-  }
-  
-  .erd-header.schema-collapsed .table-carousel-container {
-    width: 400px;
-  }
-  
-  .erd-header.schema-collapsed .table-carousel {
-    min-width: 280px;
-  }
-  
   .filter-checkboxes {
     gap: 8px;
   }
@@ -526,109 +515,18 @@
 }
 
 @media (max-width: 768px) {
-  .erd-header-content {
-    gap: 10px;
-    padding: 0 10px;
-  }
-  
-  .erd-search-section {
-    width: 300px;
-  }
-  
-  .table-carousel-container {
-    width: 300px;
-  }
-  
-  .table-carousel {
-    min-width: 180px;
-  }
-  
-  .erd-header.schema-collapsed .erd-search-section {
-    width: 350px;
-  }
-  
-  .erd-header.schema-collapsed .table-carousel-container {
-    width: 350px;
-  }
-  
-  .erd-header.schema-collapsed .table-carousel {
-    min-width: 230px;
-  }
-  
   .filter-dropdown {
     min-width: 240px;
   }
 }
 
 @media (max-width: 600px) {
-  .erd-header-content {
-    gap: 8px;
-    padding: 0 8px;
-  }
-  
-  .erd-search-section {
-    width: 260px;
-  }
-  
-  .table-carousel-container {
-    width: 260px;
-  }
-  
-  .table-carousel {
-    min-width: 140px;
-  }
-  
-  .erd-header.schema-collapsed .erd-search-section {
-    width: 300px;
-  }
-  
-  .erd-header.schema-collapsed .table-carousel-container {
-    width: 300px;
-  }
-  
-  .erd-header.schema-collapsed .table-carousel {
-    min-width: 180px;
-  }
-  
   .filter-dropdown {
     min-width: 200px;
-  }
-  
-  .erd-legend-section {
-    gap: 8px;
   }
 }
 
 @media (max-width: 480px) {
-  .erd-header-content {
-    gap: 6px;
-    padding: 0 6px;
-  }
-  
-  .erd-search-section {
-    width: 220px;
-  }
-  
-  .table-carousel-container {
-    width: 220px;
-  }
-  
-  .table-carousel {
-    min-width: 120px;
-  }
-  
-  .erd-header.schema-collapsed .erd-search-section {
-    width: 250px;
-  }
-  
-  .erd-header.schema-collapsed .table-carousel-container {
-    width: 250px;
-  }
-  
-  .erd-header.schema-collapsed .table-carousel {
-    min-width: 150px;
-  }
-  
   .filter-dropdown {
     min-width: 180px;
   }
@@ -927,15 +825,35 @@
   border-radius: 6px;
   padding: 6px;
   height: 40px;
-  width: 480px; /* Default width */
-  flex-shrink: 0; /* Prevent shrinking */
-  overflow: hidden; /* Prevent overflow from affecting layout */
-  transition: width 0.3s ease; /* Smooth transition */
+  flex: 1; /* Take available space */
+  min-width: 250px; /* Minimum width */
+  max-width: 100%; /* Don't exceed parent */
+  overflow: hidden;
+  transition: all 0.3s ease;
 }
 
-/* Expanded carousel container when schema is collapsed */
-.erd-header.schema-collapsed .table-carousel-container {
-  width: 580px; /* Expanded width when schema is collapsed */
+/* Responsive carousel sizing */
+@media (max-width: 1200px) {
+  .table-carousel-container {
+    min-width: 200px;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 900px) {
+  .table-carousel-container {
+    min-width: 180px;
+    gap: 4px;
+    padding: 4px;
+    height: 36px;
+  }
+}
+
+@media (max-width: 600px) {
+  .table-carousel-container {
+    min-width: 150px;
+    gap: 4px;
+  }
 }
 
 /* Carousel Arrows */

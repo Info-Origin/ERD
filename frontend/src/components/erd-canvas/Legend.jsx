@@ -12,10 +12,13 @@ export const Legend = ({ isInHeader = false }) => {
     setIsExpanded(!isExpanded);
   };
 
+  console.log('Legend rendering:', { isInHeader, isExpanded, crowsFootMode });
+
   return (
     <div className={`erd-legend ${isExpanded ? 'expanded' : 'collapsed'} ${isInHeader ? 'in-header' : ''}`}>
+      {/* Header - ALWAYS RENDER */}
       <div className="legend-header" onClick={toggleExpanded}>
-        <div className="legend-title">Legend</div>
+        <div className="legend-title">LEGEND</div>
         <button className="legend-toggle" aria-label={isExpanded ? 'Collapse legend' : 'Expand legend'}>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
             <path d={isExpanded ? "M2 4 L6 8 L10 4" : "M4 2 L8 6 L4 10"} stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
@@ -23,6 +26,7 @@ export const Legend = ({ isInHeader = false }) => {
         </button>
       </div>
       
+      {/* Items - ONLY WHEN EXPANDED */}
       {isExpanded && (
         <div className="legend-items">
           <div className="legend-item">
@@ -89,13 +93,11 @@ export const Legend = ({ isInHeader = false }) => {
                 <div className="legend-line-sample">
                   <svg width="30" height="12" viewBox="0 0 30 12">
                     <line x1="2" y1="6" x2="28" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" />
-                    {/* Left crow's foot - pointing outward */}
                     <g>
                       <line x1="4" y1="6" x2="9" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" />
                       <line x1="4" y1="2.5" x2="9" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" />
                       <line x1="4" y1="9.5" x2="9" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" />
                     </g>
-                    {/* Right crow's foot - pointing outward */}
                     <g>
                       <line x1="26" y1="6" x2="21" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" />
                       <line x1="26" y1="2.5" x2="21" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" />

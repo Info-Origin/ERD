@@ -1,71 +1,50 @@
+/* UNIFIED SEAMLESS LEGEND - ONE COMPONENT */
 .erd-legend {
-  position: absolute;
-  top: 16px;
-  right: 16px;
   background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 0; /* Completely removed border-radius for sharp corners */
+  border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  z-index: var(--z-dropdown);
-  min-width: 120px;
+  min-width: 140px;
+  max-width: 200px;
   transition: all 0.2s ease;
 }
 
-/* Header-specific styling */
+/* Standalone legend (not in header) - ABSOLUTE positioning */
+.erd-legend:not(.in-header) {
+  position: absolute;
+  top: 70px;
+  right: 16px;
+  z-index: 1001;
+}
+
+/* Header legend - RELATIVE positioning, stays in header */
 .erd-legend.in-header {
-  position: relative; /* Changed from absolute to relative */
-  top: 0; /* Reset top positioning */
-  right: 0;
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 0; /* Completely removed border-radius for sharp corners */
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  z-index: 1001; /* Higher than header to appear above it */
-  min-width: 160px; /* Increased width to prevent text wrapping */
+  position: relative;
+  z-index: 1;
 }
 
-.erd-legend.expanded {
-  padding: 8px 12px;
-}
-
-.erd-legend.in-header.expanded {
-  padding: 8px 12px 8px 12px; /* Consistent padding since items are now absolute */
-}
-
-.erd-legend.collapsed {
-  padding: 8px 12px 8px 12px;
-}
-
-.erd-legend.in-header.collapsed {
-  padding: 8px 12px 8px 12px;
-}
-
+/* Legend Header - Always visible */
 .legend-header {
-  display: flex;
+  display: flex !important; /* Force display */
   align-items: center;
   justify-content: space-between;
+  padding: 10px 12px;
   cursor: pointer;
   user-select: none;
-  margin-bottom: 6px;
+  background-color: var(--bg-primary);
+  transition: background-color 0.2s ease;
+  border-bottom: 1px solid transparent;
+  min-height: 40px; /* Ensure minimum height */
+  visibility: visible !important; /* Force visibility */
 }
-
-/* Ensure legend header is always visible in header mode */
-.erd-legend.in-header .legend-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  user-select: none;
-  margin-bottom: 0; /* No margin since items are now absolute */
-  border-bottom: none; /* Remove any bottom border for seamless connection */
-}
-
+/* 
 .legend-header:hover {
-  opacity: 0.8;
-}
+  background-color: var(--bg-hover);
+} */
 
-.erd-legend.collapsed .legend-header {
-  margin-bottom: 0;
+/* Add border when expanded to separate header from items */
+.erd-legend.expanded .legend-header {
+  border-bottom-color: var(--border-color);
 }
 
 .legend-title {
@@ -74,15 +53,8 @@
   color: var(--text-primary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-}
-
-/* Ensure legend title is visible in header */
-.erd-legend.in-header .legend-title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  display: block !important; /* Force display */
+  visibility: visible !important; /* Force visibility */
 }
 
 .legend-toggle {
@@ -92,24 +64,11 @@
   cursor: pointer;
   padding: 2px;
   border-radius: 3px;
-  display: flex;
+  display: flex !important; /* Force display */
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-}
-
-/* Ensure legend toggle is visible in header */
-.erd-legend.in-header .legend-toggle {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 2px;
-  border-radius: 3px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
+  visibility: visible !important; /* Force visibility */
 }
 
 .legend-toggle:hover {
@@ -117,47 +76,50 @@
   color: var(--text-primary);
 }
 
+/* Legend Items - Seamlessly connected to header */
 .legend-items {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  padding: 10px 12px;
+  background-color: var(--bg-primary);
   animation: fadeIn 0.2s ease;
 }
 
-/* Keep vertical layout even in header */
+/* When Legend is in header, items should dropdown below the header */
 .erd-legend.in-header .legend-items {
-  flex-direction: column;
-  gap: 4px;
-  animation: fadeIn 0.2s ease;
-  position: absolute; /* Make items absolute to expand beyond header */
-  top: 100%; /* Position below the legend header */
-  left: -1px; /* Align perfectly with header left edge */
-  right: -1px; /* Align perfectly with header right edge */
+  position: absolute;
+  top: calc(100% - 1px); /* Overlap by 1px to create seamless connection */
+  right: -1px; /* Align with parent border */
+  left: -1px; /* Align with parent border */
   background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-top: none; /* Remove top border to create seamless connection */
-  border-radius: 0; /* Completely removed border-radius for sharp corners */
+  border-top: none; /* Remove top border for seamless connection */
+  border-radius: 0 0 6px 6px; /* Only round bottom corners */
   box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  padding: 8px 12px;
   z-index: 1002;
-  margin-top: -1px; /* Overlap by 1px to eliminate any gap */
+}
+
+/* Adjust header border radius when expanded */
+.erd-legend.in-header.expanded {
+  border-radius: 6px 6px 0 0; /* Only round top corners when expanded */
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(-4px);
+    max-height: 0;
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    max-height: 1000px;
   }
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 11px;
   color: var(--text-secondary);
 }
@@ -165,7 +127,7 @@
 .legend-divider {
   height: 1px;
   background-color: var(--border-color);
-  margin: 8px 0;
+  margin: 6px 0;
 }
 
 .legend-section-title {
@@ -173,6 +135,7 @@
   color: var(--text-primary);
   font-weight: 600;
   margin-bottom: 4px;
+  margin-top: 2px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -183,4 +146,61 @@
   justify-content: center;
   width: 30px;
   height: 12px;
+  flex-shrink: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .erd-legend:not(.in-header) {
+    right: 12px;
+    top: 12px;
+    min-width: 130px;
+    max-width: 180px;
+  }
+}
+
+@media (max-width: 900px) {
+  .erd-legend:not(.in-header) {
+    right: 8px;
+    top: 8px;
+    min-width: 120px;
+    max-width: 160px;
+  }
+  
+  .legend-item {
+    font-size: 10px;
+    gap: 6px;
+  }
+  
+  .legend-header {
+    padding: 8px 10px;
+  }
+  
+  .legend-items {
+    padding: 8px 10px;
+    gap: 5px;
+  }
+}
+
+@media (max-width: 600px) {
+  .erd-legend:not(.in-header) {
+    right: 4px;
+    top: 4px;
+    min-width: 110px;
+    max-width: 140px;
+  }
+  
+  .legend-item {
+    font-size: 9px;
+    gap: 4px;
+  }
+  
+  .legend-header {
+    padding: 6px 8px;
+  }
+  
+  .legend-items {
+    padding: 6px 8px;
+    gap: 4px;
+  }
 }
