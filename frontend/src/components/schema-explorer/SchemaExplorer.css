@@ -9,6 +9,10 @@
   padding: var(--spacing-md);
   border-bottom: 1px solid var(--border-color);
   background-color: var(--bg-secondary);
+  height: 60px; /* Match ERD header height */
+  display: flex;
+  align-items: center;
+  box-sizing: border-box; /* Include border in height calculation */
 }
 
 .explorer-title {
