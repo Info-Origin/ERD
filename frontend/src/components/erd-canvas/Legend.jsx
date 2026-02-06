@@ -12,14 +12,16 @@ export const Legend = ({ isInHeader = false }) => {
     setIsExpanded(!isExpanded);
   };
 
-  console.log('Legend rendering:', { isInHeader, isExpanded, crowsFootMode });
-
   return (
     <div className={`erd-legend ${isExpanded ? 'expanded' : 'collapsed'} ${isInHeader ? 'in-header' : ''}`}>
-      {/* Header - ALWAYS RENDER */}
+      {/* Header - ALWAYS VISIBLE */}
       <div className="legend-header" onClick={toggleExpanded}>
         <div className="legend-title">LEGEND</div>
-        <button className="legend-toggle" aria-label={isExpanded ? 'Collapse legend' : 'Expand legend'}>
+        <button 
+          className="legend-toggle" 
+          aria-label={isExpanded ? 'Collapse legend' : 'Expand legend'}
+          type="button"
+        >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
             <path d={isExpanded ? "M2 4 L6 8 L10 4" : "M4 2 L8 6 L4 10"} stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>

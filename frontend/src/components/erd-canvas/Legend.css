@@ -1,12 +1,15 @@
-/* UNIFIED SEAMLESS LEGEND - ONE COMPONENT */
+/* UNIFIED SEAMLESS LEGEND - ONE SINGLE CARD */
 .erd-legend {
   background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  min-width: 140px;
-  max-width: 200px;
+  min-width: 180px;
+  max-width: 220px;
   transition: all 0.2s ease;
+  overflow: visible; /* Allow header to be visible */
+  display: flex;
+  flex-direction: column;
 }
 
 /* Standalone legend (not in header) - ABSOLUTE positioning */
@@ -23,9 +26,9 @@
   z-index: 1;
 }
 
-/* Legend Header - Always visible */
+/* Legend Header - Always visible, part of the single card */
 .legend-header {
-  display: flex !important; /* Force display */
+  display: flex !important;
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
@@ -34,13 +37,13 @@
   background-color: var(--bg-primary);
   transition: background-color 0.2s ease;
   border-bottom: 1px solid transparent;
-  min-height: 40px; /* Ensure minimum height */
-  visibility: visible !important; /* Force visibility */
+  min-height: 40px;
+  flex-shrink: 0; /* Prevent header from being compressed */
 }
-/* 
+
 .legend-header:hover {
   background-color: var(--bg-hover);
-} */
+}
 
 /* Add border when expanded to separate header from items */
 .erd-legend.expanded .legend-header {
@@ -76,45 +79,53 @@
   color: var(--text-primary);
 }
 
-/* Legend Items - Seamlessly connected to header */
+/* Legend Items - Part of the same single card, no absolute positioning */
 .legend-items {
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 10px 12px;
   background-color: var(--bg-primary);
-  animation: fadeIn 0.2s ease;
+  max-height: 400px;
+  overflow-y: auto;
+  animation: slideDown 0.2s ease;
 }
 
-/* When Legend is in header, items should dropdown below the header */
-.erd-legend.in-header .legend-items {
-  position: absolute;
-  top: calc(100% - 1px); /* Overlap by 1px to create seamless connection */
-  right: -1px; /* Align with parent border */
-  left: -1px; /* Align with parent border */
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-top: none; /* Remove top border for seamless connection */
-  border-radius: 0 0 6px 6px; /* Only round bottom corners */
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  z-index: 1002;
+/* Custom scrollbar for legend items */
+.legend-items::-webkit-scrollbar {
+  width: 6px;
 }
 
-/* Adjust header border radius when expanded */
-.erd-legend.in-header.expanded {
-  border-radius: 6px 6px 0 0; /* Only round top corners when expanded */
+.legend-items::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 3px;
 }
 
-@keyframes fadeIn {
+.legend-items::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.legend-items::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+@keyframes slideDown {
   from {
     opacity: 0;
     max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
   }
   to {
     opacity: 1;
-    max-height: 1000px;
+    max-height: 400px;
+    padding-top: 10px;
+    padding-bottom: 10px;
   }
 }
+
+
 
 .legend-item {
   display: flex;
@@ -122,6 +133,13 @@
   gap: 8px;
   font-size: 11px;
   color: var(--text-secondary);
+  white-space: nowrap; /* Keep text on one line */
+}
+
+.legend-item span {
+  white-space: nowrap; /* Prevent text wrapping */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .legend-divider {

@@ -469,10 +469,12 @@
   margin-left: auto;
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-start; /* Align to top instead of center */
   gap: 12px;
   flex-shrink: 0;
   min-width: fit-content;
+  height: 100%; /* Take full header height */
+  padding: 10px 0; /* Add vertical padding */
 }
 
 /* Responsive adjustments for legend section */
