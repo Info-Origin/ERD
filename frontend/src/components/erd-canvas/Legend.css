@@ -39,15 +39,17 @@
   border-bottom: 1px solid transparent;
   min-height: 40px;
   flex-shrink: 0; /* Prevent header from being compressed */
+  border-radius: 6px; /* Match parent border radius */
 }
 
-.legend-header:hover {
+/* .legend-header:hover {
   background-color: var(--bg-hover);
-}
+} */
 
-/* Add border when expanded to separate header from items */
+/* When expanded, only round top corners and add border */
 .erd-legend.expanded .legend-header {
   border-bottom-color: var(--border-color);
+  border-radius: 6px 6px 0 0; /* Only top corners when expanded */
 }
 
 .legend-title {
@@ -89,6 +91,7 @@
   max-height: 400px;
   overflow-y: auto;
   animation: slideDown 0.2s ease;
+  border-radius: 0 0 6px 6px; /* Only bottom corners for items */
 }
 
 /* Custom scrollbar for legend items */
