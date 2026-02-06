@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { FiChevronRight, FiChevronDown, FiTable, FiSettings } from "react-icons/fi";
 import { ColumnList } from "./ColumnList";
 import { useApp } from "../../context/AppContext";
@@ -8,6 +8,7 @@ import "./TableNode.css";
 export const TableNode = ({ tableName, tableData }) => {
   const { selectedTable, selectTable, erdData, openEditTableModal } = useApp();
   const [isExpanded, setIsExpanded] = useState(false);
+  const contextMenuRef = useRef(null);
   
   // Context menu state
   const [contextMenu, setContextMenu] = useState({
@@ -25,14 +26,36 @@ export const TableNode = ({ tableName, tableData }) => {
     selectTable(tableName);
   };
 
-  // Handle right-click context menu
+  // Handle right-click context menu with smart positioning
   const handleContextMenu = (e) => {
     e.preventDefault();
     e.stopPropagation();
     
+    // Get viewport dimensions
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Menu dimensions (approximate)
+    const menuWidth = 180;
+    const menuHeight = 60; // Approximate height for one item
+    
+    // Calculate position
+    let x = e.clientX;
+    let y = e.clientY;
+    
+    // Adjust if menu would go outside viewport horizontally
+    if (x + menuWidth > viewportWidth) {
+      x = viewportWidth - menuWidth - 10;
+    }
+    
+    // Adjust if menu would go outside viewport vertically
+    if (y + menuHeight > viewportHeight) {
+      y = viewportHeight - menuHeight - 10;
+    }
+    
     setContextMenu({
       isOpen: true,
-      position: { x: e.clientX, y: e.clientY }
+      position: { x, y }
     });
   };
 
@@ -42,6 +65,29 @@ export const TableNode = ({ tableName, tableData }) => {
       position: { x: 0, y: 0 }
     });
   };
+
+  // Click outside detection for context menu
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(event.target)) {
+        handleCloseContextMenu();
+      }
+    };
+
+    if (contextMenu.isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      
+      // Auto-close after 5 seconds
+      const autoCloseTimer = setTimeout(() => {
+        handleCloseContextMenu();
+      }, 5000);
+      
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        clearTimeout(autoCloseTimer);
+      };
+    }
+  }, [contextMenu.isOpen]);
 
   const handleEditConstraints = () => {
     // Use shared modal from AppContext for constraint editing only
@@ -102,26 +148,21 @@ export const TableNode = ({ tableName, tableData }) => {
 
       {/* Context Menu */}
       {contextMenu.isOpen && (
-        <>
-          <div 
-            className="context-menu-overlay" 
-            onClick={handleCloseContextMenu}
-          />
-          <div 
-            className="context-menu"
-            style={{
-              position: 'fixed',
-              left: contextMenu.position.x,
-              top: contextMenu.position.y,
-              zIndex: 10000
-            }}
-          >
-            <div className="context-menu-item" onClick={handleEditConstraints}>
-              <FiSettings className="context-menu-icon" />
-              Edit Constraints
-            </div>
+        <div 
+          ref={contextMenuRef}
+          className="context-menu"
+          style={{
+            position: 'fixed',
+            left: contextMenu.position.x,
+            top: contextMenu.position.y,
+            zIndex: 10000
+          }}
+        >
+          <div className="context-menu-item" onClick={handleEditConstraints}>
+            <FiSettings className="context-menu-icon" />
+            Edit Constraints
           </div>
-        </>
+        </div>
       )}
     </div>
 

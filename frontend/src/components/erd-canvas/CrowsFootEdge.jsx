@@ -152,18 +152,77 @@ export const CrowsFootEdge = memo(({
     const unitX = dx / length;
     const unitY = dy / length;
     
-    // FIXED CARDINAL DIRECTION SPREAD - Like MySQL Workbench
-    let spreadX, spreadY;
+    // FIXED CARDINAL DIRECTION - Based on connection side, not line angle
+    // Define fixed perpendicular directions for crow's foot spread
+    let spreadX, spreadY, dirX, dirY;
     
-    // Determine if line is more horizontal or vertical
-    if (Math.abs(dx) > Math.abs(dy)) {
-      // Line is more horizontal - spread VERTICALLY
-      spreadX = 0;
-      spreadY = 1;
-    } else {
-      // Line is more vertical - spread HORIZONTALLY  
-      spreadX = 1;
-      spreadY = 0;
+    // Determine FIXED directions based on which side of the table the connection is on
+    // Direction points INWARD toward the table
+    switch (targetPosition) {
+      case 'left':
+        // Connection from left - crow's foot points INWARD (RIGHT), spreads VERTICALLY
+        dirX = 1;
+        dirY = 0;
+        spreadX = 0;
+        spreadY = 1;
+        break;
+      case 'right':
+        // Connection from right - crow's foot points INWARD (LEFT), spreads VERTICALLY
+        dirX = -1;
+        dirY = 0;
+        spreadX = 0;
+        spreadY = 1;
+        break;
+      case 'top':
+        // Connection from top - crow's foot points INWARD (DOWN), spreads HORIZONTALLY
+        dirX = 0;
+        dirY = 1;
+        spreadX = 1;
+        spreadY = 0;
+        break;
+      case 'bottom':
+      default:
+        // Connection from bottom - crow's foot points INWARD (UP), spreads HORIZONTALLY
+        dirX = 0;
+        dirY = -1;
+        spreadX = 1;
+        spreadY = 0;
+        break;
+    }
+    
+    // Determine SOURCE fixed directions (for MANY_TO_MANY relationships)
+    // Direction points INWARD toward the source table
+    let sourceDirX, sourceDirY, sourceSpreadX, sourceSpreadY;
+    switch (sourcePosition) {
+      case 'left':
+        // Connection from left - crow's foot points INWARD (RIGHT), spreads VERTICALLY
+        sourceDirX = 1;
+        sourceDirY = 0;
+        sourceSpreadX = 0;
+        sourceSpreadY = 1;
+        break;
+      case 'right':
+        // Connection from right - crow's foot points INWARD (LEFT), spreads VERTICALLY
+        sourceDirX = -1;
+        sourceDirY = 0;
+        sourceSpreadX = 0;
+        sourceSpreadY = 1;
+        break;
+      case 'top':
+        // Connection from top - crow's foot points INWARD (DOWN), spreads HORIZONTALLY
+        sourceDirX = 0;
+        sourceDirY = 1;
+        sourceSpreadX = 1;
+        sourceSpreadY = 0;
+        break;
+      case 'bottom':
+      default:
+        // Connection from bottom - crow's foot points INWARD (UP), spreads HORIZONTALLY
+        sourceDirX = 0;
+        sourceDirY = -1;
+        sourceSpreadX = 1;
+        sourceSpreadY = 0;
+        break;
     }
     
     // Marker dimensions - increased sizes
@@ -177,21 +236,24 @@ export const CrowsFootEdge = memo(({
     const relationType = data?.type || 'ONE_TO_MANY';
     const cardinalityType = data?.cardinalityType || '1:N';
     
-    // SOURCE SIDE (Parent/One side) - Always circle for "one"
+    // SOURCE SIDE (Parent/One side) - Circle for "one" side only (not for MANY_TO_MANY)
     const circleX = sourceX + unitX * sourceMarkerDistance;
     const circleY = sourceY + unitY * sourceMarkerDistance;
     
-    markers.push(
-      <circle
-        key="source-marker"
-        cx={circleX}
-        cy={circleY}
-        r={circleRadius}
-        fill={isHighlighted ? highlightColor : bgColor}
-        stroke={isHighlighted ? highlightColor : lineColor}
-        strokeWidth="1.5"
-      />
-    );
+    // Only show circle if NOT many-to-many (for many-to-many, we'll show crow's foot only)
+    if (relationType !== 'MANY_TO_MANY') {
+      markers.push(
+        <circle
+          key="source-marker"
+          cx={circleX}
+          cy={circleY}
+          r={circleRadius}
+          fill={isHighlighted ? highlightColor : bgColor}
+          stroke={isHighlighted ? highlightColor : lineColor}
+          strokeWidth="1.5"
+        />
+      );
+    }
     
     // TARGET SIDE (Child/Many side) - Varies by relationship type
     const targetBaseX = targetX - unitX * targetMarkerDistance;
@@ -216,9 +278,9 @@ export const CrowsFootEdge = memo(({
         
       case 'MANY_TO_MANY':
         // N:M - Crow's foot on both ends (>------<)
-        // Target side crow's foot
-        const targetCenterEndX = targetBaseX + unitX * crowsFootLength;
-        const targetCenterEndY = targetBaseY + unitY * crowsFootLength;
+        // Target side crow's foot - using FIXED direction
+        const targetCenterEndX = targetBaseX + dirX * crowsFootLength;
+        const targetCenterEndY = targetBaseY + dirY * crowsFootLength;
         
         markers.push(
           <g key="target-crows-foot">
@@ -255,11 +317,12 @@ export const CrowsFootEdge = memo(({
           </g>
         );
         
-        // Source side crow's foot for N:M
-        const sourceCrowsFootBaseX = sourceX + unitX * (sourceMarkerDistance + circleRadius + 2);
-        const sourceCrowsFootBaseY = sourceY + unitY * (sourceMarkerDistance + circleRadius + 2);
-        const sourceCenterEndX = sourceCrowsFootBaseX - unitX * crowsFootLength;
-        const sourceCenterEndY = sourceCrowsFootBaseY - unitY * crowsFootLength;
+        // Source side crow's foot for N:M - using FIXED direction
+        // No circle on many side, so position directly at source
+        const sourceCrowsFootBaseX = sourceX + unitX * sourceMarkerDistance;
+        const sourceCrowsFootBaseY = sourceY + unitY * sourceMarkerDistance;
+        const sourceCenterEndX = sourceCrowsFootBaseX + sourceDirX * crowsFootLength;
+        const sourceCenterEndY = sourceCrowsFootBaseY + sourceDirY * crowsFootLength;
         
         markers.push(
           <g key="source-crows-foot">
@@ -277,8 +340,8 @@ export const CrowsFootEdge = memo(({
             <line
               x1={sourceCrowsFootBaseX}
               y1={sourceCrowsFootBaseY}
-              x2={sourceCenterEndX - spreadX * crowsFootSpread}
-              y2={sourceCenterEndY + spreadY * crowsFootSpread}
+              x2={sourceCenterEndX + sourceSpreadX * crowsFootSpread}
+              y2={sourceCenterEndY - sourceSpreadY * crowsFootSpread}
               stroke={isHighlighted ? highlightColor : lineColor}
               strokeWidth="1.5"
               strokeLinecap="round"
@@ -287,8 +350,8 @@ export const CrowsFootEdge = memo(({
             <line
               x1={sourceCrowsFootBaseX}
               y1={sourceCrowsFootBaseY}
-              x2={sourceCenterEndX + spreadX * crowsFootSpread}
-              y2={sourceCenterEndY - spreadY * crowsFootSpread}
+              x2={sourceCenterEndX - sourceSpreadX * crowsFootSpread}
+              y2={sourceCenterEndY + sourceSpreadY * crowsFootSpread}
               stroke={isHighlighted ? highlightColor : lineColor}
               strokeWidth="1.5"
               strokeLinecap="round"
@@ -299,9 +362,9 @@ export const CrowsFootEdge = memo(({
         
       case 'ONE_TO_MANY':
       default:
-        // 1:N - Crow's foot on many side (o------<)
-        const centerEndX = targetBaseX + unitX * crowsFootLength;
-        const centerEndY = targetBaseY + unitY * crowsFootLength;
+        // 1:N - Crow's foot on many side (o------<) - using FIXED direction
+        const centerEndX = targetBaseX + dirX * crowsFootLength;
+        const centerEndY = targetBaseY + dirY * crowsFootLength;
         
         markers.push(
           <g key="target-crows-foot">
