@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { SearchBar } from "./SearchBar";
 import { SchemaTree } from "./SchemaTree";
 import { PersistenceIndicator } from "../common/PersistenceIndicator";
@@ -19,6 +19,11 @@ export const SchemaExplorer = ({ onToggleCollapse, isCollapsed }) => {
     isAnyModalOpen,
   } = useApp();
 
+  const [schemaListHeight, setSchemaListHeight] = useState(200);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartY = useRef(0);
+  const dragStartHeight = useRef(0);
+
   // REMOVED: Structure editing state and functions
   // - isAddTableModalOpen, isAddColumnModalOpen, columnTableName
   // - addTable, addColumn functions
@@ -26,6 +31,35 @@ export const SchemaExplorer = ({ onToggleCollapse, isCollapsed }) => {
   const handleSchemaSelect = (schemaName) => {
     selectSchema(schemaName);
   };
+
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    dragStartY.current = e.clientY;
+    dragStartHeight.current = schemaListHeight;
+    e.preventDefault();
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e) => {
+      const deltaY = e.clientY - dragStartY.current;
+      const newHeight = Math.max(100, Math.min(500, dragStartHeight.current + deltaY));
+      setSchemaListHeight(newHeight);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
 
   // REMOVED: Structure editing handlers
   // - handleAddTable, handleOpenAddColumn functions
@@ -74,27 +108,39 @@ export const SchemaExplorer = ({ onToggleCollapse, isCollapsed }) => {
           <p>{schemasError}</p>
         </div>
       ) : (
-        <div className="schemas-list">
-          {filteredSchemas.length === 0 ? (
-            <div className="schemas-empty">
-              <p>No schemas found</p>
-            </div>
-          ) : (
-            filteredSchemas.map((schema) => (
-              <div
-                key={schema}
-                className={`schema-item ${selectedSchema === schema && !isAnyModalOpen ? "schema-item-selected" : ""} ${isAnyModalOpen && selectedSchema === schema ? "schema-item-modal-open" : ""}`}
-                onClick={() => handleSchemaSelect(schema)}
-              >
-                <FiDatabase className="schema-item-icon" />
-                <span className="schema-item-name" title={schema}>{schema}</span>
+        <>
+          <div className="schemas-list" style={{ maxHeight: `${schemaListHeight}px` }}>
+            {filteredSchemas.length === 0 ? (
+              <div className="schemas-empty">
+                <p>No schemas found</p>
               </div>
-            ))
+            ) : (
+              filteredSchemas.map((schema) => (
+                <div
+                  key={schema}
+                  className={`schema-item ${selectedSchema === schema && !isAnyModalOpen ? "schema-item-selected" : ""} ${isAnyModalOpen && selectedSchema === schema ? "schema-item-modal-open" : ""}`}
+                  onClick={() => handleSchemaSelect(schema)}
+                >
+                  <FiDatabase className="schema-item-icon" />
+                  <span className="schema-item-name" title={schema}>{schema}</span>
+                </div>
+              ))
+            )}
+          </div>
+          
+          {selectedSchema && (
+            <>
+              <div 
+                className={`explorer-resize-handle ${isDragging ? 'dragging' : ''}`}
+                onMouseDown={handleMouseDown}
+              >
+                <div className="resize-handle-line" />
+              </div>
+              <SchemaTree />
+            </>
           )}
-        </div>
+        </>
       )}
-
-      {selectedSchema && <SchemaTree />}
     </div>
   );
 };

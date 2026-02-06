@@ -72,7 +72,6 @@
 
 .schema-content {
   background-color: var(--bg-primary);
-  flex: 1;
   overflow-y: auto;
-  max-height: calc(100vh - 200px); /* Adjust based on your layout */
+  overflow-x: hidden;
 }
