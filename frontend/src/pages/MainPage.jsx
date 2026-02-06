@@ -2,11 +2,13 @@ import { AppLayout } from "../components/layout/AppLayout";
 import { ResizablePanels } from "../components/layout/ResizablePanels";
 import { SchemaExplorer } from "../components/schema-explorer/SchemaExplorer";
 import { ERDCanvas } from "../components/erd-canvas/ERDCanvas";
+import { VerticalToolbar } from "../components/layout/VerticalToolbar";
 import EditTableModal from "../components/modals/EditTableModal";
 import { FKComparisonModal } from "../components/modals/FKComparisonModal";
 import { Notification } from "../components/common/Notification";
 import { useApp } from "../context/AppContext";
 import { useVirtualSchema } from "../context/VirtualSchemaContext";
+import { useState } from "react";
 
 export const MainPage = () => {
   const { 
@@ -19,10 +21,21 @@ export const MainPage = () => {
     removeNotification
   } = useApp();
   const { originalSchema, workingSchema } = useVirtualSchema();
+  
+  // State to hold canvas control functions
+  const [canvasControls, setCanvasControls] = useState({
+    onZoomIn: null,
+    onZoomOut: null,
+    onFitView: null
+  });
 
   return (
     <AppLayout>
-      <ResizablePanels left={<SchemaExplorer />} right={<ERDCanvas />} />
+      <ResizablePanels 
+        left={<SchemaExplorer />} 
+        toolbar={<VerticalToolbar {...canvasControls} />}
+        right={<ERDCanvas onControlsReady={setCanvasControls} />}
+      />
 
       {/* Shared Edit Table Modal - rendered at app level, outside React Flow */}
       <EditTableModal

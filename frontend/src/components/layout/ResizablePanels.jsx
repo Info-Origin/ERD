@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import styles from "../../styles/layout.module.css";
 
-export const ResizablePanels = ({ left, right }) => {
+export const ResizablePanels = ({ left, right, toolbar }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const leftWidth = 280; // Reduced from 350px to 250px
+  const leftWidth = 280;
 
   const toggleCollapse = () => {
     setIsCollapsed(!isCollapsed);
@@ -11,16 +11,23 @@ export const ResizablePanels = ({ left, right }) => {
 
   return (
     <div className={styles.resizablePanels}>
-      <div 
-        className={styles.leftPanel} 
-        style={{ 
-          width: isCollapsed ? 48 : leftWidth,
-          minWidth: isCollapsed ? 48 : 250, // Updated min-width
-          overflow: isCollapsed ? 'visible' : 'visible'
-        }}
-      >
-        {React.cloneElement(left, { onToggleCollapse: toggleCollapse, isCollapsed })}
-      </div>
+      {!isCollapsed && (
+        <div 
+          className={styles.leftPanel} 
+          style={{ 
+            width: leftWidth,
+            minWidth: 250,
+            overflow: 'visible'
+          }}
+        >
+          {React.cloneElement(left, { onToggleCollapse: toggleCollapse, isCollapsed })}
+        </div>
+      )}
+      {toolbar && (
+        <div className={styles.toolbarPanel}>
+          {React.cloneElement(toolbar, { isCollapsed, onToggleCollapse: toggleCollapse })}
+        </div>
+      )}
       <div className={styles.rightPanel}>
         {React.cloneElement(right, { isSchemaCollapsed: isCollapsed })}
       </div>

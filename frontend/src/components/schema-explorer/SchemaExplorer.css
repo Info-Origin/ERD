@@ -20,14 +20,8 @@
   font-family: var(--font-family);
   color: var(--text-primary);
   margin: 0;
-  cursor: pointer;
   padding: var(--spacing-xs);
   border-radius: var(--radius-sm);
-  transition: background-color var(--transition-fast);
-}
-
-.explorer-title:hover {
-  background-color: var(--bg-hover);
 }
 
 .schema-explorer-collapsed {
@@ -78,8 +72,40 @@
 }
 .schemas-list {
   border-bottom: 1px solid var(--border-color);
-  max-height: 200px;
   overflow-y: auto;
+}
+
+/* Explorer Resize Handle */
+.explorer-resize-handle {
+  height: 8px;
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  cursor: row-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--transition-fast);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.explorer-resize-handle:hover,
+.explorer-resize-handle.dragging {
+  background-color: var(--primary);
+}
+
+.resize-handle-line {
+  width: 40px;
+  height: 2px;
+  background-color: var(--text-tertiary);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.explorer-resize-handle:hover .resize-handle-line,
+.explorer-resize-handle.dragging .resize-handle-line {
+  background-color: white;
 }
 .schemas-empty {
   padding: var(--spacing-lg);
