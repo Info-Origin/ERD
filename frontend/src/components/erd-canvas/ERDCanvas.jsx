@@ -13,7 +13,6 @@ import { TableCard } from "./TableCard";
 import { RelationshipEdge } from "./RelationshipEdge";
 import { DirectRelationshipEdge } from "./DirectRelationshipEdge";
 import { CrowsFootEdge } from "./CrowsFootEdge";
-import { CanvasControls } from "./CanvasControls";
 import { Legend } from "./Legend";
 import { ERDHeader } from "./ERDHeader";
 import { RelationshipToolbar } from "./RelationshipToolbar";
@@ -34,7 +33,7 @@ const edgeTypes = {
   crowsfoot: CrowsFootEdge,
 };
 
-const ERDCanvasInner = ({ isSchemaCollapsed }) => {
+const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
   const { erdData, erdLoading, erdError, selectedSchema, selectedTable, setHighlightedRelationship, highlightedRelationship, routingMode, crowsFootMode } =
     useApp();
   const virtualSchema = useVirtualSchema(); // Get full virtual schema context
@@ -231,6 +230,17 @@ const ERDCanvasInner = ({ isSchemaCollapsed }) => {
     fitView({ duration: 300, padding: 0.2 });
   }, [fitView]);
 
+  // Expose canvas controls to parent
+  useEffect(() => {
+    if (onControlsReady) {
+      onControlsReady({
+        onZoomIn: handleZoomIn,
+        onZoomOut: handleZoomOut,
+        onFitView: handleFitView
+      });
+    }
+  }, [onControlsReady, handleZoomIn, handleZoomOut, handleFitView]);
+
   // Handle new connections between tables (disabled)
   const onConnect = useCallback(() => {
     // Disabled - no manual connections
@@ -365,12 +375,7 @@ const ERDCanvasInner = ({ isSchemaCollapsed }) => {
           />
         </ReactFlow>
 
-        <CanvasControls
-          onZoomIn={handleZoomIn}
-          onZoomOut={handleZoomOut}
-          onFitView={handleFitView}
-          onRecalculatePorts={handleRecalculatePorts}
-        />
+        {/* CanvasControls removed - now in VerticalToolbar */}
 
         {/* Legend is now in the header, so we don't render it here */}
         
@@ -416,10 +421,10 @@ const ERDCanvasInner = ({ isSchemaCollapsed }) => {
   );
 };
 
-export const ERDCanvas = ({ isSchemaCollapsed }) => {
+export const ERDCanvas = ({ isSchemaCollapsed, onControlsReady }) => {
   return (
     <ReactFlowProvider>
-      <ERDCanvasInner isSchemaCollapsed={isSchemaCollapsed} />
+      <ERDCanvasInner isSchemaCollapsed={isSchemaCollapsed} onControlsReady={onControlsReady} />
     </ReactFlowProvider>
   );
 };

@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { SearchBar } from "./SearchBar";
 import { SchemaTree } from "./SchemaTree";
-import { PersistenceIndicator } from "../common/PersistenceIndicator";
 import { useApp } from "../../context/AppContext";
 import { FiDatabase } from "react-icons/fi";
 import { Loader } from "../common/Loader";
@@ -68,30 +67,20 @@ export const SchemaExplorer = ({ onToggleCollapse, isCollapsed }) => {
     schema.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  // If collapsed, show only a thin sidebar with toggle button
+  // If collapsed, return null (don't render anything)
   if (isCollapsed) {
-    return (
-      <div className="schema-explorer-collapsed">
-        <div className="collapsed-toggle" onClick={onToggleCollapse} title="Expand sidebar">
-          <FiDatabase />
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
     <div className="schema-explorer">
       <div className="explorer-header">
-        <h2 className="explorer-title" onClick={onToggleCollapse} title="Click to collapse sidebar">
+        <h2 className="explorer-title">
           <FiDatabase /> Schemas
         </h2>
       </div>
 
-      {selectedSchema && (
-        <div className="explorer-toolbar-section">
-          <PersistenceIndicator />
-        </div>
-      )}
+      {/* PersistenceIndicator removed - now in VerticalToolbar */}
 
       <SearchBar
         value={searchQuery}

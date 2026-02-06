@@ -1,0 +1,70 @@
+.vertical-toolbar {
+  width: 48px;
+  height: 100%;
+  background-color: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--spacing-md) 0;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+  z-index: var(--z-sticky);
+}
+
+.toolbar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: 0 var(--spacing-xs);
+}
+
+.toolbar-divider {
+  width: 80%;
+  height: 1px;
+  background-color: var(--border-color);
+  margin: var(--spacing-xs) 0;
+}
+
+.toolbar-compare-button {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  padding: 0;
+}
+
+.toolbar-compare-button:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+  border-color: var(--primary);
+}
+
+.toolbar-compare-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.toolbar-compare-button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+/* Adjust button styles for vertical layout */
+.vertical-toolbar .icon-button {
+  width: 40px;
+  height: 40px;
+}
+
+.vertical-toolbar button {
+  width: 40px;
+  min-width: 40px;
+  font-size: var(--font-size-xs);
+  padding: var(--spacing-xs);
+}
