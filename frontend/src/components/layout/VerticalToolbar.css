@@ -45,8 +45,8 @@
 }
 
 .toolbar-compare-button {
-  width: 40px;
-  height: 40px;
+  width: 35px;
+  height: 35px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -72,15 +72,53 @@
   transform: scale(0.95);
 }
 
+.toolbar-compare-button img {
+  width: 24px;
+  height: 24px;
+}
+
 /* Adjust button styles for vertical layout */
+.vertical-toolbar .icon-btn {
+  font-size: 16px;
+}
+
 .vertical-toolbar .icon-button {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
+  font-size: 16px;
 }
 
 .vertical-toolbar button {
-  width: 40px;
-  min-width: 40px;
+  width: 44px;
+  min-width: 44px;
   font-size: var(--font-size-xs);
   padding: var(--spacing-xs);
+}
+
+.toolbar-icon-button {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  padding: 0;
+  color: var(--text-primary);
+}
+
+.toolbar-icon-button:hover {
+  background-color: var(--bg-hover);
+}
+
+.toolbar-icon-button:active {
+  transform: scale(0.95);
+}
+
+.toolbar-icon-button svg {
+  width: 16px;
+  height: 16px;
 }
