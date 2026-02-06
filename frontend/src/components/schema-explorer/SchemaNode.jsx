@@ -32,7 +32,7 @@ export const SchemaNode = ({ schemaName, tables }) => {
           {isExpanded ? <FiChevronDown /> : <FiChevronRight />}
         </button>
         <FiDatabase className="schema-icon" />
-        <span className="schema-name">{schemaName}</span>
+        <span className="schema-name" title={schemaName}>{schemaName}</span>
         <span className="schema-count">{tableCount} tables</span>
       </div>
       {isExpanded && tables && (

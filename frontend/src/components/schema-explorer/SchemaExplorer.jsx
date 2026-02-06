@@ -87,7 +87,7 @@ export const SchemaExplorer = ({ onToggleCollapse, isCollapsed }) => {
                 onClick={() => handleSchemaSelect(schema)}
               >
                 <FiDatabase className="schema-item-icon" />
-                <span className="schema-item-name">{schema}</span>
+                <span className="schema-item-name" title={schema}>{schema}</span>
               </div>
             ))
           )}
