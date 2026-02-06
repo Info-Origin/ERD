@@ -25,6 +25,7 @@
   cursor: pointer;
   transition: all var(--transition-fast);
   font-size: 16px;
+  /* cursor: pointer; */
 }
 
 .canvas-control-button:hover:not(:disabled) {
@@ -44,15 +45,14 @@
   font-size: var(--font-size-sm);
   font-weight: 500;
   transition: all var(--transition-fast);
-  background-color: #d9eaf8;
+  background-color: var(--bg-primary);
   border: 1px solid teal;
+  cursor: pointer;
 }
 
 .canvas-control-button.compare-button:hover:not(:disabled) {
-  /* background-color: var(--bg-hover); */
-      background-color: #d9eaf8;
-    border: 1px solid teal;
-    /* border-color: var(--border-hover); */
+  background-color: var(--bg-hover);
+  border: 1px solid teal;
 }
 
 .canvas-control-button.compare-button:disabled {
