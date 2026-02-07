@@ -1,11 +1,8 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { FiCornerUpLeft, FiCornerUpRight, FiZoomIn, FiZoomOut, FiMaximize2, FiGitBranch, FiRefreshCw, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { IconButton } from "../common/IconButton";
-import { Button } from "../common/Button";
 import { ConfirmationModal } from "../modals/ConfirmationModal";
 import { useApp } from "../../context/AppContext";
-import { useVirtualSchema } from "../../context/VirtualSchemaContext";
-import { compareForeignKeys } from "../../utils/fkComparison";
 import "./VerticalToolbar.css";
 
 export const VerticalToolbar = ({ onZoomIn, onZoomOut, onFitView, isCollapsed, onToggleCollapse }) => {
@@ -18,13 +15,9 @@ export const VerticalToolbar = ({ onZoomIn, onZoomOut, onFitView, isCollapsed, o
     resetToOriginal, 
     crowsFootMode, 
     toggleCrowsFootMode,
-    selectedSchema,
-    showFKComparison,
-    showNotification,
     setIsAnyModalOpen
   } = useApp();
   
-  const { originalSchema, workingSchema } = useVirtualSchema();
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const handleResetClick = () => {
@@ -41,22 +34,6 @@ export const VerticalToolbar = ({ onZoomIn, onZoomOut, onFitView, isCollapsed, o
   const handleCancelReset = () => {
     setShowResetConfirm(false);
     setIsAnyModalOpen(false);
-  };
-
-  const handleCompareClick = () => {
-    if (!originalSchema || !workingSchema || !selectedSchema) {
-      showNotification?.("Please select a schema first", "warning");
-      return;
-    }
-
-    const comparisonResult = compareForeignKeys(originalSchema, workingSchema);
-    
-    if (!comparisonResult.hasChanges) {
-      showNotification?.("No changes are applied.", "info");
-      return;
-    }
-
-    showFKComparison?.(comparisonResult);
   };
 
   return (
@@ -138,27 +115,6 @@ export const VerticalToolbar = ({ onZoomIn, onZoomOut, onFitView, isCollapsed, o
               border: crowsFootMode ? '1px solid #059669' : '1px solid var(--border-color)'
             }}
           />
-        </div>
-
-        {/* Divider */}
-        <div className="toolbar-divider" />
-
-        {/* Compare Button */}
-        <div className="toolbar-section">
-          <button
-            className="toolbar-compare-button"
-            title="Compare foreign key changes"
-            onClick={handleCompareClick}
-            disabled={!selectedSchema}
-          >
-            <img 
-              src="/compare.png" 
-              alt="Compare" 
-              width="20" 
-              height="20"
-              style={{ filter: !selectedSchema ? 'grayscale(100%) opacity(0.5)' : 'none' }}
-            />
-          </button>
         </div>
       </div>
 

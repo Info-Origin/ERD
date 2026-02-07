@@ -15,6 +15,7 @@ import { DirectRelationshipEdge } from "./DirectRelationshipEdge";
 import { CrowsFootEdge } from "./CrowsFootEdge";
 import { Legend } from "./Legend";
 import { ERDHeader } from "./ERDHeader";
+import { CanvasControls } from "./CanvasControls";
 import { RelationshipToolbar } from "./RelationshipToolbar";
 import { Loader } from "../common/Loader";
 import { useApp } from "../../context/AppContext";
@@ -375,7 +376,8 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
           />
         </ReactFlow>
 
-        {/* CanvasControls removed - now in VerticalToolbar */}
+        {/* Canvas Controls - Only Compare Button */}
+        <CanvasControls />
 
         {/* Legend is now in the header, so we don't render it here */}
         
