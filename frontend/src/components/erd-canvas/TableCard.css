@@ -1084,3 +1084,11 @@
   opacity: 1;
   pointer-events: all;
 }
+
+/* Hide connection handles - relationships are created via modals, not drag-and-drop */
+.table-card .react-flow__handle {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}

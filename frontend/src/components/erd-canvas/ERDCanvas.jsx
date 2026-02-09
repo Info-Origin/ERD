@@ -3,6 +3,7 @@ import {
   ReactFlow,
   useReactFlow,
   ReactFlowProvider,
+  MiniMap,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -355,7 +356,29 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
             }, 100); // Small delay to ensure nodes are rendered
           }}
         >
-          {/* Removed Background component - using CSS grid instead */}
+          {/* MiniMap for navigation overview */}
+          <MiniMap
+            nodeColor={(node) => {
+              // Color nodes based on selection/highlight
+              if (node.data?.isSelected) return '#3b82f6'; // Blue for selected
+              if (node.data?.isHighlighted) return '#10b981'; // Green for highlighted
+              return '#94a3b8'; // Gray for normal
+            }}
+            nodeStrokeColor={(node) => {
+              if (node.data?.isSelected) return '#2563eb';
+              if (node.data?.isHighlighted) return '#059669';
+              return '#64748b';
+            }}
+            nodeBorderRadius={4}
+            maskColor="rgba(0, 0, 0, 0.1)"
+            style={{
+              backgroundColor: 'var(--bg-primary)',
+              border: '1px solid var(--border-color)',
+            }}
+            position="bottom-right"
+            pannable
+            zoomable
+          />
         </ReactFlow>
 
         {/* Canvas Controls - Only Compare Button */}

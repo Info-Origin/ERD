@@ -322,3 +322,39 @@
     opacity: 1;
   }
 }
+
+/* MiniMap Styling */
+.react-flow__minimap {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.react-flow__minimap-mask {
+  fill: transparent; /* Hollow/transparent like Workbench */
+  stroke: #000000; /* Black border like Workbench */
+  stroke-width: 3; /* Thicker for better visibility */
+  stroke-opacity: 0.8; /* Slightly transparent black */
+}
+
+/* Dark theme minimap */
+[data-theme="dark"] .react-flow__minimap {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .react-flow__minimap-mask {
+  fill: transparent; /* Keep hollow in dark mode */
+  stroke: #ffffff; /* White border for dark theme */
+  stroke-width: 3;
+  stroke-opacity: 0.9; /* More opaque white for visibility */
+}
+
+/* Responsive minimap */
+@media (max-width: 768px) {
+  .react-flow__minimap {
+    width: 120px;
+    height: 80px;
+  }
+}
