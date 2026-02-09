@@ -35,7 +35,7 @@ const edgeTypes = {
 };
 
 const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
-  const { erdData, erdLoading, erdError, selectedSchema, selectedTable, setHighlightedRelationship, highlightedRelationship, routingMode, crowsFootMode } =
+  const { erdData, erdLoading, erdError, selectedSchema, selectedTable, setHighlightedRelationship, highlightedRelationship, routingMode, crowsFootMode, gridBackground } =
     useApp();
   const virtualSchema = useVirtualSchema(); // Get full virtual schema context
   const { zoomIn, zoomOut, fitView } = useReactFlow();
@@ -338,6 +338,7 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
           selectionOnDrag={false}
           multiSelectionKeyCode={null}
           deleteKeyCode={null}
+          className={gridBackground ? 'grid-background' : ''} // Apply grid CSS class
           defaultEdgeOptions={{
             type: 'relationship',
             style: { strokeWidth: 2, stroke: '#64748b' },
@@ -355,13 +356,7 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
             }
           }}
         >
-          <Background
-            variant={BackgroundVariant.Dots}
-            gap={25}
-            size={0.8}
-            color="var(--border-color)"
-            style={{ opacity: 0.3 }}
-          />
+          {/* Removed Background component - using CSS grid instead */}
           <MiniMap
             nodeStrokeColor="#4682B4"
             nodeColor="#87CEEB"

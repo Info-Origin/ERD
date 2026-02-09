@@ -150,6 +150,31 @@
   background-color: var(--bg-primary);
 }
 
+/* MySQL Workbench Style Dual Grid Background */
+.react-flow.grid-background {
+  background-image: 
+    /* Bold grid lines every 100px */
+    linear-gradient(to right, rgba(200, 200, 200, 0.3) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(200, 200, 200, 0.3) 1px, transparent 1px),
+    /* Fine grid lines every 10px */
+    linear-gradient(to right, rgba(220, 220, 220, 0.2) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(220, 220, 220, 0.2) 1px, transparent 1px);
+  background-size: 
+    100px 100px,  /* Bold grid */
+    100px 100px,  /* Bold grid */
+    10px 10px,    /* Fine grid - smaller squares */
+    10px 10px;    /* Fine grid - smaller squares */
+}
+
+/* Dark theme grid colors */
+[data-theme="dark"] .react-flow.grid-background {
+  background-image: 
+    linear-gradient(to right, rgba(100, 100, 100, 0.3) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(100, 100, 100, 0.3) 1px, transparent 1px),
+    linear-gradient(to right, rgba(80, 80, 80, 0.2) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(80, 80, 80, 0.2) 1px, transparent 1px);
+}
+
 .react-flow__attribution {
   display: none !important;
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FiCornerUpLeft, FiCornerUpRight, FiZoomIn, FiZoomOut, FiMaximize2, FiGitBranch, FiRefreshCw, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { FiCornerUpLeft, FiCornerUpRight, FiZoomIn, FiZoomOut, FiMaximize2, FiGitBranch, FiRefreshCw, FiChevronLeft, FiChevronRight, FiGrid } from "react-icons/fi";
 import { IconButton } from "../common/IconButton";
 import { ConfirmationModal } from "../modals/ConfirmationModal";
 import { useApp } from "../../context/AppContext";
@@ -15,6 +15,8 @@ export const VerticalToolbar = ({ onZoomIn, onZoomOut, onFitView, isCollapsed, o
     resetToOriginal, 
     crowsFootMode, 
     toggleCrowsFootMode,
+    gridBackground,
+    toggleGridBackground,
     setIsAnyModalOpen
   } = useApp();
   
@@ -113,6 +115,17 @@ export const VerticalToolbar = ({ onZoomIn, onZoomOut, onFitView, isCollapsed, o
               background: crowsFootMode ? '#10b981' : 'var(--bg-secondary)',
               color: crowsFootMode ? 'white' : 'var(--text-primary)',
               border: crowsFootMode ? '1px solid #059669' : '1px solid var(--border-color)'
+            }}
+          />
+          <IconButton
+            icon={FiGrid}
+            title={gridBackground ? "Hide Grid Background" : "Show Grid Background"}
+            onClick={toggleGridBackground}
+            size="md"
+            style={{
+              background: gridBackground ? '#3b82f6' : 'var(--bg-secondary)',
+              color: gridBackground ? 'white' : 'var(--text-primary)',
+              border: gridBackground ? '1px solid #2563eb' : '1px solid var(--border-color)'
             }}
           />
         </div>

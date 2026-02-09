@@ -21,6 +21,7 @@ export const AppProvider = ({ children }) => {
   const [highlightedRelationship, setHighlightedRelationship] = useState(null);
   const [routingMode] = useState('direct'); // Fixed to 'direct' stepped lines only
   const [crowsFootMode, setCrowsFootMode] = useState(false); // Toggle for crow's foot notation
+  const [gridBackground, setGridBackground] = useState(true); // Toggle for grid background (default: on)
   
   // Shared Edit Table Modal state
   const [sharedEditTableModal, setSharedEditTableModal] = useState({
@@ -198,6 +199,11 @@ export const AppProvider = ({ children }) => {
     setCrowsFootMode(prev => !prev);
   };
 
+  // Toggle grid background
+  const toggleGridBackground = () => {
+    setGridBackground(prev => !prev);
+  };
+
   // Auto-refresh mechanism for real-time sync detection
   useEffect(() => {
     if (!selectedSchema || !erdData || erdLoading) return;
@@ -370,6 +376,10 @@ export const AppProvider = ({ children }) => {
     // Crow's foot notation mode
     crowsFootMode,
     toggleCrowsFootMode,
+
+    // Grid background toggle
+    gridBackground,
+    toggleGridBackground,
 
     // Shared Edit Table Modal
     sharedEditTableModal,
