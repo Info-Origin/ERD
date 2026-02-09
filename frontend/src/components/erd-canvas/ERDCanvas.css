@@ -13,42 +13,15 @@
   flex: 1;
   position: relative;
   margin-top: 60px; /* Account for header height */
-  overflow: auto; /* Enable scrollbars */
+  overflow: hidden; /* ReactFlow handles its own scrolling */
   width: 100%;
   height: calc(100vh - 60px); /* Full height minus header */
 }
 
-/* Fixed large canvas for ERD - like MySQL Workbench */
+/* Remove fixed canvas - let ReactFlow handle it dynamically */
 .erd-canvas-content .react-flow {
-  width: 15000px !important; /* Large fixed width */
-  height: 10000px !important; /* Large fixed height */
-  min-width: 15000px;
-  min-height: 10000px;
-}
-
-/* Custom scrollbar styling */
-.erd-canvas-content::-webkit-scrollbar {
-  width: 14px;
-  height: 14px;
-}
-
-.erd-canvas-content::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-}
-
-.erd-canvas-content::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 7px;
-  border: 2px solid var(--bg-secondary);
-}
-
-.erd-canvas-content::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
-}
-
-.erd-canvas-content::-webkit-scrollbar-corner {
-  background: var(--bg-secondary);
+  width: 100%;
+  height: 100%;
 }
 
 /* Prevent cursor sticking during drag operations */
@@ -177,80 +150,6 @@
 
 .react-flow__attribution {
   display: none !important;
-}
-
-.react-flow__minimap {
-  display: none; /* Hidden for now - MINIMAP */
-  border-radius: var(--radius-sm);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  border: 2px solid var(--border-color);
-  background: #ffffff;
-  bottom: 20px;
-  right: 20px;
-  width: 200px;
-  height: 140px;
-  z-index: var(--z-dropdown);
-  overflow: hidden;
-}
-
-/* Clean viewport indicator like Workbench */
-.react-flow__minimap-mask {
-  fill: transparent;
-  stroke: #333333;
-  stroke-width: 2;
-  stroke-opacity: 1;
-  rx: 0;
-}
-
-/* Clean table nodes like Workbench */
-.react-flow__minimap-node {
-  fill: #87ceeb;
-  stroke: #4682b4;
-  stroke-width: 1;
-  rx: 2;
-}
-
-/* Remove all hover effects for clean professional look
-.react-flow__minimap:hover {
-  
-}
-
-.react-flow__minimap-node:hover {
- 
-}
-
-.react-flow__minimap:hover .react-flow__minimap-mask {
-  
-} */
-
-/* Remove the gradient header */
-.react-flow__minimap::before {
-  display: none;
-}
-
-/* Dark theme adjustments */
-[data-theme="dark"] .react-flow__minimap {
-  background: var(--bg-secondary);
-  border-color: var(--border-color);
-}
-
-[data-theme="dark"] .react-flow__minimap-mask {
-  stroke: var(--text-primary);
-}
-
-[data-theme="dark"] .react-flow__minimap-node {
-  fill: #4682b4;
-  stroke: #87ceeb;
-}
-
-/* Responsive behavior */
-@media (max-width: 768px) {
-  .react-flow__minimap {
-    width: 160px;
-    height: 110px;
-    bottom: 15px;
-    right: 15px;
-  }
 }
 
 .react-flow__controls {

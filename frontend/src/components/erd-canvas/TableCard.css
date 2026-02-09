@@ -2,9 +2,9 @@
   background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: 6px;
-  min-width: 280px;
-  max-width: 400px;
-  width: 320px;
+  min-width: 200px;
+  max-width: 280px;
+  width: 240px; /* Reduced from 320px */
   font-size: var(--font-size-sm);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   cursor: pointer;

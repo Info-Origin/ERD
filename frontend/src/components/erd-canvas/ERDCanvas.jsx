@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ReactFlow,
-  Background,
-  BackgroundVariant,
   useReactFlow,
   ReactFlowProvider,
-  MiniMap,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -313,11 +310,11 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
           onPaneClick={onPaneClick}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          fitView={false} // Disable auto fit - we have fixed canvas with scrollbars
-          fitViewOptions={{ padding: 0.2, maxZoom: 1.5, minZoom: 0.3 }}
+          fitView={true} // Enable auto-fit to show all tables centered
+          fitViewOptions={{ padding: 0.15, maxZoom: 0.9, minZoom: 0.3 }} // Comfortable zoom levels
           minZoom={0.2}
           maxZoom={2}
-          defaultViewport={{ x: 100, y: 100, zoom: 1 }} // Start at top-left with normal zoom
+          defaultViewport={{ x: 0, y: 0, zoom: 0.75 }} // Start with comfortable zoom
           proOptions={{ hideAttribution: true }}
           nodesDraggable={true} // Always allow dragging
           nodesConnectable={false} // Disable manual connections completely
@@ -347,32 +344,18 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
             zIndex: -1, // Force edges behind nodes
           }}
           onInit={(reactFlowInstance) => {
-            // ReactFlow initialization complete - scroll to center of canvas
-            const container = document.querySelector('.erd-canvas-content');
-            if (container) {
-              // Scroll to approximate center of the large canvas
-              container.scrollLeft = 7000; // Center horizontally (15000 / 2 - viewport width / 2)
-              container.scrollTop = 4500; // Center vertically (10000 / 2 - viewport height / 2)
-            }
+            // Use ReactFlow's fitView to automatically center and zoom to show all tables
+            setTimeout(() => {
+              reactFlowInstance.fitView({ 
+                padding: 0.2, // 20% padding around tables
+                duration: 300, // Smooth animation
+                maxZoom: 1, // Don't zoom in more than 100%
+                minZoom: 0.3 // Allow zooming out to 30% if needed
+              });
+            }, 100); // Small delay to ensure nodes are rendered
           }}
         >
           {/* Removed Background component - using CSS grid instead */}
-          <MiniMap
-            nodeStrokeColor="#4682B4"
-            nodeColor="#87CEEB"
-            nodeBorderRadius={2}
-            maskColor="transparent"
-            maskStrokeColor="#333333"
-            maskStrokeWidth={2}
-            style={{
-              backgroundColor: '#ffffff',
-              border: '2px solid var(--border-color)',
-            }}
-            pannable
-            zoomable
-            ariaLabel="Schema Overview"
-            position="bottom-right"
-          />
         </ReactFlow>
 
         {/* Canvas Controls - Only Compare Button */}
