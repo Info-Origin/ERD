@@ -534,6 +534,7 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
                     key={tableName} 
                     className={`carousel-table-chip ${tableName === lastSelectedTable ? 'active' : ''}`}
                     onClick={() => handleChipClick(tableName)}
+                    title={tableName} // Add tooltip
                   >
                     <span className="carousel-chip-text">{tableName}</span>
                     <button
@@ -543,6 +544,7 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
                         handleTableRemove(tableName);
                       }}
                       aria-label={`Remove ${tableName}`}
+                      title={`Remove ${tableName}`} // Add tooltip to remove button
                     >
                       ×
                     </button>
