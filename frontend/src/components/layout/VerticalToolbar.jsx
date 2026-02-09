@@ -143,7 +143,7 @@ export const VerticalToolbar = ({ onZoomIn, onZoomOut, onFitView, isCollapsed, o
           />
           {/* Layout Mode Toggle */}
           <button
-            className="toolbar-icon-button"
+            className="toolbar-icon-button layout-toggle-button"
             title={layoutMode === 'grid' ? 'Switch to Hybrid Layout (Hierarchical + Grid)' : 'Switch to Grid Layout'}
             onClick={toggleLayoutMode}
             style={{
@@ -154,6 +154,7 @@ export const VerticalToolbar = ({ onZoomIn, onZoomOut, onFitView, isCollapsed, o
             <img 
               src="/erd.png" 
               alt="Layout Mode" 
+              className="layout-toggle-icon"
               style={{ 
                 width: '20px', 
                 height: '20px'

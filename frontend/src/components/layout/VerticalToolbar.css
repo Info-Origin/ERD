@@ -89,3 +89,18 @@
   width: 16px;
   height: 16px;
 }
+
+/* Layout toggle icon - theme-aware color inversion */
+.layout-toggle-icon {
+  filter: var(--icon-filter, none);
+}
+
+/* Dark mode: invert black icon to white */
+[data-theme="dark"] .layout-toggle-icon {
+  filter: invert(1) brightness(1);
+}
+
+/* Light mode: keep black icon as is */
+[data-theme="light"] .layout-toggle-icon {
+  filter: none;
+}
