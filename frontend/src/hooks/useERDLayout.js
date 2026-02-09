@@ -146,42 +146,32 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
         );
       }
 
-      // Create simple grid layout for tables
-      const tablesPerRow = Math.ceil(Math.sqrt(tablesToShow.length)); // Dynamic grid based on table count
+      // Create grid layout for tables - MySQL Workbench style
+      const GRID_CONFIG = {
+        columnsPerRow: 4, // 4 tables per row like Workbench
+        cellWidth: 400, // Horizontal spacing
+        cellHeight: 500, // Vertical spacing
+        startX: 200, // Starting position
+        startY: 200,
+      };
       
       const simpleNodes = tablesToShow.map(([tableName, tableData], index) => {
-        // Calculate centered grid position first
-        const row = Math.floor(index / tablesPerRow);
-        const col = index % tablesPerRow;
-        const totalRows = Math.ceil(tablesToShow.length / tablesPerRow);
-        
-        // Center the grid around (0,0)
-        const tableWidth = 350;
-        const tableHeight = 250;
-        const gridWidth = tablesPerRow * tableWidth;
-        const gridHeight = totalRows * tableHeight;
+        // Calculate grid position
+        const row = Math.floor(index / GRID_CONFIG.columnsPerRow);
+        const col = index % GRID_CONFIG.columnsPerRow;
         
         const gridPosition = {
-          x: col * tableWidth - (gridWidth / 2) + (tableWidth / 2),
-          y: row * tableHeight - (gridHeight / 2) + (tableHeight / 2)
+          x: GRID_CONFIG.startX + (col * GRID_CONFIG.cellWidth),
+          y: GRID_CONFIG.startY + (row * GRID_CONFIG.cellHeight)
         };
         
-        // Check if saved position exists and is reasonable (not too far off-screen)
+        // Check if saved position exists
         const savedPosition = tablePositions[tableName];
         let finalPosition = gridPosition;
         
         if (savedPosition) {
-          // Validate saved position - check if it's not too far from center
-          const maxDistance = 2000; // Maximum distance from origin
-          const distance = Math.sqrt(savedPosition.x * savedPosition.x + savedPosition.y * savedPosition.y);
-          
-          if (distance <= maxDistance) {
-            // Saved position is reasonable, use it
-            finalPosition = savedPosition;
-          } else {
-            // Saved position is too far off-screen, use grid position
-            finalPosition = gridPosition;
-          }
+          // Use saved position if it exists
+          finalPosition = savedPosition;
         }
         
         return {

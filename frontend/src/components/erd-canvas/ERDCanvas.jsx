@@ -312,10 +312,11 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
           onPaneClick={onPaneClick}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          fitView
+          fitView={false} // Disable auto fit - we have fixed canvas with scrollbars
           fitViewOptions={{ padding: 0.2, maxZoom: 1.5, minZoom: 0.3 }}
           minZoom={0.2}
           maxZoom={2}
+          defaultViewport={{ x: 100, y: 100, zoom: 1 }} // Start at top-left with normal zoom
           proOptions={{ hideAttribution: true }}
           nodesDraggable={true} // Always allow dragging
           nodesConnectable={false} // Disable manual connections completely
@@ -344,10 +345,13 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
             zIndex: -1, // Force edges behind nodes
           }}
           onInit={(reactFlowInstance) => {
-            // ReactFlow initialization complete - fit view after init
-            setTimeout(() => {
-              reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
-            }, 100);
+            // ReactFlow initialization complete - scroll to center of canvas
+            const container = document.querySelector('.erd-canvas-content');
+            if (container) {
+              // Scroll to approximate center of the large canvas
+              container.scrollLeft = 7000; // Center horizontally (15000 / 2 - viewport width / 2)
+              container.scrollTop = 4500; // Center vertically (10000 / 2 - viewport height / 2)
+            }
           }}
         >
           <Background

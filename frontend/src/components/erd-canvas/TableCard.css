@@ -987,3 +987,100 @@
 .table-card-row-left .column-type {
   font-family: var(--font-mono);
 }
+
+/* MySQL Workbench Style Resize Handles */
+.table-resize-handle {
+  position: absolute;
+  background: white;
+  border: 1px solid var(--border-color);
+  z-index: 100;
+  transition: all 0.2s ease;
+}
+
+.table-resize-handle:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  transform: scale(1.2);
+}
+
+/* Corner handles - 8x8px squares */
+.resize-handle-nw {
+  top: -4px;
+  left: -4px;
+  width: 8px;
+  height: 8px;
+  cursor: nw-resize;
+}
+
+.resize-handle-ne {
+  top: -4px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  cursor: ne-resize;
+}
+
+.resize-handle-sw {
+  bottom: -4px;
+  left: -4px;
+  width: 8px;
+  height: 8px;
+  cursor: sw-resize;
+}
+
+.resize-handle-se {
+  bottom: -4px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  cursor: se-resize;
+}
+
+/* Side handles - 8x8px squares positioned at midpoints */
+.resize-handle-n {
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  cursor: n-resize;
+}
+
+.resize-handle-s {
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  cursor: s-resize;
+}
+
+.resize-handle-e {
+  top: 50%;
+  right: -4px;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  cursor: e-resize;
+}
+
+.resize-handle-w {
+  top: 50%;
+  left: -4px;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  cursor: w-resize;
+}
+
+/* Show handles only on hover or when selected */
+.table-card .table-resize-handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.table-card:hover .table-resize-handle,
+.table-card-selected .table-resize-handle {
+  opacity: 1;
+  pointer-events: all;
+}

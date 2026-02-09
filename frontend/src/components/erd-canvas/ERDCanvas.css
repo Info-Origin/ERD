@@ -13,6 +13,42 @@
   flex: 1;
   position: relative;
   margin-top: 60px; /* Account for header height */
+  overflow: auto; /* Enable scrollbars */
+  width: 100%;
+  height: calc(100vh - 60px); /* Full height minus header */
+}
+
+/* Fixed large canvas for ERD - like MySQL Workbench */
+.erd-canvas-content .react-flow {
+  width: 15000px !important; /* Large fixed width */
+  height: 10000px !important; /* Large fixed height */
+  min-width: 15000px;
+  min-height: 10000px;
+}
+
+/* Custom scrollbar styling */
+.erd-canvas-content::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+
+.erd-canvas-content::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.erd-canvas-content::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 7px;
+  border: 2px solid var(--bg-secondary);
+}
+
+.erd-canvas-content::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+.erd-canvas-content::-webkit-scrollbar-corner {
+  background: var(--bg-secondary);
 }
 
 /* Prevent cursor sticking during drag operations */

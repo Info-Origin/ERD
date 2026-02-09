@@ -184,9 +184,14 @@ const createELKGraph = (schemaData) => {
   return {
     id: "root",
     properties: {
-      // ELK Layered Algorithm Configuration
-      "elk.algorithm": "layered",
+      // ELK Force-Based Algorithm for Better Spacing
+      "elk.algorithm": "force",
       "elk.direction": "DOWN",
+
+      // Force-based spacing parameters
+      "elk.force.repulsion": "200.0", // Strong repulsion between nodes
+      "elk.force.temperature": "0.3", // Lower temperature for stable layout
+      "elk.force.iterations": "500", // More iterations for better convergence
 
       // Orthogonal Edge Routing
       "elk.edgeRouting": "ORTHOGONAL",
@@ -194,20 +199,14 @@ const createELKGraph = (schemaData) => {
       // Port Constraints - FREE allows ELK to choose optimal sides
       "elk.portConstraints": "FREE",
 
-      // Spacing Configuration
-      "elk.spacing.nodeNode": "80",
-      "elk.layered.spacing.nodeNodeBetweenLayers": "100",
-      "elk.spacing.edgeNode": "40",
-      "elk.spacing.edgeEdge": "20",
-
-      // Layering Strategy
-      "elk.layered.layering.strategy": "NETWORK_SIMPLEX",
-
-      // Crossing Minimization
-      "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
-
-      // Node Placement
-      "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
+      // Spacing Configuration - Significantly increased for clean, consistent gaps
+      "elk.spacing.nodeNode": "200", // Horizontal spacing between tables (much larger)
+      "elk.layered.spacing.nodeNodeBetweenLayers": "250", // Vertical spacing between layers (much larger)
+      "elk.spacing.edgeNode": "80", // Space between edges and nodes
+      "elk.spacing.edgeEdge": "40", // Space between parallel edges
+      
+      // Additional padding around nodes
+      "elk.padding": "[top=100,left=100,bottom=100,right=100]",
     },
     children: nodes,
     edges: edges,
