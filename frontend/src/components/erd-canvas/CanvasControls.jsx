@@ -3,7 +3,7 @@ import { useVirtualSchema } from "../../context/VirtualSchemaContext";
 import { compareForeignKeys } from "../../utils/fkComparison";
 import "./CanvasControls.css";
 
-export const CanvasControls = () => {
+export const CanvasControls = ({ isCollapsed }) => {
   const { selectedSchema, showFKComparison, showNotification } = useApp();
   const { originalSchema, workingSchema } = useVirtualSchema();
 
@@ -27,7 +27,7 @@ export const CanvasControls = () => {
   };
 
   return (
-    <div className="canvas-controls">
+    <div className={`canvas-controls ${isCollapsed ? 'collapsed' : ''}`}>
        {/* Compare Changes Button */}
       <button
         className="canvas-control-button compare-button"

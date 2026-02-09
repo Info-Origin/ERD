@@ -376,7 +376,7 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
         </ReactFlow>
 
         {/* Canvas Controls - Only Compare Button */}
-        <CanvasControls />
+        <CanvasControls isCollapsed={isSchemaCollapsed} />
 
         {/* Legend is now in the header, so we don't render it here */}
         

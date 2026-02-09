@@ -828,9 +828,9 @@
   border-radius: 6px;
   padding: 6px;
   height: 40px;
-  flex: 1; /* Take available space */
-  min-width: 250px; /* Minimum width */
-  max-width: 100%; /* Don't exceed parent */
+  flex: 0 0 auto; /* Don't grow, fixed size */
+  width: fit-content; /* Only take needed space */
+  max-width: 100%; /* Allow full width when needed */
   overflow: hidden;
   transition: all 0.3s ease;
 }
@@ -892,8 +892,9 @@
   flex: 1;
   overflow: hidden;
   height: 28px;
-  min-width: 300px; /* Default minimum space for chips */
-  transition: min-width 0.3s ease; /* Smooth transition */
+  max-width: 230px; /* Limit to show ~2.5 chips (each chip ~100px) */
+  min-width: 230px; /* Fixed width for consistent display */
+  transition: max-width 0.3s ease; /* Smooth transition */
 }
 
 /* Expanded carousel space when schema is collapsed */

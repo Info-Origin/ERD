@@ -1,7 +1,7 @@
 .canvas-controls {
-  position: absolute;
+  position: fixed;
   bottom: var(--spacing-md);
-  left: var(--spacing-md);
+  left: calc(280px + 48px + var(--spacing-md));
   display: flex;
   gap: var(--spacing-xs);
   background-color: var(--bg-secondary);
@@ -10,6 +10,11 @@
   padding: var(--spacing-xs);
   box-shadow: var(--shadow-lg);
   z-index: var(--z-dropdown);
+  transition: left 0.3s ease;
+}
+
+.canvas-controls.collapsed {
+  left: calc(48px + var(--spacing-md));
 }
 
 .canvas-control-button {
