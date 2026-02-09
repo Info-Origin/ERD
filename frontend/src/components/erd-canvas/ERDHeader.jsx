@@ -442,9 +442,9 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
   }, [selectedChildren, selectedTables, hierarchyData, onTableFilter, lastSelectedTable]);
 
   // Render child hierarchy with indentation
-  const renderChildHierarchy = useCallback((children, depth) => {
-    return children.map(child => (
-      <div key={child.table} className={`hierarchy-item hierarchy-depth-${Math.min(depth, 3)}`}>
+  const renderChildHierarchy = useCallback((children, depth, parentTable = '') => {
+    return children.map((child, index) => (
+      <div key={`${parentTable}-${child.table}-${child.fromColumn}-${child.toColumn}-${index}`} className={`hierarchy-item hierarchy-depth-${Math.min(depth, 3)}`}>
         <label className="filter-table-item">
           <input
             type="checkbox"
@@ -466,7 +466,7 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
             </span>
           </div>
         </label>
-        {child.children.length > 0 && renderChildHierarchy(child.children, depth + 1)}
+        {child.children.length > 0 && renderChildHierarchy(child.children, depth + 1, child.table)}
       </div>
     ));
   }, [selectedChildren, handleChildToggle]);
@@ -716,7 +716,7 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
                           <div className="hierarchy-parent-label">
                             Children of {hierarchy.parentTable}:
                           </div>
-                          {renderChildHierarchy(hierarchy.children, 0)}
+                          {renderChildHierarchy(hierarchy.children, 0, hierarchy.parentTable)}
                         </div>
                       ))}
                     </div>

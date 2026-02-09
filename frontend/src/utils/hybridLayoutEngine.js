@@ -211,28 +211,40 @@ export const calculateHybridLayout = (schemaData, savedPositions = {}) => {
   // Combine all positions
   const allPositions = [...hierarchyPositions, ...gridPositions];
   
-  // Create nodes
-  const nodes = allPositions.map(pos => {
-    const tableData = tables[pos.table];
-    const columns = tableData.columns || {};
-    const columnCount = Object.keys(columns).length;
-    
-    // Calculate table height
-    const headerHeight = 40;
-    const rowHeight = 28;
-    const tableHeight = headerHeight + (columnCount * rowHeight) + 20;
-    const tableWidth = 280;
-    
-    // Use saved position if available, otherwise use calculated position
-    const finalPosition = savedPositions[pos.table] || { x: pos.x, y: pos.y };
-    
-    return {
-      id: pos.table,
-      type: 'tableCard',
-      position: finalPosition,
-      data: {
-        tableName: pos.table,
-        columns: tableData.columns,
+  // Remove duplicate tables (keep first occurrence)
+  const uniquePositions = [];
+  const seenTables = new Set();
+  allPositions.forEach(pos => {
+    if (!seenTables.has(pos.table)) {
+      seenTables.add(pos.table);
+      uniquePositions.push(pos);
+    }
+  });
+  
+  // Create nodes - filter out tables that don't exist in the filtered tables object
+  const nodes = uniquePositions
+    .filter(pos => tables[pos.table]) // Skip tables that don't exist
+    .map(pos => {
+      const tableData = tables[pos.table];
+      const columns = tableData.columns || {};
+      const columnCount = Object.keys(columns).length;
+      
+      // Calculate table height
+      const headerHeight = 40;
+      const rowHeight = 28;
+      const tableHeight = headerHeight + (columnCount * rowHeight) + 20;
+      const tableWidth = 280;
+      
+      // Use saved position if available, otherwise use calculated position
+      const finalPosition = savedPositions[pos.table] || { x: pos.x, y: pos.y };
+      
+      return {
+        id: pos.table,
+        type: 'tableCard',
+        position: finalPosition,
+        data: {
+          tableName: pos.table,
+          columns: tableData.columns,
         isSelected: false,
         hierarchyDepth: pos.depth, // Store depth for styling
       },
