@@ -85,6 +85,22 @@
   }
 }
 
+/* Parent table highlighting - Same style as search highlight but with teal color */
+.table-card-parent {
+  border-color: #14b8a6 !important; /* Teal border for parent tables */
+  box-shadow:
+    0 0 0 3px rgba(20, 184, 166, 0.2),
+    0 4px 16px rgba(20, 184, 166, 0.3) !important;
+  transform: translateY(-2px) !important;
+  background-color: var(--bg-primary) !important; /* Fully opaque background */
+  z-index: 18 !important; /* Parent tables above normal, below search highlight */
+}
+
+.table-card-parent .table-card-header {
+  background-color: rgba(20, 184, 166, 0.15) !important; /* Teal tinted header */
+  border-bottom-color: rgba(20, 184, 166, 0.3) !important;
+}
+
 /* Basic table handles for user-created relationships */
 .table-handle {
   background-color: transparent;

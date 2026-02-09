@@ -1,8 +1,10 @@
 import { useCallback, useState, useEffect } from "react";
 import { applyNodeChanges, applyEdgeChanges } from "@xyflow/react";
 import { useApp } from "../context/AppContext";
+import { useVirtualSchema } from "../context/VirtualSchemaContext";
 import { useDebounce } from "./useDebounce";
 import { distributeRelationshipPorts, generateHandleId } from "../utils/smartPortDistribution";
+import { calculateHybridLayout } from "../utils/hybridLayoutEngine";
 
 /**
  * Simple ERD Layout Hook
@@ -11,8 +13,9 @@ import { distributeRelationshipPorts, generateHandleId } from "../utils/smartPor
 export const useERDLayout = (erdData, selectedTable, filteredTables = null, highlightedTable = null) => {
   const { 
     tablePositions, 
-    updateTablePosition
-  } = useApp();
+    updateTablePosition,
+    layoutMode = 'hybrid' // Add layout mode: 'grid' or 'hybrid'
+  } = useVirtualSchema();
 
   // State for simple layout
   const [nodes, setNodes] = useState([]);
@@ -146,46 +149,75 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
         );
       }
 
-      // Create grid layout for tables - MySQL Workbench style
-      const GRID_CONFIG = {
-        columnsPerRow: 4, // 4 tables per row like Workbench
-        cellWidth: 400, // Horizontal spacing
-        cellHeight: 500, // Vertical spacing
-        startX: 200, // Starting position
-        startY: 200,
-      };
+      let simpleNodes;
       
-      const simpleNodes = tablesToShow.map(([tableName, tableData], index) => {
-        // Calculate grid position
-        const row = Math.floor(index / GRID_CONFIG.columnsPerRow);
-        const col = index % GRID_CONFIG.columnsPerRow;
-        
-        const gridPosition = {
-          x: GRID_CONFIG.startX + (col * GRID_CONFIG.cellWidth),
-          y: GRID_CONFIG.startY + (row * GRID_CONFIG.cellHeight)
-        };
-        
-        // Check if saved position exists
-        const savedPosition = tablePositions[tableName];
-        let finalPosition = gridPosition;
-        
-        if (savedPosition) {
-          // Use saved position if it exists
-          finalPosition = savedPosition;
-        }
-        
-        return {
-          id: tableName,
-          type: 'tableCard',
-          position: finalPosition,
-          data: {
-            tableName: tableName,
-            columns: tableData.columns,
-            isSelected: tableName === selectedTable,
-            isHighlighted: tableName === highlightedTable // Add highlight information
-          }
-        };
+      // Identify parent tables (tables that are referenced by others via foreign keys)
+      const parentTables = new Set();
+      (erdData.relationships || []).forEach(rel => {
+        parentTables.add(rel.toTable); // toTable is the parent (being referenced)
       });
+      
+      // Use hybrid layout if enabled
+      if (layoutMode === 'hybrid') {
+        // Create filtered schema data for hybrid layout
+        const filteredSchemaData = {
+          tables: Object.fromEntries(tablesToShow),
+          relationships: erdData.relationships || []
+        };
+        
+        const { nodes: hybridNodes } = calculateHybridLayout(filteredSchemaData, tablePositions);
+        simpleNodes = hybridNodes.map(node => ({
+          ...node,
+          data: {
+            ...node.data,
+            isSelected: node.id === selectedTable,
+            isHighlighted: node.id === highlightedTable,
+            isParent: parentTables.has(node.id) // Mark as parent table
+          }
+        }));
+      } else {
+        // Use original grid layout
+        const GRID_CONFIG = {
+          columnsPerRow: 6, // 6 tables per row like Workbench
+          cellWidth: 400, // Horizontal spacing
+          cellHeight: 500, // Vertical spacing
+          startX: 200, // Starting position
+          startY: 200,
+        };
+        
+        simpleNodes = tablesToShow.map(([tableName, tableData], index) => {
+          // Calculate grid position
+          const row = Math.floor(index / GRID_CONFIG.columnsPerRow);
+          const col = index % GRID_CONFIG.columnsPerRow;
+          
+          const gridPosition = {
+            x: GRID_CONFIG.startX + (col * GRID_CONFIG.cellWidth),
+            y: GRID_CONFIG.startY + (row * GRID_CONFIG.cellHeight)
+          };
+          
+          // Check if saved position exists
+          const savedPosition = tablePositions[tableName];
+          let finalPosition = gridPosition;
+          
+          if (savedPosition) {
+            // Use saved position if it exists
+            finalPosition = savedPosition;
+          }
+          
+          return {
+            id: tableName,
+            type: 'tableCard',
+            position: finalPosition,
+            data: {
+              tableName: tableName,
+              columns: tableData.columns,
+              isSelected: tableName === selectedTable,
+              isHighlighted: tableName === highlightedTable,
+              isParent: parentTables.has(tableName) // Mark as parent table
+            }
+          };
+        });
+      }
 
       // SCHEMA-SCOPED RELATIONSHIP FILTERING
       // Only process relationships where BOTH source and target tables exist in current schema
@@ -278,7 +310,7 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
       console.error('❌ Layout failed:', error);
       setLayoutError(error.message);
     }
-  }, [erdData, selectedTable, filteredTables, highlightedTable]); // Added highlightedTable dependency
+  }, [erdData, selectedTable, filteredTables, highlightedTable, layoutMode, tablePositions]); // Added layoutMode and tablePositions
 
   // Initial positioning - only runs when schema changes, not on every position update
   const applyInitialPositions = useCallback((nodes) => {

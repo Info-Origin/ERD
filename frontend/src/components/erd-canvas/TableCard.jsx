@@ -26,7 +26,7 @@ export const TableCard = memo(({ data }) => {
     openEditTableModal, // Use shared modal for constraint editing only
   } = useApp();
 
-  const { tableName, columns, isSelected, isHighlighted } = data;
+  const { tableName, columns, isSelected, isHighlighted, isParent } = data;
 
   // State for self-join hover highlighting
   const [selfJoinHover, setSelfJoinHover] = useState(false);
@@ -242,6 +242,7 @@ export const TableCard = memo(({ data }) => {
           "table-card-hover": !isSelected,
           "table-card-relationship-highlighted": isTableHighlighted,
           "table-card-search-highlighted": isHighlighted, // Add search highlight class
+          "table-card-parent": isParent && !isHighlighted && !isTableHighlighted, // Add parent class only if not already highlighted
         })}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
