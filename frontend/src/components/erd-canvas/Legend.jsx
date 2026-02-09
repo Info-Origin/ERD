@@ -6,7 +6,7 @@ import "./Legend.css";
 
 export const Legend = ({ isInHeader = false }) => {
   const { crowsFootMode } = useApp();
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);
