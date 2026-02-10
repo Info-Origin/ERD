@@ -17,40 +17,48 @@ export const RelationshipCreationProvider = ({ children }) => {
 
   // Relationship types matching MySQL Workbench
   const RELATIONSHIP_TYPES = {
+    // Identifying relationships (solid lines)
     ONE_TO_ONE_IDENTIFYING: {
       id: 'one_to_one_identifying',
       name: '1:1 Identifying',
       description: 'One-to-One Identifying Relationship',
       lineStyle: 'solid',
-      icon: '1:1'
-    },
-    ONE_TO_MANY_NON_IDENTIFYING: {
-      id: 'one_to_many_non_identifying', 
-      name: '1:N Non-Identifying',
-      description: 'One-to-Many Non-Identifying Relationship',
-      lineStyle: 'dashed',
-      icon: '1:n'
-    },
-    ONE_TO_ONE_NON_IDENTIFYING: {
-      id: 'one_to_one_non_identifying',
-      name: '1:1 Non-Identifying', 
-      description: 'One-to-One Non-Identifying Relationship',
-      lineStyle: 'dashed',
-      icon: '1:1'
+      isIdentifying: true,
+      cardinality: '1:1'
     },
     ONE_TO_MANY_IDENTIFYING: {
       id: 'one_to_many_identifying',
       name: '1:N Identifying',
       description: 'One-to-Many Identifying Relationship', 
       lineStyle: 'solid',
-      icon: '1:n'
+      isIdentifying: true,
+      cardinality: '1:N'
     },
-    MANY_TO_MANY: {
-      id: 'many_to_many',
-      name: 'N:M',
-      description: 'Many-to-Many Relationship',
+    MANY_TO_MANY_IDENTIFYING: {
+      id: 'many_to_many_identifying',
+      name: 'N:M Identifying',
+      description: 'Many-to-Many Identifying Relationship',
       lineStyle: 'solid',
-      icon: 'n:m'
+      isIdentifying: true,
+      cardinality: 'N:M'
+    },
+    // Non-identifying relationships (dashed lines)
+    // Note: Many-to-Many is ALWAYS identifying, so only 1:1 and 1:N have non-identifying variants
+    ONE_TO_ONE_NON_IDENTIFYING: {
+      id: 'one_to_one_non_identifying',
+      name: '1:1 Non-Identifying', 
+      description: 'One-to-One Non-Identifying Relationship',
+      lineStyle: 'dashed',
+      isIdentifying: false,
+      cardinality: '1:1'
+    },
+    ONE_TO_MANY_NON_IDENTIFYING: {
+      id: 'one_to_many_non_identifying', 
+      name: '1:N Non-Identifying',
+      description: 'One-to-Many Non-Identifying Relationship',
+      lineStyle: 'dashed',
+      isIdentifying: false,
+      cardinality: '1:N'
     }
   };
 

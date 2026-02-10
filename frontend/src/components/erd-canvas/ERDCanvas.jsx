@@ -19,6 +19,8 @@ import { Loader } from "../common/Loader";
 import { useApp } from "../../context/AppContext";
 import { useERDLayout } from "../../hooks/useERDLayout";
 import { useVirtualSchema } from "../../context/VirtualSchemaContext";
+import { useRelationshipCreation } from "../../context/RelationshipCreationContext";
+import { createRelationship, validateRelationshipCreation } from "../../services/relationshipCreationService";
 import "./ERDCanvas.css";
 
 // Move nodeTypes and edgeTypes outside component to prevent React Flow warning
@@ -36,6 +38,13 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
   const { erdData, erdLoading, erdError, selectedSchema, selectedTable, setHighlightedRelationship, highlightedRelationship, routingMode, crowsFootMode, gridBackground } =
     useApp();
   const virtualSchema = useVirtualSchema(); // Get full virtual schema context
+  const { 
+    selectedTables, 
+    relationshipType, 
+    canCompleteRelationship, 
+    completeRelationshipCreation,
+    cancelRelationshipCreation 
+  } = useRelationshipCreation();
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   
   // Table filtering state
@@ -216,6 +225,43 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
       document.body.style.cursor = 'default';
     };
   }, []);
+
+  // Handle relationship creation when two tables are selected
+  useEffect(() => {
+    if (canCompleteRelationship && virtualSchema.workingSchema) {
+      const relationshipData = completeRelationshipCreation();
+      
+      if (relationshipData) {
+        try {
+          // Validate the relationship
+          const errors = validateRelationshipCreation(
+            virtualSchema.workingSchema,
+            relationshipData.parentTable,
+            relationshipData.childTable,
+            relationshipData.type
+          );
+
+          if (errors.length > 0) {
+            console.error('❌ Relationship validation failed:', errors);
+            alert(`Cannot create relationship:\n${errors.join('\n')}`);
+            return;
+          }
+
+          // Create the relationship
+          const updatedSchema = createRelationship(virtualSchema.workingSchema, relationshipData);
+          
+          // Update the working schema
+          virtualSchema.updateWorkingSchema(updatedSchema);
+          
+          console.log('✅ Relationship created successfully');
+          
+        } catch (error) {
+          console.error('❌ Failed to create relationship:', error);
+          alert(`Failed to create relationship: ${error.message}`);
+        }
+      }
+    }
+  }, [canCompleteRelationship, selectedTables, relationshipType, virtualSchema]);
 
   const handleZoomIn = useCallback(() => {
     zoomIn({ duration: 300 });

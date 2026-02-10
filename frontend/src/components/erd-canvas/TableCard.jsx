@@ -11,6 +11,7 @@ import { Badge } from "../common/Badge";
 import { BADGE_VARIANTS } from "../../utils/constants";
 import { formatDataTypeForDisplay, getFullDataType } from "../../utils/dataTypeFormatter";
 import { useApp } from "../../context/AppContext";
+import { useRelationshipCreation } from "../../context/RelationshipCreationContext";
 import { calculatePortPosition } from "../../utils/smartPortDistribution";
 import { clsx } from "clsx";
 import "./TableCard.css";
@@ -25,6 +26,13 @@ export const TableCard = memo(({ data }) => {
     erdData,
     openEditTableModal, // Use shared modal for constraint editing only
   } = useApp();
+
+  const {
+    isInCreationMode,
+    selectTable: selectTableForRelationship,
+    isTableSelected,
+    getTableSelectionOrder,
+  } = useRelationshipCreation();
 
   const { tableName, columns, isSelected, isHighlighted, isParent } = data;
 
@@ -181,7 +189,13 @@ export const TableCard = memo(({ data }) => {
   });
 
   const handleClick = () => {
-    selectTable(tableName);
+    // If in relationship creation mode, select table for relationship
+    if (isInCreationMode) {
+      selectTableForRelationship(tableName);
+    } else {
+      // Normal table selection
+      selectTable(tableName);
+    }
   };
 
   // Handle right-click context menu
@@ -234,15 +248,21 @@ export const TableCard = memo(({ data }) => {
   const isTableHighlighted = highlightedRelationship && 
     (highlightedRelationship.fromTable === tableName || highlightedRelationship.toTable === tableName);
 
+  // Check if table is selected for relationship creation
+  const isSelectedForRelationship = isInCreationMode && isTableSelected(tableName);
+  const relationshipSelectionOrder = isSelectedForRelationship ? getTableSelectionOrder(tableName) : 0;
+
   return (
     <>
       <div
         className={clsx("table-card", {
           "table-card-selected": isSelected,
-          "table-card-hover": !isSelected,
+          "table-card-hover": !isSelected && !isInCreationMode,
           "table-card-relationship-highlighted": isTableHighlighted,
           "table-card-search-highlighted": isHighlighted, // Add search highlight class
           "table-card-parent": isParent && !isHighlighted && !isTableHighlighted, // Add parent class only if not already highlighted
+          "table-card-relationship-creation": isInCreationMode && !isSelectedForRelationship,
+          "table-card-relationship-selected": isSelectedForRelationship,
         })}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
@@ -260,8 +280,18 @@ export const TableCard = memo(({ data }) => {
           {tableName}
         </span>
         
+        {/* Show selection order during relationship creation */}
+        {isSelectedForRelationship && (
+          <span 
+            className="relationship-selection-badge"
+            title={relationshipSelectionOrder === 1 ? "Parent table (1 side)" : "Child table (N side)"}
+          >
+            {relationshipSelectionOrder === 1 ? "1" : "N"}
+          </span>
+        )}
+        
         {/* Self-join text indicator */}
-        {hasSelfJoin() && (
+        {hasSelfJoin() && !isSelectedForRelationship && (
           <span 
             className="self-join-text" 
             title={`Self-referencing relationships: ${getSelfJoinRelationships().map(rel => `${rel.fromColumn} → ${rel.toColumn}`).join(', ')}`}

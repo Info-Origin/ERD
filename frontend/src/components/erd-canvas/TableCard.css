@@ -1108,3 +1108,46 @@
   width: 0 !important;
   height: 0 !important;
 }
+
+/* Relationship creation mode styles */
+.table-card-relationship-creation {
+  cursor: pointer;
+  border-color: rgba(147, 51, 234, 0.3);
+  transition: all 0.2s ease;
+}
+
+.table-card-relationship-creation:hover {
+  border-color: rgba(147, 51, 234, 0.6);
+  box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.1), 0 4px 12px rgba(147, 51, 234, 0.2);
+  transform: translateY(-1px);
+}
+
+.table-card-relationship-selected {
+  border-color: #9333ea !important;
+  box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.2), 0 4px 16px rgba(147, 51, 234, 0.3) !important;
+  transform: translateY(-2px) !important;
+  background-color: var(--bg-primary) !important;
+  z-index: 30 !important;
+}
+
+.table-card-relationship-selected .table-card-header {
+  background-color: rgba(147, 51, 234, 0.15) !important;
+  border-bottom-color: rgba(147, 51, 234, 0.3) !important;
+}
+
+/* Relationship selection badge (1 or N indicator) */
+.relationship-selection-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  background-color: #9333ea;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 4px;
+  margin-left: auto;
+  box-shadow: 0 2px 4px rgba(147, 51, 234, 0.3);
+}

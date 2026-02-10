@@ -139,6 +139,32 @@
   white-space: nowrap; /* Keep text on one line */
 }
 
+/* Clickable legend items for relationship creation */
+.legend-item-clickable {
+  cursor: pointer;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.legend-item-clickable:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.legend-item-clickable.legend-item-selected {
+  background-color: rgba(59, 130, 246, 0.1);
+  border-color: #3b82f6;
+  color: var(--text-primary);
+}
+
+.legend-item-clickable.legend-item-selected .legend-line-sample svg line,
+.legend-item-clickable.legend-item-selected .legend-line-sample svg circle {
+  stroke: #3b82f6;
+}
+
 .legend-item span {
   white-space: nowrap; /* Prevent text wrapping */
   overflow: hidden;
@@ -159,6 +185,15 @@
   margin-top: 2px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.legend-instruction {
+  padding: 6px 8px;
+  background-color: rgba(147, 51, 234, 0.1);
+  border: 1px solid rgba(147, 51, 234, 0.3);
+  border-radius: 4px;
+  margin-bottom: 8px;
+  text-align: center;
 }
 
 .legend-line-sample {

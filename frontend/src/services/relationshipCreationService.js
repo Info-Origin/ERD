@@ -28,6 +28,7 @@ const generateFKColumnName = (parentTable, parentColumn) => {
 
 /**
  * Create a One-to-Many relationship
+ * Note: parentTable is the "1" side, childTable is the "N" side
  */
 export const createOneToManyRelationship = (schemaModel, parentTable, childTable, relationshipType) => {
   const updatedSchema = JSON.parse(JSON.stringify(schemaModel)); // Deep clone
@@ -51,14 +52,17 @@ export const createOneToManyRelationship = (schemaModel, parentTable, childTable
     throw new Error(`Column ${fkColumnName} already exists in table ${childTable}`);
   }
   
+  // Determine if this is a 1:1 or 1:N relationship
+  const isOneToOne = relationshipType.cardinality === '1:1';
+  
   // Create FK column in child table
   const fkColumn = {
     type: parentPKData.type,
     columnType: parentPKData.columnType,
     pk: false,
     fk: true,
-    unique: relationshipType.id.includes('one_to_one'), // 1:1 relationships need unique FK
-    nullable: !relationshipType.lineStyle === 'solid', // Identifying = NOT NULL, Non-identifying = NULL
+    unique: isOneToOne, // 1:1 relationships need unique FK
+    nullable: !relationshipType.isIdentifying, // Identifying = NOT NULL, Non-identifying = NULL
     isVirtual: true // Mark as user-created
   };
   
@@ -66,16 +70,20 @@ export const createOneToManyRelationship = (schemaModel, parentTable, childTable
   updatedSchema.tables[childTable].columns[fkColumnName] = fkColumn;
   
   // Create relationship record
+  // IMPORTANT: For visual rendering, we need to swap the direction
+  // Database FK: child -> parent (FK in child points to parent PK)
+  // Visual rendering: parent -> child (line goes from parent to child)
+  // So we store: fromTable=parent, toTable=child for correct visual display
   const relationship = {
-    fromTable: childTable,
-    fromColumn: fkColumnName,
-    toTable: parentTable,
-    toColumn: parentPKName,
-    type: relationshipType.id.includes('one_to_one') ? 'ONE_TO_ONE' : 'ONE_TO_MANY',
+    fromTable: parentTable,  // Visual source (parent with "1")
+    fromColumn: parentPKName,
+    toTable: childTable,     // Visual target (child with "N")
+    toColumn: fkColumnName,
+    type: isOneToOne ? 'ONE_TO_ONE' : 'ONE_TO_MANY',
     constraintName: `fk_${childTable}_${fkColumnName}`,
     isVirtual: true, // Mark as user-created
     lineStyle: relationshipType.lineStyle,
-    isIdentifying: relationshipType.lineStyle === 'solid'
+    isIdentifying: relationshipType.isIdentifying
   };
   
   // Add to relationships array
@@ -89,6 +97,7 @@ export const createOneToManyRelationship = (schemaModel, parentTable, childTable
 
 /**
  * Create a Many-to-Many relationship
+ * Note: For N:M, both tables are treated equally, but we follow the click order
  */
 export const createManyToManyRelationship = (schemaModel, table1, table2, relationshipType) => {
   const updatedSchema = JSON.parse(JSON.stringify(schemaModel)); // Deep clone
@@ -130,7 +139,8 @@ export const createManyToManyRelationship = (schemaModel, table1, table2, relati
         fk: true,
         unique: false,
         nullable: false,
-        isVirtual: true
+        isVirtual: true,
+        compositeKey: true // Mark as part of composite key
       },
       [fk2ColumnName]: {
         type: table2PKData.type,
@@ -139,7 +149,8 @@ export const createManyToManyRelationship = (schemaModel, table1, table2, relati
         fk: true,
         unique: false,
         nullable: false,
-        isVirtual: true
+        isVirtual: true,
+        compositeKey: true // Mark as part of composite key
       }
     },
     isVirtual: true // Mark entire table as user-created
@@ -149,6 +160,7 @@ export const createManyToManyRelationship = (schemaModel, table1, table2, relati
   updatedSchema.tables[junctionTableName] = junctionTable;
   
   // Create two One-to-Many relationships
+  // For N:M, both relationships are always identifying (solid lines)
   const relationship1 = {
     fromTable: junctionTableName,
     fromColumn: fk1ColumnName,
@@ -189,10 +201,11 @@ export const createRelationship = (schemaModel, relationshipData) => {
   const { type, parentTable, childTable } = relationshipData;
   
   try {
-    if (type.id === 'many_to_many') {
+    if (type.cardinality === 'N:M') {
+      // Many-to-Many relationship
       return createManyToManyRelationship(schemaModel, parentTable, childTable, type);
     } else {
-      // All other types are variations of One-to-Many/One-to-One
+      // One-to-One or One-to-Many relationship
       return createOneToManyRelationship(schemaModel, parentTable, childTable, type);
     }
   } catch (error) {
