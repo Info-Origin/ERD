@@ -332,10 +332,10 @@
 }
 
 .react-flow__minimap-mask {
-  fill: transparent; /* Hollow/transparent like Workbench */
-  stroke: #000000; /* Black border like Workbench */
-  stroke-width: 3; /* Thicker for better visibility */
-  stroke-opacity: 0.8; /* Slightly transparent black */
+  fill: rgba(0, 0, 0, 0.05) !important; /* Very light fill for subtle visibility */
+  stroke: #1a1a1a !important; /* Very dark gray/black border */
+  stroke-width: 10 !important; /* Thicker for better visibility */
+  stroke-opacity: 1 !important; /* Fully opaque for maximum visibility */
 }
 
 /* Dark theme minimap */
@@ -345,10 +345,10 @@
 }
 
 [data-theme="dark"] .react-flow__minimap-mask {
-  fill: transparent; /* Keep hollow in dark mode */
-  stroke: #ffffff; /* White border for dark theme */
-  stroke-width: 3;
-  stroke-opacity: 0.9; /* More opaque white for visibility */
+  fill: rgba(255, 255, 255, 0.05) !important; /* Very light fill for dark mode */
+  stroke: #f0f0f0 !important; /* Very light gray/white border for dark theme */
+  stroke-width: 10 !important; /* Thicker for better visibility */
+  stroke-opacity: 1 !important; /* Fully opaque for maximum visibility */
 }
 
 /* Responsive minimap */

@@ -314,7 +314,7 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
           fitView={true} // Enable auto-fit to show all tables centered
           fitViewOptions={{ padding: 0.15, maxZoom: 0.9, minZoom: 0.3 }} // Comfortable zoom levels
           minZoom={0.2}
-          maxZoom={2}
+          maxZoom={1.2} // Limit max zoom to prevent viewport box from becoming too small
           defaultViewport={{ x: 0, y: 0, zoom: 0.75 }} // Start with comfortable zoom
           proOptions={{ hideAttribution: true }}
           nodesDraggable={true} // Always allow dragging
