@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { MiniMap } from '@xyflow/react';
+import { useApp } from '../../context/AppContext';
 import './DraggableMiniMap.css';
 
 export const DraggableMiniMap = ({ nodeColor, nodeStrokeColor, nodeBorderRadius, maskColor, style }) => {
+  const { isAnyModalOpen } = useApp();
   const [position, setPosition] = useState(() => {
     // Try to load saved position from localStorage
     const saved = localStorage.getItem('minimap-position');
@@ -88,6 +90,11 @@ export const DraggableMiniMap = ({ nodeColor, nodeStrokeColor, nodeBorderRadius,
     right: 'auto',
     bottom: 'auto',
   } : {};
+
+  // Hide minimap when any modal is open
+  if (isAnyModalOpen) {
+    return null;
+  }
 
   const minimapContent = (
     <div
