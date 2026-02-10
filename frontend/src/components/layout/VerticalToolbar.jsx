@@ -22,8 +22,6 @@ export const VerticalToolbar = ({ onZoomIn, onZoomOut, onFitView, isCollapsed, o
     showNotification
   } = useApp();
   
-  const { layoutMode, setLayoutMode } = useVirtualSchema();
-  
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const handleResetClick = () => {
@@ -40,15 +38,6 @@ export const VerticalToolbar = ({ onZoomIn, onZoomOut, onFitView, isCollapsed, o
   const handleCancelReset = () => {
     setShowResetConfirm(false);
     setIsAnyModalOpen(false);
-  };
-
-  const toggleLayoutMode = () => {
-    const newMode = layoutMode === 'grid' ? 'hybrid' : 'grid';
-    setLayoutMode(newMode);
-    showNotification?.(
-      `Layout: ${newMode === 'hybrid' ? 'Hierarchical + Grid' : 'Grid Only'}`,
-      "info"
-    );
   };
 
   return (
@@ -84,12 +73,20 @@ export const VerticalToolbar = ({ onZoomIn, onZoomOut, onFitView, isCollapsed, o
             disabled={!canRedo}
           />
           {isModified && (
-            <IconButton
-              icon={FiRefreshCw}
-              size="md"
+            <button
+              className="toolbar-icon-button"
               onClick={handleResetClick}
               title="Reset to original schema"
-            />
+            >
+              <img 
+                src="/rotate.png" 
+                alt="Reset" 
+                style={{ 
+                  width: '20px', 
+                  height: '20px'
+                }}
+              />
+            </button>
           )}
         </div>
 
@@ -141,26 +138,6 @@ export const VerticalToolbar = ({ onZoomIn, onZoomOut, onFitView, isCollapsed, o
               border: gridBackground ? '1px solid #2563eb' : '1px solid var(--border-color)'
             }}
           />
-          {/* Layout Mode Toggle */}
-          <button
-            className="toolbar-icon-button layout-toggle-button"
-            title={layoutMode === 'grid' ? 'Switch to Hybrid Layout (Hierarchical + Grid)' : 'Switch to Grid Layout'}
-            onClick={toggleLayoutMode}
-            style={{
-              border: '1px solid rgba(0, 0, 0, 0.1)',
-              borderRadius: '8px'
-            }}
-          >
-            <img 
-              src="/erd.png" 
-              alt="Layout Mode" 
-              className="layout-toggle-icon"
-              style={{ 
-                width: '20px', 
-                height: '20px'
-              }}
-            />
-          </button>
         </div>
       </div>
 

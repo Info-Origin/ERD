@@ -50,13 +50,13 @@
   font-weight: 500;
   transition: all var(--transition-fast);
   background-color: var(--bg-primary);
-  border: 1px solid teal;
+  border: 1px solid #3b82f6;
   cursor: pointer;
 }
 
 .canvas-control-button.compare-button:hover:not(:disabled) {
   background-color: var(--bg-hover);
-  border: 1px solid teal;
+  border: 1px solid #3b82f6;
 }
 
 .canvas-control-button.compare-button:disabled {

@@ -174,7 +174,6 @@ export const VirtualSchemaProvider = ({ children }) => {
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [currentSchemaName, setCurrentSchemaName] = useState(null);
   const [tablePositions, setTablePositions] = useState({});
-  const [layoutMode, setLayoutMode] = useState('hybrid'); // 'grid' or 'hybrid'
   const [isSwitchingSchema, setIsSwitchingSchema] = useState(false);
   const [realDbHistory, setRealDbHistory] = useState([]); // Track real DB changes over time
   const historyIndexRef = useRef(-1);
@@ -1382,10 +1381,6 @@ export const VirtualSchemaProvider = ({ children }) => {
     updateTablePosition,
     clearAllTablePositions,
     cleanupOffScreenPositions,
-    
-    // Layout mode
-    layoutMode,
-    setLayoutMode,
 
     // Utility functions
     getMergeSummary,
