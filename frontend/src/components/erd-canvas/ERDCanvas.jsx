@@ -35,7 +35,7 @@ const edgeTypes = {
 };
 
 const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
-  const { erdData, erdLoading, erdError, selectedSchema, selectedTable, setHighlightedRelationship, highlightedRelationship, routingMode, crowsFootMode, gridBackground } =
+  const { erdData, erdLoading, erdError, selectedSchema, selectedTable, setHighlightedRelationship, highlightedRelationship, routingMode, crowsFootMode, gridBackground, showNotification } =
     useApp();
   const virtualSchema = useVirtualSchema(); // Get full virtual schema context
   const { 
@@ -243,7 +243,7 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
 
           if (errors.length > 0) {
             console.error('❌ Relationship validation failed:', errors);
-            alert(`Cannot create relationship:\n${errors.join('\n')}`);
+            showNotification(`Cannot create relationship: ${errors.join(', ')}`, 'error');
             return;
           }
 
@@ -254,10 +254,11 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
           virtualSchema.updateWorkingSchema(updatedSchema);
           
           console.log('✅ Relationship created successfully');
+          showNotification('Relationship created successfully!', 'success');
           
         } catch (error) {
           console.error('❌ Failed to create relationship:', error);
-          alert(`Failed to create relationship: ${error.message}`);
+          showNotification(`Failed to create relationship: ${error.message}`, 'error');
         }
       }
     }
