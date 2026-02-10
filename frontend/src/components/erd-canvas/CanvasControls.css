@@ -3,11 +3,11 @@
   bottom: var(--spacing-md);
   left: calc(280px + 48px + var(--spacing-md));
   display: flex;
-  gap: var(--spacing-xs);
+  gap: 6px; /* Reduced gap between buttons */
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-xs);
+  padding: 6px; /* More padding from container edge */
   box-shadow: var(--shadow-lg);
   z-index: var(--z-dropdown);
   transition: left 0.3s ease;
@@ -21,8 +21,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 36px; /* Reduced from 40px to match vertical toolbar */
+  height: 36px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background-color: var(--bg-primary);
@@ -30,7 +30,6 @@
   cursor: pointer;
   transition: all var(--transition-fast);
   font-size: 16px;
-  /* cursor: pointer; */
 }
 
 .canvas-control-button:hover:not(:disabled) {

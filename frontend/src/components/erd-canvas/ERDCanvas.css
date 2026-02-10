@@ -323,38 +323,20 @@
   }
 }
 
-/* MiniMap Styling */
-.react-flow__minimap {
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border: 1px solid var(--border-color);
-  overflow: hidden;
-}
-
+/* MiniMap Styling - Now handled by DraggableMiniMap component */
 .react-flow__minimap-mask {
-  fill: rgba(0, 0, 0, 0.05) !important; /* Very light fill for subtle visibility */
-  stroke: #1a1a1a !important; /* Very dark gray/black border */
-  stroke-width: 10 !important; /* Thicker for better visibility */
-  stroke-opacity: 1 !important; /* Fully opaque for maximum visibility */
+  fill: rgba(0, 0, 0, 0.05) !important;
+  stroke: #1a1a1a !important;
+  stroke-width: 4 !important;
+  stroke-opacity: 1 !important;
 }
 
 /* Dark theme minimap */
-[data-theme="dark"] .react-flow__minimap {
-  background: var(--bg-secondary);
-  border-color: var(--border-color);
-}
-
 [data-theme="dark"] .react-flow__minimap-mask {
-  fill: rgba(255, 255, 255, 0.05) !important; /* Very light fill for dark mode */
-  stroke: #f0f0f0 !important; /* Very light gray/white border for dark theme */
-  stroke-width: 10 !important; /* Thicker for better visibility */
-  stroke-opacity: 1 !important; /* Fully opaque for maximum visibility */
+  fill: rgba(255, 255, 255, 0.05) !important;
+  stroke: #f0f0f0 !important;
+  stroke-width: 4 !important;
+  stroke-opacity: 1 !important;
 }
 
-/* Responsive minimap */
-@media (max-width: 768px) {
-  .react-flow__minimap {
-    width: 120px;
-    height: 80px;
-  }
-}
+/* Responsive minimap - removed as it's now in DraggableMiniMap.css */

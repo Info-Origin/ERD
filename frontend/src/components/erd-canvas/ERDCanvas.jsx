@@ -3,7 +3,6 @@ import {
   ReactFlow,
   useReactFlow,
   ReactFlowProvider,
-  MiniMap,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -11,6 +10,7 @@ import { TableCard } from "./TableCard";
 import { RelationshipEdge } from "./RelationshipEdge";
 import { DirectRelationshipEdge } from "./DirectRelationshipEdge";
 import { CrowsFootEdge } from "./CrowsFootEdge";
+import { DraggableMiniMap } from "./DraggableMiniMap";
 import { Legend } from "./Legend";
 import { ERDHeader } from "./ERDHeader";
 import { CanvasControls } from "./CanvasControls";
@@ -356,8 +356,8 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
             }, 100); // Small delay to ensure nodes are rendered
           }}
         >
-          {/* MiniMap for navigation overview */}
-          <MiniMap
+          {/* Draggable MiniMap for navigation overview */}
+          <DraggableMiniMap
             nodeColor={(node) => {
               // Color nodes based on selection/highlight
               if (node.data?.isSelected) return '#3b82f6'; // Blue for selected
@@ -373,11 +373,7 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
             maskColor="rgba(0, 0, 0, 0.1)"
             style={{
               backgroundColor: 'var(--bg-primary)',
-              border: '1px solid var(--border-color)',
             }}
-            position="bottom-right"
-            pannable
-            zoomable
           />
         </ReactFlow>
 

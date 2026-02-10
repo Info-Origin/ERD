@@ -23,16 +23,16 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: 6px; /* Reduced gap between buttons */
   width: 100%;
-  padding: 0 var(--spacing-xs);
+  padding: 0 6px; /* More padding from toolbar edge */
 }
 
 .toolbar-divider {
   width: 80%;
   height: 1px;
   background-color: var(--border-color);
-  margin: var(--spacing-xs) 0;
+  margin: 6px 0; /* Match the gap */
 }
 
 /* First divider should align with header bottom border (60px from top) */
@@ -50,21 +50,21 @@
 }
 
 .vertical-toolbar .icon-button {
-  width: 44px;
-  height: 44px;
+  width: 36px; /* Match toolbar-icon-button size */
+  height: 36px;
   font-size: 16px;
 }
 
 .vertical-toolbar button {
-  width: 44px;
-  min-width: 44px;
+  width: 36px; /* Match toolbar-icon-button size */
+  min-width: 36px;
   font-size: var(--font-size-xs);
   padding: var(--spacing-xs);
 }
 
 .toolbar-icon-button {
-  width: 44px;
-  height: 44px;
+  width: 36px; /* Slightly smaller to fit better with more padding */
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;

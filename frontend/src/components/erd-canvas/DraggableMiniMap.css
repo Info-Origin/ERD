@@ -1,0 +1,103 @@
+.draggable-minimap-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+  z-index: 9999;
+  padding: 0;
+  pointer-events: auto; /* Ensure it receives pointer events */
+}
+
+/* When in default position */
+.draggable-minimap-wrapper.default-position {
+  position: fixed !important; /* Force fixed positioning */
+  bottom: 20px;
+  right: 20px;
+}
+
+.draggable-minimap-wrapper.dragging {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  cursor: grabbing !important;
+}
+
+/* Drag Handle */
+.minimap-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 2px 6px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  cursor: grab;
+  user-select: none;
+  min-height: 20px;
+  width: 220px; /* Match minimap content width */
+  box-sizing: border-box;
+}
+
+.minimap-drag-handle:active {
+  cursor: grabbing;
+}
+
+.minimap-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+
+.minimap-drag-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+  flex-shrink: 0;
+}
+
+.minimap-drag-handle:hover .minimap-drag-icon {
+  opacity: 1; /* Full opacity on hover */
+}
+
+/* MiniMap Content */
+.minimap-content-wrapper {
+  position: relative;
+  width: 220px;
+  height: 170px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.minimap-content-wrapper.no-pointer {
+  pointer-events: none;
+}
+
+.minimap-content-wrapper .react-flow__minimap {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  width: 200px !important;
+  height: 150px !important;
+  margin: auto !important; /* Center the minimap */
+  position: relative !important; /* Override any absolute positioning */
+}
+
+/* Responsive sizing */
+@media (max-width: 768px) {
+  .minimap-content-wrapper {
+    width: 150px;
+    height: 100px;
+  }
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] .minimap-drag-handle {
+  background: var(--bg-tertiary);
+}
