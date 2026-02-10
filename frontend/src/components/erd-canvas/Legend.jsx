@@ -60,7 +60,7 @@ export const Legend = ({ isInHeader = false }) => {
           {crowsFootMode && (
             <>
               <div className="legend-divider"></div>
-              <div className="legend-section-title">Relationships</div>
+              <div className="legend-section-title">Identifying Relationships</div>
               
               {/* One-to-One (1:1) */}
               <div className="legend-item">
@@ -110,7 +110,10 @@ export const Legend = ({ isInHeader = false }) => {
                 <span>Many-to-Many (N:M)</span>
               </div>
               
-              {/* Unique FK (1:1*) */}
+              <div className="legend-divider"></div>
+              <div className="legend-section-title">Non-identifying Relationships</div>
+              
+              {/* One-to-One (1:1) Non-identifying */}
               <div className="legend-item">
                 <div className="legend-line-sample">
                   <svg width="30" height="12" viewBox="0 0 30 12">
@@ -119,27 +122,43 @@ export const Legend = ({ isInHeader = false }) => {
                     <circle cx="26" cy="6" r="2.5" fill="var(--bg-primary)" stroke="var(--erd-line-color)" strokeWidth="1.5" />
                   </svg>
                 </div>
-                <span>Unique FK (1:1*)</span>
+                <span>One-to-One (1:1)</span>
               </div>
               
-              <div className="legend-divider"></div>
-              
-              {/* Line styles */}
+              {/* One-to-Many (1:N) Non-identifying */}
               <div className="legend-item">
                 <div className="legend-line-sample">
                   <svg width="30" height="12" viewBox="0 0 30 12">
-                    <line x1="2" y1="6" x2="28" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" />
+                    <line x1="2" y1="6" x2="28" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" strokeDasharray="3,2" />
+                    <circle cx="4" cy="6" r="2.5" fill="var(--bg-primary)" stroke="var(--erd-line-color)" strokeWidth="1.5" />
+                    <g>
+                      <line x1="26" y1="6" x2="21" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" />
+                      <line x1="26" y1="2.5" x2="21" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" />
+                      <line x1="26" y1="9.5" x2="21" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" />
+                    </g>
                   </svg>
                 </div>
-                <span>Identifying</span>
+                <span>One-to-Many (1:N)</span>
               </div>
+              
+              {/* Many-to-Many (N:M) Non-identifying */}
               <div className="legend-item">
                 <div className="legend-line-sample">
                   <svg width="30" height="12" viewBox="0 0 30 12">
-                    <line x1="2" y1="6" x2="28" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" strokeDasharray="6,3" />
+                    <line x1="2" y1="6" x2="28" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" strokeDasharray="3,2" />
+                    <g>
+                      <line x1="4" y1="6" x2="9" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" />
+                      <line x1="4" y1="2.5" x2="9" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" />
+                      <line x1="4" y1="9.5" x2="9" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" />
+                    </g>
+                    <g>
+                      <line x1="26" y1="6" x2="21" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" />
+                      <line x1="26" y1="2.5" x2="21" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" />
+                      <line x1="26" y1="9.5" x2="21" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" />
+                    </g>
                   </svg>
                 </div>
-                <span>Non-identifying</span>
+                <span>Many-to-Many (N:M)</span>
               </div>
             </>
           )}
