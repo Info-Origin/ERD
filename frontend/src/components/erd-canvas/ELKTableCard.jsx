@@ -16,7 +16,7 @@ import "./TableCard.css";
 export const ELKTableCard = memo(({ data, selected }) => {
   const { selectTable, highlightedRelationship } = useApp();
   
-  const { tableName, columns, elkPorts } = data;
+  const { tableName, columns, elkPorts, highlightedColumn } = data;
 
   // Professional column ordering: PK → FK → Others
   const getOrderedColumns = () => {
@@ -166,6 +166,9 @@ export const ELKTableCard = memo(({ data, selected }) => {
             let isHighlighted = false;
             let highlightType = null;
             
+            // NEW: Check if this column is highlighted from search
+            const isSearchHighlighted = highlightedColumn === columnName;
+            
             if (highlightedRelationship) {
               const { fromTable, fromColumn, toTable, toColumn } = highlightedRelationship;
               
@@ -182,6 +185,12 @@ export const ELKTableCard = memo(({ data, selected }) => {
               }
             }
             
+            // NEW: Search highlighting takes priority if no relationship highlighting
+            if (isSearchHighlighted && !isHighlighted) {
+              isHighlighted = true;
+              highlightType = 'search';
+            }
+            
             return (
               <div
                 key={columnName}
@@ -189,6 +198,7 @@ export const ELKTableCard = memo(({ data, selected }) => {
                   "table-card-row-highlighted": isHighlighted,
                   "table-card-row-pk-highlighted": isHighlighted && highlightType === 'pk',
                   "table-card-row-fk-highlighted": isHighlighted && highlightType === 'fk',
+                  "table-card-row-search-highlighted": isHighlighted && highlightType === 'search', // NEW: Search highlight
                 })}
                 style={{ order: index }}
               >

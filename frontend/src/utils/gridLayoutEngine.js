@@ -18,7 +18,7 @@ export const calculateGridLayout = (schemaData) => {
     return { nodes: [], edges: [] };
   }
 
-  // Grid configuration - like MySQL Workbench
+  // Grid configuration.
   const GRID_CONFIG = {
     columnsPerRow: 6, // Number of tables per row
     cellWidth: 400, // Horizontal spacing between table centers

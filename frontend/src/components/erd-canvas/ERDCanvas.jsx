@@ -50,18 +50,21 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
   // Table filtering state
   const [filteredTables, setFilteredTables] = useState(null);
   const [highlightedTable, setHighlightedTable] = useState(null); // Track highlighted table
+  const [highlightedColumn, setHighlightedColumn] = useState(null); // NEW: Track highlighted column
 
   const { nodes, edges: rawEdges, getInitialViewport, onNodesChange, onEdgesChange, forceLayout, layoutError } = useERDLayout(
     erdData,
     selectedTable,
     filteredTables, // Pass filtered tables to layout hook
-    highlightedTable // Pass highlighted table to layout hook
+    highlightedTable, // Pass highlighted table to layout hook
+    highlightedColumn // NEW: Pass highlighted column to layout hook
   );
 
   // Handle table filtering from ERD header
-  const handleTableFilter = useCallback((tableNames, lastSelectedTable) => {
+  const handleTableFilter = useCallback((tableNames, lastSelectedTable, highlightedColumnInfo = null) => {
     setFilteredTables(tableNames);
     setHighlightedTable(lastSelectedTable); // Set the highlighted table
+    setHighlightedColumn(highlightedColumnInfo); // NEW: Set the highlighted column
     
     // Auto fit view when filter changes
     if (tableNames) {

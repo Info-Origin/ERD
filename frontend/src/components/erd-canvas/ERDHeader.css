@@ -20,6 +20,9 @@
   max-width: 100%;
   overflow: visible; /* Allow dropdowns to expand */
 }
+.erd-header.schema-collapsed .erd-header-content {
+  gap: 0px; /* Reduced from 16px to 8px */
+}
 
 /* Search Section - Carousel Style */
 .erd-search-section {
@@ -960,7 +963,7 @@
 
 .carousel-chip-text {
   user-select: none;
-  max-width: 80px;
+  max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -1090,8 +1093,26 @@
 }
 
 .carousel-search-results {
-  max-height: 200px;
+  max-height: 300px;
   overflow-y: auto;
+}
+
+/* Search results header */
+.search-results-header {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e40af;
+  background: #dbeafe;
+  border-bottom: none;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .carousel-search-item {
@@ -1104,6 +1125,130 @@
 
 .carousel-search-item:hover {
   background: var(--bg-hover);
+}
+
+/* Table result styling - Simple and clean */
+.table-result {
+  font-weight: 600;
+  padding: 10px 16px;
+  border-left: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.table-result:hover {
+  background: var(--bg-hover);
+  border-left-color: #3b82f6;
+}
+
+/* Column result styling - More detailed with clear separation */
+.column-result {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  font-size: 13px;
+  border-left: 3px solid transparent;
+  background: var(--bg-primary);
+  transition: all 0.2s ease;
+}
+
+.column-result:hover {
+  background: var(--bg-hover);
+  border-left-color: #8b5cf6;
+}
+
+.column-table-name {
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 12px;
+  background: var(--bg-secondary);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.column-separator {
+  color: var(--text-tertiary);
+  font-weight: bold;
+}
+
+.column-name {
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.column-type {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  margin-left: 4px;
+  font-style: italic;
+}
+
+.badge-pk, .badge-fk, .badge-unique {
+  font-size: 9px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-weight: 700;
+  margin-left: 6px;
+  letter-spacing: 0.3px;
+}
+
+.badge-pk {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fbbf24;
+}
+
+.badge-fk {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #60a5fa;
+}
+
+.badge-unique {
+  background: #f3e8ff;
+  color: #6b21a8;
+  border: 1px solid #c084fc;
+}
+
+/* No results message */
+.no-results {
+  padding: 20px 12px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* Add visual separator between sections */
+.search-results-header:not(:first-child) {
+  margin-top: 4px;
+  border-top: none;
+}
+
+/* Dark theme adjustments for search headers */
+[data-theme="dark"] .search-results-header {
+  background: #1e3a8a;
+  color: #dbeafe;
+}
+
+/* Dark theme adjustments for badges */
+[data-theme="dark"] .badge-pk {
+  background: #78350f;
+  color: #fef3c7;
+  border-color: #92400e;
+}
+
+[data-theme="dark"] .badge-fk {
+  background: #1e3a8a;
+  color: #dbeafe;
+  border-color: #1e40af;
+}
+
+[data-theme="dark"] .badge-unique {
+  background: #581c87;
+  color: #f3e8ff;
+  border-color: #6b21a8;
 }
 
 /* Manage Dropdown */

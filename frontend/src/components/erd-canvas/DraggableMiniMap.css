@@ -5,9 +5,9 @@
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   background: var(--bg-primary);
-  border: 1px solid var(--border-color);
+  border: 3px solid var(--border-color);
   overflow: hidden;
-  transition: box-shadow 0.2s ease;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
   z-index: 9999;
   padding: 0;
   pointer-events: auto; /* Ensure it receives pointer events */
@@ -21,7 +21,7 @@
 }
 
 .draggable-minimap-wrapper.dragging {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
   cursor: grabbing !important;
 }
 
@@ -38,6 +38,7 @@
   min-height: 20px;
   width: 220px; /* Match minimap content width */
   box-sizing: border-box;
+  border-radius: 8px 8px 0 0;
 }
 
 .minimap-drag-handle:active {
