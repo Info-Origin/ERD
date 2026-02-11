@@ -4,8 +4,7 @@
   border: 1px solid var(--border-color);
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  min-width: 180px;
-  max-width: 220px;
+  width: 220px; /* Fixed width to prevent glitching */
   transition: all 0.2s ease;
   overflow: visible; /* Allow header to be visible */
   display: flex;
@@ -210,8 +209,7 @@
   .erd-legend:not(.in-header) {
     right: 12px;
     top: 12px;
-    min-width: 130px;
-    max-width: 180px;
+    width: 180px; /* Fixed width */
   }
 }
 
@@ -219,8 +217,7 @@
   .erd-legend:not(.in-header) {
     right: 8px;
     top: 8px;
-    min-width: 120px;
-    max-width: 160px;
+    width: 160px; /* Fixed width */
   }
   
   .legend-item {
@@ -242,8 +239,7 @@
   .erd-legend:not(.in-header) {
     right: 4px;
     top: 4px;
-    min-width: 110px;
-    max-width: 140px;
+    width: 140px; /* Fixed width */
   }
   
   .legend-item {
@@ -258,5 +254,93 @@
   .legend-items {
     padding: 6px 8px;
     gap: 4px;
+  }
+}
+
+/* Relationship Help Notification */
+.relationship-help-notification {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 16px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  z-index: 10000;
+  max-width: 320px;
+  animation: slideInRight 0.3s ease;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.help-notification-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.help-notification-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.help-notification-text strong {
+  font-weight: 600;
+  color: #ffd700;
+}
+
+.help-notification-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.help-notification-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.help-notification-btn-primary {
+  background: white;
+  color: #667eea;
+}
+
+.help-notification-btn-primary:hover {
+  background: #f0f0f0;
+  transform: translateY(-1px);
+}
+
+.help-notification-btn-secondary {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.help-notification-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .relationship-help-notification {
+    top: 60px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
   }
 }

@@ -32,6 +32,7 @@ export const TableCard = memo(({ data }) => {
     selectTable: selectTableForRelationship,
     isTableSelected,
     getTableSelectionOrder,
+    relationshipType,
   } = useRelationshipCreation();
 
   const { tableName, columns, isSelected, isHighlighted, isParent } = data;
@@ -284,9 +285,20 @@ export const TableCard = memo(({ data }) => {
         {isSelectedForRelationship && (
           <span 
             className="relationship-selection-badge"
-            title={relationshipSelectionOrder === 1 ? "Parent table (1 side)" : "Child table (N side)"}
+            title={
+              relationshipType?.cardinality === '1:1' 
+                ? (relationshipSelectionOrder === 1 ? "Child table (1 side - will receive FK)" : "Parent table (1 side - will provide PK)")
+                : relationshipType?.cardinality === 'N:M'
+                ? "Many-to-Many (will create junction table)"
+                : (relationshipSelectionOrder === 1 ? "Child table (N side - will receive FK)" : "Parent table (1 side - will provide PK)")
+            }
           >
-            {relationshipSelectionOrder === 1 ? "1" : "N"}
+            {relationshipType?.cardinality === '1:1' 
+              ? "1" 
+              : relationshipType?.cardinality === 'N:M'
+              ? "N"
+              : (relationshipSelectionOrder === 1 ? "N" : "1")
+            }
           </span>
         )}
         
@@ -315,8 +327,6 @@ export const TableCard = memo(({ data }) => {
           </span>
         )}
         
-        <span className="table-card-count">{columnEntries.length}</span>
-
         {/* REMOVED: Edit mode toggle and structure editing buttons */}
       </div>
 

@@ -69,27 +69,36 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
         );
         
         const newEdges = distributedRelationships.map((rel) => {
+          // For visual display: parent should be source (circle), child should be target (crow's foot)
+          // But relationship is stored as: fromTable=child, toTable=parent
+          // So we need to SWAP for visual rendering
+          
+          const visualSource = rel.toTable;   // Parent (will get circle)
+          const visualTarget = rel.fromTable; // Child (will get crow's foot)
+          
+          // Generate handles based on VISUAL direction (swapped)
           const sourceHandle = generateHandleId(
-            rel.fromTable, 
-            rel.sourceSide, 
-            rel.sourcePortIndex, 
+            visualSource,      // Parent
+            rel.targetSide,    // Use parent's side (was targetSide)
+            rel.targetPortIndex,
             'source'
           );
           const targetHandle = generateHandleId(
-            rel.toTable, 
-            rel.targetSide, 
-            rel.targetPortIndex, 
+            visualTarget,      // Child
+            rel.sourceSide,    // Use child's side (was sourceSide)
+            rel.sourcePortIndex,
             'target'
           );
 
           return {
             id: `db-rel-${rel.fromTable}.${rel.fromColumn}->${rel.toTable}.${rel.toColumn}`,
-            source: rel.fromTable,
-            target: rel.toTable,
+            source: visualSource,  // Parent (circle)
+            target: visualTarget,  // Child (crow's foot)
             sourceHandle: sourceHandle,
             targetHandle: targetHandle,
             type: 'relationship',
             data: {
+              // Keep original DB direction in data for FK detection
               fromTable: rel.fromTable,
               fromColumn: rel.fromColumn,
               toTable: rel.toTable,
@@ -208,28 +217,36 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
       );
       
       const simpleEdges = distributedRelationships.map((rel) => {
-        // Generate smart handle IDs based on port distribution
+        // For visual display: parent should be source (circle), child should be target (crow's foot)
+        // But relationship is stored as: fromTable=child, toTable=parent
+        // So we need to SWAP for visual rendering
+        
+        const visualSource = rel.toTable;   // Parent (will get circle)
+        const visualTarget = rel.fromTable; // Child (will get crow's foot)
+        
+        // Generate handles based on VISUAL direction (swapped)
         const sourceHandle = generateHandleId(
-          rel.fromTable, 
-          rel.sourceSide, 
-          rel.sourcePortIndex, 
+          visualSource,      // Parent
+          rel.targetSide,    // Use parent's side (was targetSide)
+          rel.targetPortIndex,
           'source'
         );
         const targetHandle = generateHandleId(
-          rel.toTable, 
-          rel.targetSide, 
-          rel.targetPortIndex, 
+          visualTarget,      // Child
+          rel.sourceSide,    // Use child's side (was sourceSide)
+          rel.sourcePortIndex,
           'target'
         );
 
         return {
           id: `db-rel-${rel.fromTable}.${rel.fromColumn}->${rel.toTable}.${rel.toColumn}`,
-          source: rel.fromTable,
-          target: rel.toTable,
+          source: visualSource,  // Parent (circle)
+          target: visualTarget,  // Child (crow's foot)
           sourceHandle: sourceHandle,
           targetHandle: targetHandle,
           type: 'relationship',
           data: {
+            // Keep original DB direction in data for FK detection
             fromTable: rel.fromTable,
             fromColumn: rel.fromColumn,
             toTable: rel.toTable,

@@ -70,16 +70,15 @@ export const createOneToManyRelationship = (schemaModel, parentTable, childTable
   updatedSchema.tables[childTable].columns[fkColumnName] = fkColumn;
   
   // Create relationship record
-  // IMPORTANT: For visual rendering, we need to swap the direction
-  // Database FK: child -> parent (FK in child points to parent PK)
-  // Visual rendering: parent -> child (line goes from parent to child)
-  // So we store: fromTable=parent, toTable=child for correct visual display
+  // Store in DATABASE direction (same as backend): child -> parent (FK -> PK)
+  // This matches how existing relationships from database are stored
   const relationship = {
-    fromTable: parentTable,  // Visual source (parent with "1")
-    fromColumn: parentPKName,
-    toTable: childTable,     // Visual target (child with "N")
-    toColumn: fkColumnName,
+    fromTable: childTable,     // Table with FK (child)
+    fromColumn: fkColumnName,  // FK column
+    toTable: parentTable,      // Table with PK (parent)
+    toColumn: parentPKName,    // PK column
     type: isOneToOne ? 'ONE_TO_ONE' : 'ONE_TO_MANY',
+    cardinalityType: relationshipType.cardinality, // Use the cardinality from relationshipType (1:1 or 1:N)
     constraintName: `fk_${childTable}_${fkColumnName}`,
     isVirtual: true, // Mark as user-created
     lineStyle: relationshipType.lineStyle,

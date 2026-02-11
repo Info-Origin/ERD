@@ -85,7 +85,8 @@ export const RelationshipCreationProvider = ({ children }) => {
 
   const completeRelationshipCreation = useCallback(() => {
     if (selectedTables.length === 2 && relationshipType) {
-      const [parentTable, childTable] = selectedTables;
+      // MySQL Workbench behavior: 1st click = child (N), 2nd click = parent (1)
+      const [childTable, parentTable] = selectedTables;
       
       // This will be called by the parent component to actually create the relationship
       const relationshipData = {
