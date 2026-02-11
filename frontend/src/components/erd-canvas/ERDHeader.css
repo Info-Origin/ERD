@@ -19,6 +19,7 @@
   gap: 16px;
   max-width: 100%;
   overflow: visible; /* Allow dropdowns to expand */
+  min-width: 0; /* Allow flex children to shrink */
 }
 .erd-header.schema-collapsed .erd-header-content {
   gap: 0px; /* Reduced from 16px to 8px */
@@ -30,7 +31,7 @@
   flex-direction: column;
   gap: 8px;
   flex: 1; /* Take available space */
-  min-width: 300px; /* Minimum width */
+  min-width: 200px; /* Reduced minimum width for narrow viewports */
   max-width: 600px; /* Maximum width */
   flex-shrink: 1; /* Allow shrinking */
   position: relative;
@@ -243,6 +244,11 @@
   display: flex;
   align-items: flex-start;
   gap: 16px;
+}
+
+/* Add extra gap when schema is collapsed */
+.erd-header.schema-collapsed .erd-filter-section {
+  margin-left: 32px; /* Add gap between search and children when collapsed */
 }
 
 /* Filter Dropdown (like Legend) */
@@ -821,21 +827,92 @@
   background: var(--bg-secondary);
 }
 
-/* Table Carousel Container */
-.table-carousel-container {
+/* Modern Search Container */
+.modern-search-container {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: var(--bg-secondary);
+  gap: 12px;
+  background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 6px;
-  height: 40px;
-  flex: 0 0 auto; /* Don't grow, fixed size */
-  width: fit-content; /* Only take needed space */
-  max-width: 100%; /* Allow full width when needed */
-  overflow: hidden;
+  border-radius: 24px;
+  padding: 8px 16px;
+  height: 44px;
+  width: 100%;
+  max-width: 100%; /* Use full available width */
   transition: all 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  min-width: 0; /* Allow shrinking below content size */
+}
+
+.modern-search-container:focus-within {
+    border-color: var(--primary); /* Keep same border color on focus */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow instead of blue */
+}
+
+/* Search Icon Image */
+.search-icon-img {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+/* Make search icon white/lighter in dark theme */
+[data-theme="dark"] .search-icon-img {
+  filter: invert(1) brightness(1.2);
+  opacity: 0.8;
+}
+
+/* Modern Search Input */
+.modern-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  font-weight: 400;
+  box-shadow: none; /* Remove any box shadow */
+  min-width: 0; /* Allow input to shrink below its content */
+  width: 100%; /* Take full available space */
+}
+
+.modern-search-input:focus {
+  outline: none;
+  border: none;
+  box-shadow: none; /* Remove focus box shadow */
+}
+
+.modern-search-input::placeholder {
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+/* Modern Dropdown Button */
+.modern-dropdown-button {
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.modern-dropdown-button:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--primary);
+}
+
+.modern-dropdown-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* Responsive carousel sizing */
@@ -862,113 +939,126 @@
   }
 }
 
-/* Carousel Arrows */
-.carousel-arrow {
+/* Chips Overlay - Appears below search bar */
+.chips-overlay {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 4px;
-  width: 28px;
-  height: 28px;
+  border-radius: 12px;
+  padding: 8px 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1001;
+  max-width: 100%; /* Use full available width */
+  min-width: 0; /* Allow shrinking */
+}
+
+/* Chips Container - Single row with horizontal scroll */
+.chips-container {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: bold;
-  color: var(--text-primary);
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
-
-.carousel-arrow:hover:not(:disabled) {
-  background: var(--bg-hover);
-  border-color: var(--primary);
-}
-
-.carousel-arrow:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* Table Carousel */
-.table-carousel {
-  flex: 1;
-  overflow: hidden;
-  height: 28px;
-  max-width: 230px; /* Limit to show ~2.5 chips (each chip ~100px) */
-  min-width: 230px; /* Fixed width for consistent display */
-  transition: max-width 0.3s ease; /* Smooth transition */
-}
-
-/* Expanded carousel space when schema is collapsed */
-.erd-header.schema-collapsed .table-carousel {
-  min-width: 400px; /* More space when schema is collapsed */
-}
-
-.table-carousel-track {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  height: 100%;
-  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap; /* Prevent wrapping - keep in single row */
+  overflow-x: hidden; /* Hide scroll by default */
+  overflow-y: hidden; /* Hide vertical scroll */
+  max-height: none; /* Remove max height */
+  scrollbar-width: none; /* Hide scrollbar for Firefox */
+  -ms-overflow-style: none; /* Hide scrollbar for IE/Edge */
   scroll-behavior: smooth; /* Smooth scrolling */
-  padding: 0 2px; /* Small padding to prevent cutoff */
+  padding: 2px 0; /* Small padding for better scroll experience */
+  position: relative; /* For positioning the +X more button */
 }
 
-.table-carousel-track::-webkit-scrollbar {
+/* Show scrollbar when expanded */
+.chips-container.show-all {
+  overflow-x: auto; /* Enable horizontal scrolling when showing all */
+  scrollbar-width: thin; /* Show thin scrollbar for Firefox */
+  -ms-overflow-style: auto; /* Show scrollbar for IE/Edge */
+}
+
+/* Show scrollbar for Chrome/Safari/Opera when expanded */
+.chips-container.show-all::-webkit-scrollbar {
+  display: block;
+  height: 6px;
+}
+
+.chips-container.show-all::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 3px;
+}
+
+.chips-container.show-all::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.chips-container.show-all::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Hide scrollbar for Chrome/Safari/Opera by default */
+.chips-container::-webkit-scrollbar {
   display: none;
 }
 
-/* Carousel Table Chips */
-.carousel-table-chip {
+/* Wrapper for chips to allow proper scrolling */
+.chips-wrapper {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Chip Items */
+.chip-item {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  background: var(--primary-bg);
-  border: 1px solid var(--primary);
-  border-radius: 12px;
-  padding: 2px 6px 2px 8px;
-  font-size: 11px;
-  color: var(--primary);
+  gap: 6px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 4px 8px 4px 12px;
+  font-size: 12px;
+  color: var(--text-primary);
   font-weight: 500;
   white-space: nowrap;
-  flex-shrink: 0;
   transition: all 0.2s ease;
-  cursor: pointer; /* Make chips clickable */
-  user-select: none; /* Prevent text selection */
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0; /* Prevent chips from shrinking */
 }
 
-.carousel-table-chip:hover {
-  background: var(--primary);
-  color: white;
-  transform: translateY(-1px); /* Subtle lift on hover */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.chip-item:hover {
+  background: var(--bg-hover);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
-/* Active chip styling */
-.carousel-table-chip.active {
+.chip-item.active {
   background: var(--primary);
   color: white;
-  border-color: var(--primary-hover);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
   font-weight: 600;
 }
 
-.carousel-table-chip.active:hover {
+.chip-item.active:hover {
   background: var(--primary-hover);
   border-color: var(--primary-hover);
+  box-shadow: 0 3px 10px rgba(59, 130, 246, 0.3);
 }
 
-.carousel-chip-text {
+.chip-text {
   user-select: none;
-  max-width: 120px;
+  max-width: 150px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.carousel-chip-remove {
+.chip-remove {
   background: none;
   border: none;
   color: inherit;
@@ -987,109 +1077,72 @@
   flex-shrink: 0;
 }
 
-.carousel-chip-remove:hover {
+.chip-remove:hover {
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* Active chip remove button styling */
-.carousel-table-chip.active .carousel-chip-remove:hover {
+.chip-item.active .chip-remove:hover {
   background: rgba(255, 255, 255, 0.3);
 }
 
-/* Non-active chip remove button styling */
-.carousel-table-chip:not(.active):hover .carousel-chip-remove:hover {
+.chip-item:not(.active):hover .chip-remove:hover {
   background: rgba(255, 255, 255, 0.3);
 }
 
-/* Carousel Placeholder */
-.carousel-placeholder {
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-style: italic;
-  padding: 0 8px;
-  white-space: nowrap;
-}
-
-/* Add and Dropdown Buttons */
-.carousel-add-button,
-.carousel-dropdown-button {
-  background: var(--primary);
-  border: none;
-  border-radius: 4px;
-  width: 28px;
-  height: 28px;
-  display: flex;
+/* +X more button */
+.chip-more-button {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
-  font-size: 16px;
-  font-weight: bold;
-  color: white;
   transition: all 0.2s ease;
   flex-shrink: 0;
+  margin-left: auto; /* Push to the right */
+  position: sticky; /* Stick to the right edge */
+  right: 0; /* Stick to right */
+  background: var(--bg-primary); /* Match overlay background */
+  z-index: 1; /* Above chips */
+  box-shadow: -4px 0 8px rgba(0, 0, 0, 0.05); /* Subtle shadow to show it's on top */
 }
 
-.carousel-add-button:hover {
-  background: var(--primary-hover);
+.chip-more-button:hover {
+  background: var(--bg-hover);
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: -4px 0 8px rgba(0, 0, 0, 0.05), 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
-.carousel-dropdown-button:hover:not(:disabled) {
-  background: var(--primary-hover);
-}
 
-.carousel-dropdown-button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
 
-/* Add Dropdown */
+/* Add Dropdown - Below chips overlay */
 .carousel-add-dropdown {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 8px);
   left: 0;
   right: 0;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  z-index: 1002;
-  margin-top: 4px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 1003; /* Above chips */
+  max-height: 400px;
+  overflow: hidden;
+  max-width: 100%; /* Use full available width */
+  min-width: 0; /* Allow shrinking */
 }
 
-.carousel-add-dropdown input {
-  outline: none !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-
-.carousel-add-dropdown input:focus {
-  outline: none !important;
-  border: none !important;
-  box-shadow: none !important;
-  border-bottom: 1px solid var(--border-color) !important;
-}
-
-.carousel-search-input {
-  width: 100%;
-  padding: 8px 12px;
-  border: none;
-  border-bottom: 1px solid var(--border-color);
-  background: transparent;
-  color: var(--text-primary);
-  font-size: 14px;
-  outline: none;
-  box-shadow: none; /* Remove any box shadow */
-}
-
-.carousel-search-input:focus {
-  outline: none;
-  border: none;
-  border-bottom: 1px solid var(--border-color);
-  box-shadow: none; /* Remove focus box shadow */
-}
-
-.carousel-search-input::placeholder {
-  color: var(--text-secondary);
+/* Adjust dropdown position when chips are visible */
+.erd-search-section:has(.chips-overlay) .carousel-add-dropdown {
+  top: calc(100% + 60px); /* Below chips overlay (44px search + 8px gap + 40px chips + 8px gap) */
 }
 
 .carousel-search-results {
@@ -1184,33 +1237,6 @@
   font-style: italic;
 }
 
-.badge-pk, .badge-fk, .badge-unique {
-  font-size: 9px;
-  padding: 2px 5px;
-  border-radius: 4px;
-  font-weight: 700;
-  margin-left: 6px;
-  letter-spacing: 0.3px;
-}
-
-.badge-pk {
-  background: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fbbf24;
-}
-
-.badge-fk {
-  background: #dbeafe;
-  color: #1e40af;
-  border: 1px solid #60a5fa;
-}
-
-.badge-unique {
-  background: #f3e8ff;
-  color: #6b21a8;
-  border: 1px solid #c084fc;
-}
-
 /* No results message */
 .no-results {
   padding: 20px 12px;
@@ -1232,37 +1258,17 @@
   color: #dbeafe;
 }
 
-/* Dark theme adjustments for badges */
-[data-theme="dark"] .badge-pk {
-  background: #78350f;
-  color: #fef3c7;
-  border-color: #92400e;
-}
-
-[data-theme="dark"] .badge-fk {
-  background: #1e3a8a;
-  color: #dbeafe;
-  border-color: #1e40af;
-}
-
-[data-theme="dark"] .badge-unique {
-  background: #581c87;
-  color: #f3e8ff;
-  border-color: #6b21a8;
-}
-
-/* Manage Dropdown */
+/* Manage Dropdown - Overlay style */
 .carousel-manage-dropdown {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 8px); /* 8px gap below search bar */
   right: 0;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  border-radius: 12px; /* Rounded for modern look */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12); /* Elevated shadow */
   z-index: 1002;
-  margin-top: 4px;
-  min-width: 200px;
+  min-width: 220px;
 }
 
 .carousel-manage-header {

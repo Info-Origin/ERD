@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { Legend } from "./Legend";
 import { useVirtualSchema } from "../../context/VirtualSchemaContext";
 import "./ERDHeader.css";
+import "./SearchBadge.css"; // Import search-specific badge styles
 
 export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
   const { workingSchema } = useVirtualSchema();
@@ -17,9 +18,43 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
   const [showDirectChildrenOnly, setShowDirectChildrenOnly] = useState(false); // Toggle between direct and full hierarchy
   const [hideNestedChildren, setHideNestedChildren] = useState(false); // Checkbox to hide all nested children (depth > 0)
   const [hideDirectChildren, setHideDirectChildren] = useState(false); // Checkbox to hide all direct children
+  const [showAllChips, setShowAllChips] = useState(false); // NEW: Toggle to show all chips
   const carouselRef = useRef(null);
+  const searchContainerRef = useRef(null); // NEW: Ref for click outside detection
+  const manageDropdownRef = useRef(null); // NEW: Ref for manage dropdown
+  const childrenDropdownRef = useRef(null); // NEW: Ref for children dropdown
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+
+  // Click outside to close dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Close search dropdown if clicking outside search container
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+        setIsAddDropdownOpen(false);
+      }
+      
+      // Close manage dropdown if clicking outside both the dropdown AND the button
+      const dropdownButton = document.querySelector('.modern-dropdown-button');
+      if (manageDropdownRef.current && 
+          !manageDropdownRef.current.contains(event.target) &&
+          dropdownButton && 
+          !dropdownButton.contains(event.target)) {
+        setIsManageDropdownOpen(false);
+      }
+      
+      // Close children dropdown if clicking outside the entire filter dropdown
+      if (childrenDropdownRef.current && !childrenDropdownRef.current.contains(event.target)) {
+        setChildrenExpanded(false);
+      }
+    };
+
+    // Use capture phase to ensure we catch the event before it's stopped by child components
+    document.addEventListener('mousedown', handleClickOutside, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside, true);
+    };
+  }, []);
 
   // Get all table names for autocomplete
   const tableNames = useMemo(() => {
@@ -642,80 +677,31 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
   return (
     <div className={`erd-header ${isSchemaCollapsed ? 'schema-collapsed' : ''}`}>
       <div className="erd-header-content">
-        {/* Search Section - Carousel Style */}
-        <div className="erd-search-section">
-          <div className="table-carousel-container">
-            {/* Left Arrow */}
-            <button 
-              className="carousel-arrow carousel-arrow-left"
-              onClick={() => scrollCarousel('left')}
-              disabled={!canScrollLeft}
-              aria-label="Scroll left"
-              title="Scroll table chips left"
-            >
-              ‹
-            </button>
+        {/* Search Section - Modern Style */}
+        <div className="erd-search-section" ref={searchContainerRef}>
+          {/* Search Input Container */}
+          <div className="modern-search-container">
+            {/* Search Icon */}
+            <img 
+              src="/search.png" 
+              alt="Search" 
+              className="search-icon-img"
+            />
 
-            {/* Selected Tables Carousel */}
-            <div className="table-carousel">
-              <div className="table-carousel-track" ref={carouselRef}>
-                {Array.from(selectedTables).map(tableName => (
-                  <div 
-                    key={tableName} 
-                    className={`carousel-table-chip ${tableName === lastSelectedTable ? 'active' : ''}`}
-                    onClick={() => handleChipClick(tableName)}
-                    title={selectedColumns[tableName] ? `${tableName}.${selectedColumns[tableName]}` : tableName}
-                  >
-                    <span className="carousel-chip-text">
-                      {selectedColumns[tableName] ? `${tableName}.${selectedColumns[tableName]}` : tableName}
-                    </span>
-                    <button
-                      className="carousel-chip-remove"
-                      onClick={(e) => {
-                        e.stopPropagation(); // Prevent chip click when removing
-                        handleTableRemove(tableName);
-                      }}
-                      aria-label={`Remove ${tableName}`}
-                      title={`Remove ${tableName}`} // Add tooltip to remove button
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-                {selectedTables.size === 0 && (
-                  <div className="carousel-placeholder">
-                    Search Here For Tables And Columns....
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Right Arrow */}
-            <button 
-              className="carousel-arrow carousel-arrow-right"
-              onClick={() => scrollCarousel('right')}
-              disabled={!canScrollRight}
-              aria-label="Scroll right"
-              title="Scroll table chips right"
-            >
-              ›
-            </button>
-
-            {/* Add Button */}
-            <button 
-              className="carousel-add-button"
-              onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}
-              aria-label="Search tables"
-              title="Search and add tables to ERD"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" style={{width: '16px', height: '16px'}}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-              </svg>
-            </button>
+            {/* Search Input */}
+            <input
+              type="text"
+              placeholder="Search Here For Tables And Columns..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+              onFocus={() => searchQuery.length > 0 && setIsAddDropdownOpen(true)}
+              className="modern-search-input"
+              autoComplete="off"
+            />
 
             {/* Dropdown Button */}
             <button 
-              className="carousel-dropdown-button"
+              className="modern-dropdown-button"
               onClick={() => setIsManageDropdownOpen(!isManageDropdownOpen)}
               disabled={selectedTables.size === 0}
               aria-label="Manage selected tables"
@@ -725,17 +711,49 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
             </button>
           </div>
 
+          {/* Selected Tables Chips - Overlay below search */}
+          {selectedTables.size > 0 && (
+            <div className="chips-overlay">
+              <div className={`chips-container ${showAllChips ? 'show-all' : ''}`} ref={carouselRef}>
+                {Array.from(selectedTables).slice(0, showAllChips ? selectedTables.size : 3).map(tableName => (
+                  <div 
+                    key={tableName} 
+                    className={`chip-item ${tableName === lastSelectedTable ? 'active' : ''}`}
+                    onClick={() => handleChipClick(tableName)}
+                    title={selectedColumns[tableName] ? `${tableName}.${selectedColumns[tableName]}` : tableName}
+                  >
+                    <span className="chip-text">
+                      {selectedColumns[tableName] ? `${tableName}.${selectedColumns[tableName]}` : tableName}
+                    </span>
+                    <button
+                      className="chip-remove"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTableRemove(tableName);
+                      }}
+                      aria-label={`Remove ${tableName}`}
+                      title={`Remove ${tableName}`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                {selectedTables.size > 3 && !showAllChips && (
+                  <button 
+                    className="chip-more-button"
+                    onClick={() => setShowAllChips(true)}
+                    title={`Show ${selectedTables.size - 3} more chip(s)`}
+                  >
+                    +{selectedTables.size - 3} more
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Add Table Dropdown */}
           {isAddDropdownOpen && (
             <div className="carousel-add-dropdown">
-              <input
-                type="text"
-                placeholder="Search tables or columns..."
-                value={searchQuery}
-                onChange={handleSearchChange}
-                className="carousel-search-input"
-                autoFocus
-              />
               <div className="carousel-search-results">
                 {/* Tables Section */}
                 {filteredTableNames.filter(tableName => !selectedTables.has(tableName)).length > 0 && (
@@ -791,9 +809,9 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
                         <span className="column-separator">.</span>
                         <span className="column-name">{col.columnName}</span>
                         <span className="column-type">({col.columnType})</span>
-                        {col.isPK && <span className="badge-pk">PK</span>}
-                        {col.isFK && <span className="badge-fk">FK</span>}
-                        {col.isUnique && <span className="badge-unique">UQ</span>}
+                        {col.isPK && <span className="search-badge-pk">PK</span>}
+                        {col.isFK && <span className="search-badge-fk">FK</span>}
+                        {col.isUnique && <span className="search-badge-unique">UQ</span>}
                       </div>
                     ))}
                   </>
@@ -811,7 +829,7 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
 
           {/* Manage Tables Dropdown */}
           {isManageDropdownOpen && selectedTables.size > 0 && (
-            <div className="carousel-manage-dropdown">
+            <div className="carousel-manage-dropdown" ref={manageDropdownRef}>
               <div className="carousel-manage-header">Selected Tables ({selectedTables.size})</div>
               <div className="carousel-manage-list">
                 {Array.from(selectedTables).map(tableName => (
@@ -849,7 +867,7 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
           {selectedTables.size > 0 && displayHierarchyData.length > 0 && (
             <>
               {/* Child Tables with Hierarchy */}
-              <div className="filter-dropdown">
+              <div className="filter-dropdown" ref={childrenDropdownRef}>
                 <div className="filter-dropdown-header" onClick={() => setChildrenExpanded(!childrenExpanded)}>
                   <span className="filter-dropdown-title">
                     Children ({showDirectChildrenOnly 

@@ -1,0 +1,51 @@
+/* Search Bar Specific Badge Styles */
+/* These styles are ONLY for badges in the search dropdown results */
+/* They do NOT affect Legend or TableCard badges */
+
+.search-badge-pk, 
+.search-badge-fk, 
+.search-badge-unique {
+  font-size: 9px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-weight: 700;
+  margin-left: 6px;
+  letter-spacing: 0.3px;
+}
+
+.search-badge-pk {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fbbf24;
+}
+
+.search-badge-fk {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #60a5fa;
+}
+
+.search-badge-unique {
+  background: #f3e8ff;
+  color: #6b21a8;
+  border: 1px solid #c084fc;
+}
+
+/* Dark theme adjustments for search badges */
+[data-theme="dark"] .search-badge-pk {
+  background: #78350f;
+  color: #fef3c7;
+  border-color: #92400e;
+}
+
+[data-theme="dark"] .search-badge-fk {
+  background: #1e3a8a;
+  color: #dbeafe;
+  border-color: #1e40af;
+}
+
+[data-theme="dark"] .search-badge-unique {
+  background: #581c87;
+  color: #f3e8ff;
+  border-color: #6b21a8;
+}
