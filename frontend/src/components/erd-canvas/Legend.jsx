@@ -53,17 +53,6 @@ export const Legend = ({ isInHeader = false }) => {
     setShowHelpNotification(false);
   };
 
-  // Auto-dismiss notification after 5 seconds
-  useEffect(() => {
-    if (showHelpNotification) {
-      const timer = setTimeout(() => {
-        setShowHelpNotification(false);
-      }, 5000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [showHelpNotification]);
-
   const isRelationshipSelected = (relType) => {
     return relationshipType?.id === relType.id;
   };
@@ -87,15 +76,6 @@ export const Legend = ({ isInHeader = false }) => {
       {/* Items - ONLY WHEN EXPANDED */}
       {isExpanded && (
         <div className="legend-items">
-          {/* Show instruction when in relationship creation mode */}
-          {relationshipType && (
-            <div className="legend-instruction">
-              <span style={{ fontSize: '10px', color: '#9333ea', fontWeight: '600' }}>
-                Click two tables to create relationship
-              </span>
-            </div>
-          )}
-          
           <div className="legend-item">
             <Badge variant={BADGE_VARIANTS.PK}>PK</Badge>
             <span>Primary Key</span>
@@ -125,6 +105,16 @@ export const Legend = ({ isInHeader = false }) => {
           {crowsFootMode && (
             <>
               <div className="legend-divider"></div>
+              
+              {/* Show instruction when in relationship creation mode */}
+              {relationshipType && (
+                <div className="legend-instruction">
+                  <span style={{ fontSize: '10px', color: '#9333ea', fontWeight: '600' }}>
+                    Click two tables to create relationship
+                  </span>
+                </div>
+              )}
+              
               <div className="legend-section-title">Identifying Relationships</div>
               
               {/* One-to-One (1:1) */}
