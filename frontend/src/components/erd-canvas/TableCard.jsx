@@ -199,14 +199,36 @@ export const TableCard = memo(({ data }) => {
     }
   };
 
-  // Handle right-click context menu
+  // Handle right-click context menu with smart positioning
   const handleContextMenu = (e) => {
     e.preventDefault();
     e.stopPropagation();
     
+    // Get viewport dimensions
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Menu dimensions (approximate)
+    const menuWidth = 180;
+    const menuHeight = 60; // Approximate height for one item
+    
+    // Calculate position
+    let x = e.clientX;
+    let y = e.clientY;
+    
+    // Adjust if menu would go outside viewport horizontally
+    if (x + menuWidth > viewportWidth) {
+      x = viewportWidth - menuWidth - 10;
+    }
+    
+    // Adjust if menu would go outside viewport vertically
+    if (y + menuHeight > viewportHeight) {
+      y = viewportHeight - menuHeight - 10;
+    }
+    
     setContextMenu({
       isOpen: true,
-      position: { x: e.clientX, y: e.clientY }
+      position: { x, y }
     });
   };
 

@@ -51,7 +51,7 @@
   transition: all var(--transition-fast);
   background-color: var(--bg-primary);
   border: 1px solid #3b82f6;
-  cursor: pointer;
+  cursor: pointer !important; /* Force pointer cursor */
 }
 
 .canvas-control-button.compare-button:hover:not(:disabled) {

@@ -360,6 +360,14 @@
   background-color: var(--bg-hover);
 }
 
+/* Disable hover background on highlighted rows to keep text visible */
+.table-card-row-highlighted .column-name:hover,
+.table-card-row-pk-highlighted .column-name:hover,
+.table-card-row-fk-highlighted .column-name:hover,
+.table-card-row-search-highlighted .column-name:hover {
+  background-color: transparent !important;
+}
+
 .column-type {
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);

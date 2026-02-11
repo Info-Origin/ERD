@@ -140,28 +140,36 @@
 
 /* Clickable legend items for relationship creation */
 .legend-item-clickable {
-  cursor: pointer;
+  cursor: pointer !important; /* Force pointer cursor */
   padding: 4px 6px;
-  margin: -4px -6px;
   border-radius: 4px;
   transition: all 0.2s ease;
   border: 2px solid transparent;
+  user-select: none; /* Prevent text selection */
 }
 
 .legend-item-clickable:hover {
   background-color: var(--bg-hover);
   color: var(--text-primary);
+  cursor: pointer !important; /* Ensure pointer on hover */
+  transform: translateX(2px); /* Slight movement to show it's interactive */
 }
 
 .legend-item-clickable.legend-item-selected {
   background-color: rgba(59, 130, 246, 0.1);
   border-color: #3b82f6;
   color: var(--text-primary);
+  cursor: pointer !important;
 }
 
 .legend-item-clickable.legend-item-selected .legend-line-sample svg line,
 .legend-item-clickable.legend-item-selected .legend-line-sample svg circle {
   stroke: #3b82f6;
+}
+
+/* Ensure SVG elements don't block pointer cursor */
+.legend-line-sample svg {
+  pointer-events: none;
 }
 
 .legend-item span {

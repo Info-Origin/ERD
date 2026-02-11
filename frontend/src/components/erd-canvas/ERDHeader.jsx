@@ -568,7 +568,13 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
       newSelectedChildren.delete(childTable);
       
       // Find and remove all descendants of this child recursively
+      const visited = new Set(); // Prevent infinite loops
+      
       const removeAllDescendants = (tableName) => {
+        // Prevent infinite recursion by tracking visited tables
+        if (visited.has(tableName)) return;
+        visited.add(tableName);
+        
         hierarchyData.forEach(hierarchy => {
           const findAndRemoveRecursively = (children) => {
             children.forEach(child => {
