@@ -10,7 +10,7 @@ import { calculateHybridLayout } from "../utils/hybridLayoutEngine";
  * Simple ERD Layout Hook
  * Basic layout without complex ELK.js routing
  */
-export const useERDLayout = (erdData, selectedTable, filteredTables = null, highlightedTable = null) => {
+export const useERDLayout = (erdData, selectedTable, filteredTables = null, highlightedTable = null, highlightedColumn = null) => {
   const { 
     tablePositions, 
     updateTablePosition
@@ -184,7 +184,8 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
           ...node.data,
           isSelected: node.id === selectedTable,
           isHighlighted: node.id === highlightedTable,
-          isParent: parentTables.has(node.id) // Mark as parent table
+          isParent: parentTables.has(node.id), // Mark as parent table
+          highlightedColumn: highlightedColumn?.tableName === node.id ? highlightedColumn.columnName : null // NEW: Pass highlighted column
         }
       }));
 
@@ -287,7 +288,7 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
       console.error('❌ Layout failed:', error);
       setLayoutError(error.message);
     }
-  }, [erdData, selectedTable, filteredTables, highlightedTable, tablePositions]); // Removed layoutMode
+  }, [erdData, selectedTable, filteredTables, highlightedTable, highlightedColumn, tablePositions]); // Added highlightedColumn
 
   // Initial positioning - only runs when schema changes, not on every position update
   const applyInitialPositions = useCallback((nodes) => {

@@ -35,7 +35,7 @@ export const TableCard = memo(({ data }) => {
     relationshipType,
   } = useRelationshipCreation();
 
-  const { tableName, columns, isSelected, isHighlighted, isParent } = data;
+  const { tableName, columns, isSelected, isHighlighted, isParent, highlightedColumn } = data;
 
   // State for self-join hover highlighting
   const [selfJoinHover, setSelfJoinHover] = useState(false);
@@ -338,7 +338,10 @@ export const TableCard = memo(({ data }) => {
             {orderedColumns.map(([columnName, columnData], index) => {
               // Enhanced highlighting logic - distinguish between PK and FK
               let isHighlighted = false;
-              let highlightType = null; // 'pk' or 'fk'
+              let highlightType = null; // 'pk', 'fk', or 'search'
+              
+              // NEW: Check if this column is highlighted from search
+              const isSearchHighlighted = highlightedColumn === columnName;
               
               if (highlightedRelationship) {
                 const { fromTable, fromColumn, toTable, toColumn } = highlightedRelationship;
@@ -357,6 +360,12 @@ export const TableCard = memo(({ data }) => {
                 }
               }
               
+              // NEW: Search highlighting takes priority if no relationship highlighting
+              if (isSearchHighlighted && !isHighlighted) {
+                isHighlighted = true;
+                highlightType = 'search';
+              }
+              
               return (
               <div
                 key={columnName}
@@ -364,6 +373,7 @@ export const TableCard = memo(({ data }) => {
                   "table-card-row-highlighted": isHighlighted,
                   "table-card-row-pk-highlighted": isHighlighted && highlightType === 'pk',
                   "table-card-row-fk-highlighted": isHighlighted && highlightType === 'fk',
+                  "table-card-row-search-highlighted": isHighlighted && highlightType === 'search', // NEW: Search highlight class
                   "table-card-row-self-join-highlighted": isColumnInSelfJoin(columnName),
                 })}
                 onClick={(e) => e.stopPropagation()}

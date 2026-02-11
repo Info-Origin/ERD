@@ -8,6 +8,8 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTables, setSelectedTables] = useState(new Set()); // Changed to Set for multiple tables
   const [lastSelectedTable, setLastSelectedTable] = useState(null); // Track most recently selected table
+  const [highlightedColumn, setHighlightedColumn] = useState(null); // NEW: Track highlighted column {tableName, columnName}
+  const [selectedColumns, setSelectedColumns] = useState({}); // NEW: Track which column was used to select each table
   const [selectedChildren, setSelectedChildren] = useState(new Set());
   const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
   const [isManageDropdownOpen, setIsManageDropdownOpen] = useState(false);
@@ -25,13 +27,48 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
     return Object.keys(workingSchema.tables).sort();
   }, [workingSchema]);
 
-  // Filter tables based on search query
+  // BUILD COLUMN INDEX ONCE (Performance optimization)
+  const columnIndex = useMemo(() => {
+    if (!workingSchema?.tables) return [];
+    
+    const index = [];
+    
+    Object.entries(workingSchema.tables).forEach(([tableName, tableData]) => {
+      Object.entries(tableData.columns || {}).forEach(([columnName, columnData]) => {
+        index.push({
+          tableName: tableName,
+          columnName: columnName,
+          columnNameLower: columnName.toLowerCase(), // Pre-compute for faster search
+          columnType: columnData.type,
+          isPK: columnData.pk,
+          isFK: columnData.fk,
+          isUnique: columnData.unique
+        });
+      });
+    });
+    
+    return index;
+  }, [workingSchema]); // Only rebuild when schema changes
+
+  // Filter tables based on search query (UNCHANGED - existing logic)
   const filteredTableNames = useMemo(() => {
     if (!searchQuery) return tableNames;
     return tableNames.filter(name => 
       name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [tableNames, searchQuery]);
+
+  // NEW: Filter columns based on search query (fast index-based search)
+  const filteredColumns = useMemo(() => {
+    if (!searchQuery) return [];
+    
+    const queryLower = searchQuery.toLowerCase();
+    
+    // Fast: Just filter the pre-built index (no nested loops)
+    return columnIndex.filter(col => 
+      col.columnNameLower.includes(queryLower)
+    );
+  }, [columnIndex, searchQuery]);
 
   // Analyze child hierarchy for multiple tables with full depth
   const analyzeChildHierarchy = useCallback((tableNames) => {
@@ -205,6 +242,9 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
     setSelectedTables(newSelectedTables);
     setLastSelectedTable(tableName); // Track the most recently selected table
     
+    // Mark this table as selected directly (no column)
+    setSelectedColumns(prev => ({ ...prev, [tableName]: null }));
+    
     // IMMEDIATE HIERARCHY ANALYSIS AND FILTER UPDATE
     const hierarchy = analyzeChildHierarchy(newSelectedTables);
     const allDescendants = new Set();
@@ -229,6 +269,7 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
   const handleClearAll = useCallback(() => {
     setSelectedTables(new Set());
     setSelectedChildren(new Set());
+    setSelectedColumns({}); // Clear column info
     setLastSelectedTable(null); // Clear last selected table
     setIsManageDropdownOpen(false);
     onTableFilter(null, null);
@@ -263,21 +304,110 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
     onTableFilter([...new Set(visibleTables)], tableName);
   }, [selectedTables, analyzeChildHierarchy, onTableFilter]);
 
+  // NEW: Handle column selection (adds table and highlights column)
+  const handleColumnSelect = useCallback((columnInfo) => {
+    // Check if table is already selected
+    if (selectedTables.has(columnInfo.tableName)) {
+      // Table already selected, just update the column info and highlight
+      setSelectedColumns(prev => ({ 
+        ...prev, 
+        [columnInfo.tableName]: columnInfo.columnName 
+      }));
+      
+      setHighlightedColumn({
+        tableName: columnInfo.tableName,
+        columnName: columnInfo.columnName
+      });
+      
+      // Update filter to highlight this table
+      const visibleTables = Array.from(selectedTables);
+      selectedChildren.forEach(child => visibleTables.push(child));
+      onTableFilter([...new Set(visibleTables)], columnInfo.tableName, {
+        tableName: columnInfo.tableName,
+        columnName: columnInfo.columnName
+      });
+    } else {
+      // Add the table and highlight the column
+      const newSelectedTables = new Set(selectedTables);
+      newSelectedTables.add(columnInfo.tableName);
+      setSelectedTables(newSelectedTables);
+      setLastSelectedTable(columnInfo.tableName);
+      
+      // Store which column was used to select this table
+      setSelectedColumns(prev => ({ 
+        ...prev, 
+        [columnInfo.tableName]: columnInfo.columnName 
+      }));
+      
+      // Set highlighted column
+      setHighlightedColumn({
+        tableName: columnInfo.tableName,
+        columnName: columnInfo.columnName
+      });
+      
+      // Analyze hierarchy
+      const hierarchy = analyzeChildHierarchy(newSelectedTables);
+      const allDescendants = new Set();
+      hierarchy.forEach(h => {
+        h.allDescendants.forEach(descendant => {
+          allDescendants.add(descendant);
+        });
+      });
+      
+      setSelectedChildren(allDescendants);
+      
+      // Update filter with highlighted column
+      const visibleTables = [...newSelectedTables, ...allDescendants];
+      onTableFilter([...new Set(visibleTables)], columnInfo.tableName, {
+        tableName: columnInfo.tableName,
+        columnName: columnInfo.columnName
+      });
+    }
+    
+    // Close dropdown
+    setIsAddDropdownOpen(false);
+    setSearchQuery("");
+  }, [selectedTables, selectedChildren, analyzeChildHierarchy, onTableFilter]);
+
   // Handle chip click to switch active table
   const handleChipClick = useCallback((tableName) => {
     setLastSelectedTable(tableName);
     
+    // Restore the highlighted column for this table (if any)
+    if (selectedColumns[tableName]) {
+      setHighlightedColumn({
+        tableName: tableName,
+        columnName: selectedColumns[tableName]
+      });
+    } else {
+      setHighlightedColumn(null); // Clear if no column for this table
+    }
+    
     // Update visible tables with new highlight
     const visibleTables = Array.from(selectedTables);
     selectedChildren.forEach(child => visibleTables.push(child));
-    onTableFilter([...new Set(visibleTables)], tableName);
-  }, [selectedTables, selectedChildren, onTableFilter]);
+    
+    // Pass column info if exists
+    const columnInfo = selectedColumns[tableName] ? {
+      tableName: tableName,
+      columnName: selectedColumns[tableName]
+    } : null;
+    
+    onTableFilter([...new Set(visibleTables)], tableName, columnInfo);
+  }, [selectedTables, selectedChildren, selectedColumns, onTableFilter]);
 
   // Handle table removal (remove chip)
   const handleTableRemove = useCallback((tableName) => {
     const newSelectedTables = new Set(selectedTables);
     newSelectedTables.delete(tableName);
     setSelectedTables(newSelectedTables);
+    
+    // Remove column info for this table
+    setSelectedColumns(prev => {
+      const updated = { ...prev };
+      delete updated[tableName];
+      return updated;
+    });
     
     // Update last selected table logic
     if (lastSelectedTable === tableName) {
@@ -534,9 +664,11 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
                     key={tableName} 
                     className={`carousel-table-chip ${tableName === lastSelectedTable ? 'active' : ''}`}
                     onClick={() => handleChipClick(tableName)}
-                    title={tableName} // Add tooltip
+                    title={selectedColumns[tableName] ? `${tableName}.${selectedColumns[tableName]}` : tableName}
                   >
-                    <span className="carousel-chip-text">{tableName}</span>
+                    <span className="carousel-chip-text">
+                      {selectedColumns[tableName] ? `${tableName}.${selectedColumns[tableName]}` : tableName}
+                    </span>
                     <button
                       className="carousel-chip-remove"
                       onClick={(e) => {
@@ -552,7 +684,7 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
                 ))}
                 {selectedTables.size === 0 && (
                   <div className="carousel-placeholder">
-                    No tables selected
+                    Search Here For Tables And Columns....
                   </div>
                 )}
               </div>
@@ -598,27 +730,82 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
             <div className="carousel-add-dropdown">
               <input
                 type="text"
-                placeholder="Search tables..."
+                placeholder="Search tables or columns..."
                 value={searchQuery}
                 onChange={handleSearchChange}
                 className="carousel-search-input"
                 autoFocus
               />
-              {filteredTableNames.length > 0 && (
-                <div className="carousel-search-results">
-                  {filteredTableNames
-                    .filter(tableName => !selectedTables.has(tableName))
-                    .map(tableName => (
-                    <div
-                      key={tableName}
-                      className="carousel-search-item"
-                      onClick={() => handleTableSelectFromDropdown(tableName)}
-                    >
-                      {tableName}
+              <div className="carousel-search-results">
+                {/* Tables Section */}
+                {filteredTableNames.filter(tableName => !selectedTables.has(tableName)).length > 0 && (
+                  <>
+                    <div className="search-results-header">
+                      <img 
+                        src="/table.png" 
+                        alt="Tables" 
+                        style={{ 
+                          width: '16px', 
+                          height: '16px',
+                          marginRight: '4px'
+                        }}
+                      />
+                      Tables ({filteredTableNames.filter(tableName => !selectedTables.has(tableName)).length})
                     </div>
-                  ))}
-                </div>
-              )}
+                    {filteredTableNames
+                      .filter(tableName => !selectedTables.has(tableName))
+                      .map(tableName => (
+                        <div
+                          key={tableName}
+                          className="carousel-search-item table-result"
+                          onClick={() => handleTableSelectFromDropdown(tableName)}
+                        >
+                          {tableName}
+                        </div>
+                      ))}
+                  </>
+                )}
+                
+                {/* Columns Section */}
+                {filteredColumns.length > 0 && (
+                  <>
+                    <div className="search-results-header">
+                      <img 
+                        src="/column.png" 
+                        alt="Columns" 
+                        style={{ 
+                          width: '16px', 
+                          height: '16px',
+                          marginRight: '4px'
+                        }}
+                      />
+                      Columns ({filteredColumns.length})
+                    </div>
+                    {filteredColumns.map((col, index) => (
+                      <div
+                        key={`${col.tableName}-${col.columnName}-${index}`}
+                        className="carousel-search-item column-result"
+                        onClick={() => handleColumnSelect(col)}
+                      >
+                        <span className="column-table-name">{col.tableName}</span>
+                        <span className="column-separator">.</span>
+                        <span className="column-name">{col.columnName}</span>
+                        <span className="column-type">({col.columnType})</span>
+                        {col.isPK && <span className="badge-pk">PK</span>}
+                        {col.isFK && <span className="badge-fk">FK</span>}
+                        {col.isUnique && <span className="badge-unique">UQ</span>}
+                      </div>
+                    ))}
+                  </>
+                )}
+                
+                {/* No Results */}
+                {filteredTableNames.filter(tableName => !selectedTables.has(tableName)).length === 0 && 
+                 filteredColumns.length === 0 && 
+                 searchQuery && (
+                  <div className="no-results">No tables or columns found</div>
+                )}
+              </div>
             </div>
           )}
 
@@ -633,9 +820,9 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
                       className={`carousel-manage-name ${tableName === lastSelectedTable ? 'active' : ''}`}
                       onClick={() => handleChipClick(tableName)}
                       style={{ cursor: 'pointer' }}
-                      title={`Click to highlight ${tableName} in ERD`}
+                      title={selectedColumns[tableName] ? `Click to highlight ${tableName}.${selectedColumns[tableName]} in ERD` : `Click to highlight ${tableName} in ERD`}
                     >
-                      {tableName}
+                      {selectedColumns[tableName] ? `${tableName}.${selectedColumns[tableName]}` : tableName}
                     </span>
                     <button
                       className="carousel-manage-remove"
