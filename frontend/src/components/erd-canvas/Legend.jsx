@@ -13,7 +13,7 @@ export const Legend = ({ isInHeader = false }) => {
     relationshipType,
     RELATIONSHIP_TYPES 
   } = useRelationshipCreation();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [showHelpNotification, setShowHelpNotification] = useState(false);
 
   const toggleExpanded = () => {
@@ -68,7 +68,7 @@ export const Legend = ({ isInHeader = false }) => {
           type="button"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-            <path d={isExpanded ? "M2 4 L6 8 L10 4" : "M4 2 L8 6 L4 10"} stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d={isExpanded ? "M2 8 L6 4 L10 8" : "M2 4 L6 8 L10 4"} stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
       </div>

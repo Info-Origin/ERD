@@ -697,7 +697,9 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
             {/* Search Input */}
             <input
               type="text"
-              placeholder="Search Here For Tables And Columns..."
+              id="table-column-search"
+              name="table-column-search"
+              placeholder="Search Here For Tables And Columns...."
               value={searchQuery}
               onChange={handleSearchChange}
               onFocus={() => searchQuery.length > 0 && setIsAddDropdownOpen(true)}
