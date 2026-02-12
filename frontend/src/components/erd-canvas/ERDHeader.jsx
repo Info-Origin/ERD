@@ -1,11 +1,13 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { Legend } from "./Legend";
 import { useVirtualSchema } from "../../context/VirtualSchemaContext";
+import { useApp } from "../../context/AppContext";
 import "./ERDHeader.css";
 import "./SearchBadge.css"; // Import search-specific badge styles
 
 export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
   const { workingSchema } = useVirtualSchema();
+  const { crowsFootMode } = useApp();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTables, setSelectedTables] = useState(new Set()); // Changed to Set for multiple tables
   const [lastSelectedTable, setLastSelectedTable] = useState(null); // Track most recently selected table
@@ -19,12 +21,23 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
   const [hideNestedChildren, setHideNestedChildren] = useState(false); // Checkbox to hide all nested children (depth > 0)
   const [hideDirectChildren, setHideDirectChildren] = useState(false); // Checkbox to hide all direct children
   const [showAllChips, setShowAllChips] = useState(false); // NEW: Toggle to show all chips
+  const [legendForceExpanded, setLegendForceExpanded] = useState(false); // Track when to force legend open
   const carouselRef = useRef(null);
   const searchContainerRef = useRef(null); // NEW: Ref for click outside detection
   const manageDropdownRef = useRef(null); // NEW: Ref for manage dropdown
   const childrenDropdownRef = useRef(null); // NEW: Ref for children dropdown
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+
+  // Watch for crow's foot mode changes and open legend
+  useEffect(() => {
+    if (crowsFootMode) {
+      setLegendForceExpanded(true);
+      // Reset the force flag after a short delay so it can be triggered again
+      const timer = setTimeout(() => setLegendForceExpanded(false), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [crowsFootMode]);
 
   // Click outside to close dropdowns
   useEffect(() => {
@@ -953,7 +966,7 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
             Show All Tables
           </button>
           */}
-          <Legend isInHeader={true} />
+          <Legend isInHeader={true} forceExpanded={legendForceExpanded} />
         </div>
       </div>
     </div>

@@ -5,7 +5,7 @@ import { useApp } from "../../context/AppContext";
 import { useRelationshipCreation } from "../../context/RelationshipCreationContext";
 import "./Legend.css";
 
-export const Legend = ({ isInHeader = false }) => {
+export const Legend = ({ isInHeader = false, forceExpanded = false }) => {
   const { crowsFootMode } = useApp();
   const { 
     startRelationshipCreation, 
@@ -13,7 +13,14 @@ export const Legend = ({ isInHeader = false }) => {
     relationshipType,
     RELATIONSHIP_TYPES 
   } = useRelationshipCreation();
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Open legend when forceExpanded prop changes to true
+  useEffect(() => {
+    if (forceExpanded) {
+      setIsExpanded(true);
+    }
+  }, [forceExpanded]);
   const [showHelpNotification, setShowHelpNotification] = useState(false);
 
   const toggleExpanded = () => {
