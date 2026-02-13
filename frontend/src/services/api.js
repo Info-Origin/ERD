@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:4001/api",
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api",
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
@@ -11,7 +11,11 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    // Could add auth token here if needed in future
+    // Add connection token if available
+    const token = sessionStorage.getItem('db_connection_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => {
@@ -32,6 +36,22 @@ api.interceptors.response.use(
       status: error.response?.status,
       message: errorMessage,
     });
+
+    // Handle connection expired errors
+    if (error.response?.status === 401) {
+      const message = error.response?.data?.message || '';
+      
+      if (message.includes('expired') || message.includes('Invalid connection token')) {
+        // Clear connection data
+        sessionStorage.removeItem('db_connection_token');
+        sessionStorage.removeItem('db_connection_info');
+        
+        // Trigger a reconnection event
+        window.dispatchEvent(new CustomEvent('connection-expired', {
+          detail: { message: errorMessage }
+        }));
+      }
+    }
 
     return Promise.reject({
       message: errorMessage,

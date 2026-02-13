@@ -2,8 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { SearchBar } from "./SearchBar";
 import { SchemaTree } from "./SchemaTree";
 import { useApp } from "../../context/AppContext";
+import { useConnection } from "../../context/ConnectionContext";
 import { FiDatabase } from "react-icons/fi";
 import { Loader } from "../common/Loader";
+import { ConnectionModal } from "../modals/ConnectionModal";
 import "./SchemaExplorer.css";
 
 export const SchemaExplorer = ({ onToggleCollapse, isCollapsed }) => {
@@ -16,10 +18,15 @@ export const SchemaExplorer = ({ onToggleCollapse, isCollapsed }) => {
     searchQuery,
     setSearchQuery,
     isAnyModalOpen,
+    refetchSchemas,
   } = useApp();
 
+  const { isConnected, activeConnection, connect, disconnect } = useConnection();
+
   const [schemaListHeight, setSchemaListHeight] = useState(200);
+  const [showDisconnectConfirmation, setShowDisconnectConfirmation] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isConnectionModalOpen, setIsConnectionModalOpen] = useState(false);
   const dragStartY = useRef(0);
   const dragStartHeight = useRef(0);
 
@@ -63,6 +70,24 @@ export const SchemaExplorer = ({ onToggleCollapse, isCollapsed }) => {
   // REMOVED: Structure editing handlers
   // - handleAddTable, handleOpenAddColumn functions
 
+  const handleConnect = (connectionData) => {
+    connect(connectionData);
+    refetchSchemas(); // Refresh schemas after connection
+  };
+
+  const handleDisconnect = async () => {
+    setShowDisconnectConfirmation(true);
+  };
+
+  const performDisconnect = async () => {
+    await disconnect();
+    setShowDisconnectConfirmation(false);
+    // Wait a bit for state to update before refetching
+    setTimeout(() => {
+      refetchSchemas(); // This will now use .env connection
+    }, 100);
+  };
+
   const filteredSchemas = schemas.filter((schema) =>
     schema.toLowerCase().includes(searchQuery.toLowerCase()),
   );
@@ -78,7 +103,30 @@ export const SchemaExplorer = ({ onToggleCollapse, isCollapsed }) => {
         <h2 className="explorer-title">
           <FiDatabase /> Schemas
         </h2>
+        <button 
+          className="connection-button"
+          onClick={() => setIsConnectionModalOpen(true)}
+          title={isConnected ? `Connected to: ${activeConnection?.info?.name}` : "Connect to Database"}
+        >
+          <img src="/database-add.png" alt="Connect" className="connection-icon" />
+        </button>
       </div>
+
+      {/* Connection status indicator */}
+      {isConnected && (
+        <div className="connection-status">
+          <span className="connection-status-text">
+            Connected: {activeConnection?.info?.name}
+          </span>
+          <button 
+            className="disconnect-button"
+            onClick={handleDisconnect}
+            title="Disconnect"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* PersistenceIndicator removed - now in VerticalToolbar */}
 
@@ -129,6 +177,45 @@ export const SchemaExplorer = ({ onToggleCollapse, isCollapsed }) => {
             </>
           )}
         </>
+      )}
+
+      {/* Connection Modal */}
+      <ConnectionModal
+        isOpen={isConnectionModalOpen}
+        onClose={() => setIsConnectionModalOpen(false)}
+        onConnect={handleConnect}
+      />
+
+      {/* Disconnect Confirmation Dialog */}
+      {showDisconnectConfirmation && (
+        <div className="confirmation-overlay" onClick={() => setShowDisconnectConfirmation(false)}>
+          <div className="confirmation-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="confirmation-header">
+              <h3>Disconnect Database</h3>
+            </div>
+            <div className="confirmation-body">
+              <div className="confirmation-icon">⚠️</div>
+              <div className="confirmation-content">
+                <p><span className="current-connection">Currently connected to: {activeConnection?.info?.name}</span></p>
+                <p>Are you sure you want to disconnect? You'll switch back to the default database.</p>
+              </div>
+            </div>
+            <div className="confirmation-actions">
+              <button 
+                onClick={() => setShowDisconnectConfirmation(false)} 
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={performDisconnect} 
+                className="btn-primary"
+              >
+                Yes, Disconnect
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

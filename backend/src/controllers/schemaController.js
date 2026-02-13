@@ -1,6 +1,15 @@
 import { getSchemas, getSchemaErd } from "../services/schemaService.js";
+import { getSchemas as getDynamicSchemas, getSchemaErd as getDynamicSchemaErd } from "../services/dynamicSchemaService.js";
+
 export const listSchemas = async (req, res, next) => {
   try {
+    // Check if using dynamic connection
+    if (req.connectionId) {
+      const schemas = await getDynamicSchemas(req.connectionId);
+      return res.json({ schemas });
+    }
+    
+    // Fallback to default .env connection
     const schemas = await getSchemas();
     res.json({ schemas });
   } catch (err) {
@@ -15,6 +24,13 @@ export const getSchemaErdController = async (req, res, next) => {
       return res.status(400).json({ message: "Schema name is required" });
     }
 
+    // Check if using dynamic connection
+    if (req.connectionId) {
+      const erd = await getDynamicSchemaErd(req.connectionId, schema);
+      return res.json(erd);
+    }
+
+    // Fallback to default .env connection
     const erd = await getSchemaErd(schema);
     res.json(erd);
   } catch (err) {
