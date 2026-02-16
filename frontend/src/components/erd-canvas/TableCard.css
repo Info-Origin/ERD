@@ -17,7 +17,7 @@
 .table-card-hover:hover {
   border-color: var(--primary);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transform: translateY(-1px);
+  transform: none !important;
 }
 
 .table-card-selected {
@@ -364,6 +364,8 @@
 .table-card-row-highlighted .column-name:hover,
 .table-card-row-pk-highlighted .column-name:hover,
 .table-card-row-fk-highlighted .column-name:hover,
+.table-card-row-click-pk-highlighted .column-name:hover,
+.table-card-row-click-fk-highlighted .column-name:hover,
 .table-card-row-search-highlighted .column-name:hover {
   background-color: transparent !important;
 }
@@ -680,55 +682,97 @@
   animation: highlight-flash 0.5s ease-in-out;
 }
 
-/* Primary Key highlighting - Blue */
+/* Hover-based Primary Key highlighting - Green with subtle styling */
 .table-card-row-pk-highlighted {
-  background: #3b82f6 !important;
-  border-color: #1d4ed8 !important;
-}
-
-/* Foreign Key highlighting - Green */
-.table-card-row-fk-highlighted {
-  background: #10b981 !important;
-  border-color: #059669 !important;
-}
-
-/* Search highlighting - Green (same as table search highlight) */
-.table-card-row-search-highlighted {
-  background: #10b981 !important;
-  border-color: #059669 !important;
-  border: 3px solid #059669 !important;
-  border-radius: 6px !important;
-  transform: scale(1.05) !important;
-  z-index: 100 !important;
-  position: relative !important;
-  margin: 2px !important;
-  animation: highlight-flash 0.5s ease-in-out;
-}
-
-/* Self-join highlighting - Professional subtle style */
-.table-card-row-self-join-highlighted {
-  background: rgba(59, 130, 246, 0.08) !important; /* Very subtle blue tint */
-  border-left: 3px solid #3b82f6 !important; /* Professional left border accent */
+  background: rgba(51, 173, 129, 0.16) !important; /* Very subtle green tint */
+  box-shadow: none !important;
+  border: none !important;
+  border-left: 5px solid #10b981 !important; /* Green left border accent */
+  transform: none !important;
+  margin: 1.5px 0 !important;
+  padding: var(--spacing-xs) var(--spacing-sm) !important;
   border-radius: 0 4px 4px 0 !important; /* Rounded on right only */
   position: relative !important;
-  transition: all 0.2s ease !important;
 }
 
+/* Hover-based Foreign Key highlighting - Blue with subtle styling */  
+.table-card-row-fk-highlighted {
+  background: rgba(79, 154, 245, 0.171) !important; /* Very subtle blue tint */
+  box-shadow: none !important;
+  border: none !important;
+  border-left: 5px solid #3b82f6 !important; /* Blue left border accent */
+  transform: none !important;
+  margin: 1px 0 !important;
+  padding: var(--spacing-xs) var(--spacing-sm) !important;
+  border-radius: 0 4px 4px 0 !important; /* Rounded on right only */
+  position: relative !important;
+}
+
+/* Click-based Primary Key highlighting - Blue (swapped for click) */
+.table-card-row-click-pk-highlighted {
+  background:rgba(79, 154, 245, 0.171) !important; /* Very subtle blue tint */
+  box-shadow: none !important;
+  border: none !important;
+  border-left:  5px solid #3b82f6  !important; /* Blue left border accent */
+  transform: none !important;
+  margin: 1px 0 !important;
+  padding: var(--spacing-xs) var(--spacing-sm) !important;
+  border-radius: 0 4px 4px 0 !important; /* Rounded on right only */
+  position: relative !important;
+}
+
+/* Click-based Foreign Key highlighting - Green (swapped for click) */  
+.table-card-row-click-fk-highlighted {
+  background: rgba(51, 173, 129, 0.16) !important; /* Very subtle green tint */
+  box-shadow: none !important;
+  border: none !important;
+  border-left:5px solid #10b981 !important; /* Green left border accent */
+  transform: none !important;
+  margin: 1px 0 !important;
+  padding: var(--spacing-xs) var(--spacing-sm) !important;
+  border-radius: 0 4px 4px 0 !important; /* Rounded on right only */
+  position: relative !important;
+}
+
+/* Search highlighting - Warm peachy/tan color (matching image 2) */
+.table-card-row-search-highlighted {
+ background: #fde883 !important;
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  border-radius: 1.5px !important;
+  transform: none !important;
+  z-index: 100 !important;
+  position: relative !important;
+  margin: 1px 0 !important;
+  padding: var(--spacing-xs) var(--spacing-sm) !important;
+  box-shadow: 0 1px 4px rgba(245, 158, 11, 0.15) !important;
+  animation: highlight-flash 0.5s ease-in-out;
+  outline: none !important;
+}
+
+/* Self-join highlighting - Professional subtle style with thick left bar */
+.table-card-row-self-join-highlighted {
+  background: rgba(59, 130, 246, 0.08) !important; /* Very subtle blue tint */
+  border-left: 4px solid #3b82f6 !important; /* Thick left border accent */
+  border-radius: 0 !important; /* No rounded corners for cleaner look */
+  position: relative !important;
+  transition: all 0.2s ease !important;
+  margin: 1px 0 !important; /* Add gap between self-join highlighted rows */
+  padding: var(--spacing-xs) var(--spacing-sm) !important;
+  padding-left: 8px !important; /* Extra padding from the thick border */
+}
+
+/* Remove the gradient pseudo-element for cleaner look */
 .table-card-row-self-join-highlighted::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: linear-gradient(to bottom, #3b82f6, #1d4ed8);
-  border-radius: 0 2px 2px 0;
+  display: none;
 }
 
 /* Subtle hover effect */
 .table-card-row-self-join-highlighted:hover {
   background: rgba(59, 130, 246, 0.12) !important;
-  transform: translateX(2px) !important;
+  transform: none !important; /* Remove horizontal shift for stability */
 }
 
 @keyframes highlight-flash {
@@ -741,12 +785,18 @@
 }
 
 /* Make highlighted text visible */
-.table-card-row-highlighted .column-name,
-.table-card-row-pk-highlighted .column-name,
-.table-card-row-fk-highlighted .column-name,
-.table-card-row-search-highlighted .column-name {
+.table-card-row-highlighted .column-name {
   color: white !important;
   font-weight: 800 !important;
+}
+
+/* Hover and click PK/FK highlighting keeps normal text color */
+.table-card-row-pk-highlighted .column-name,
+.table-card-row-fk-highlighted .column-name,
+.table-card-row-click-pk-highlighted .column-name,
+.table-card-row-click-fk-highlighted .column-name {
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
 }
 
 .table-card-row-self-join-highlighted .column-name {
@@ -754,13 +804,33 @@
   font-weight: 600 !important; /* Slightly bolder */
 }
 
-.table-card-row-highlighted .constraint-badge,
-.table-card-row-pk-highlighted .constraint-badge,
-.table-card-row-fk-highlighted .constraint-badge,
-.table-card-row-search-highlighted .constraint-badge {
+/* Search highlighted rows keep normal text color */
+.table-card-row-search-highlighted .column-name {
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
+}
+
+.table-card-row-highlighted .constraint-badge {
   background-color: white !important;
   color: #1f2937 !important;
   font-weight: 800 !important;
+}
+
+/* Hover and click PK/FK highlighting keeps normal badge styling */
+.table-card-row-pk-highlighted .constraint-badge,
+.table-card-row-fk-highlighted .constraint-badge,
+.table-card-row-click-pk-highlighted .constraint-badge,
+.table-card-row-click-fk-highlighted .constraint-badge {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
+}
+
+/* Search highlighted badges keep normal styling */
+.table-card-row-search-highlighted .constraint-badge {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
 }
 
 .table-card-row-self-join-highlighted .constraint-badge {
@@ -770,11 +840,21 @@
   font-weight: 500 !important;
 }
 
-.table-card-row-highlighted .column-icon,
+.table-card-row-highlighted .column-icon {
+  color: white !important;
+}
+
+/* Hover and click PK/FK highlighting keeps normal icon color */
 .table-card-row-pk-highlighted .column-icon,
 .table-card-row-fk-highlighted .column-icon,
+.table-card-row-click-pk-highlighted .column-icon,
+.table-card-row-click-fk-highlighted .column-icon {
+  color: var(--primary) !important;
+}
+
+/* Search highlighted icons keep normal color */
 .table-card-row-search-highlighted .column-icon {
-  color: white !important;
+  color: var(--primary) !important;
 }
 
 .table-card-row-self-join-highlighted .column-icon {
@@ -786,9 +866,19 @@
   font-weight: 500 !important;
 }
 
+/* Hover and click PK/FK highlighting keeps normal type display color */
+.table-card-row-pk-highlighted .column-type-display,
+.table-card-row-fk-highlighted .column-type-display,
+.table-card-row-click-pk-highlighted .column-type-display,
+.table-card-row-click-fk-highlighted .column-type-display {
+  color: var(--text-secondary) !important;
+  font-weight: 400 !important;
+}
+
+/* Search highlighted type display keeps normal color */
 .table-card-row-search-highlighted .column-type-display {
-  color: white !important;
-  font-weight: 600 !important;
+  color: var(--text-secondary) !important;
+  font-weight: 400 !important;
 }
 
 .relationship-edge-label {
@@ -1148,7 +1238,7 @@
 .table-card-relationship-creation:hover {
   border-color: rgba(147, 51, 234, 0.6);
   box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.1), 0 4px 12px rgba(147, 51, 234, 0.2);
-  transform: translateY(-1px);
+  transform: none !important;
 }
 
 .table-card-relationship-selected {

@@ -199,7 +199,14 @@ export const RelationshipEdge = memo(
     sourceHandle,
     targetHandle,
   }) => {
-    const { setHighlightedRelationship, highlightedRelationship, routingMode } = useApp();
+    const { 
+      setHighlightedRelationship, 
+      highlightedRelationship, 
+      routingMode,
+      setHighlightedRelationshipWithTimer, // NEW: Improved timer management
+      // NEW: Hover-based highlighting
+      hoverHighlightedRelationships 
+    } = useApp();
     const { theme } = useTheme();
     const [isClicked, setIsClicked] = useState(false);
     
@@ -214,6 +221,17 @@ export const RelationshipEdge = memo(
       highlightedRelationship.toTable === data.fromTable &&     // FK table  
       highlightedRelationship.fromColumn === data.toColumn &&   // PK column
       highlightedRelationship.toColumn === data.fromColumn;     // FK column
+
+    // NEW: Check if this edge is hover-highlighted
+    const hoverHighlight = hoverHighlightedRelationships.find(hoverRel => 
+      data?.fromTable && data?.toTable && data?.fromColumn && data?.toColumn &&
+      hoverRel.fromTable === data.toTable &&     // PK table
+      hoverRel.toTable === data.fromTable &&     // FK table  
+      hoverRel.fromColumn === data.toColumn &&   // PK column
+      hoverRel.toColumn === data.fromColumn      // FK column
+    );
+
+    const isHoverHighlighted = !!hoverHighlight;
     
     // Extract MySQL Workbench port lane data
     const portIndex = data?.portIndex || 1;
@@ -274,12 +292,7 @@ export const RelationshipEdge = memo(
           };
           
           // Set the highlighted relationship
-          setHighlightedRelationship(highlightData);
-          
-          // Clear highlight after 8 seconds
-          setTimeout(() => {
-            setHighlightedRelationship(null);
-          }, 8000);
+          setHighlightedRelationshipWithTimer(highlightData);
           
         } else {
           // Try to extract basic info for fallback highlighting
@@ -295,11 +308,7 @@ export const RelationshipEdge = memo(
               relationType: 'ONE_TO_MANY'
             };
             
-            setHighlightedRelationship(highlightData);
-            
-            setTimeout(() => {
-              setHighlightedRelationship(null);
-            }, 8000);
+            setHighlightedRelationshipWithTimer(highlightData);
           } else {
             console.warn('❌ Missing table data:', { fromTable: data.fromTable, toTable: data.toTable });
           }
@@ -315,10 +324,15 @@ export const RelationshipEdge = memo(
     // MySQL Workbench style: theme-aware lines, dashed for self-joins
     const edgeStyle = {
       // Remove hardcoded stroke - let CSS handle theme-aware colors
-      strokeWidth: 1,
+      strokeWidth: isHighlighted || isHoverHighlighted ? 2.5 : 1,
       strokeDasharray: selfJoin ? "5,5" : "none", // Dashed only for self-joins
       cursor: "pointer",
-      filter: isClicked || isHighlighted ? "drop-shadow(0 0 6px #3b82f6)" : "none",
+      filter: isClicked || isHighlighted || isHoverHighlighted ? 
+        `drop-shadow(0 0 6px ${
+          isHighlighted ? '#ff6b35' : 
+          isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : 
+          '#3b82f6'
+        })` : "none",
       ...style,
     };
 
@@ -328,7 +342,11 @@ export const RelationshipEdge = memo(
         {/* Main path with routing mode support */}
         <path
           d={pathToUse}
-          stroke={isHighlighted ? '#3b82f6' : lineColor}
+          stroke={
+            isHighlighted ? '#ff6b35' : // Pearl orange for click-based highlighting
+            isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : // Green for PK hover, Blue for FK hover
+            lineColor // Default color
+          }
           strokeWidth={edgeStyle.strokeWidth}
           strokeDasharray={edgeStyle.strokeDasharray}
           fill="none"

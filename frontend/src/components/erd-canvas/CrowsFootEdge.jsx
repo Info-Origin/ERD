@@ -21,7 +21,13 @@ export const CrowsFootEdge = memo(({
   sourceHandle,
   targetHandle,
 }) => {
-  const { setHighlightedRelationship, highlightedRelationship } = useApp();
+  const { 
+    setHighlightedRelationship, 
+    highlightedRelationship,
+    setHighlightedRelationshipWithTimer, // NEW: Improved timer management
+    // NEW: Hover-based highlighting
+    hoverHighlightedRelationships 
+  } = useApp();
   const [isClicked, setIsClicked] = useState(false);
 
   // Check if this is a self-join relationship (define early)
@@ -40,6 +46,17 @@ export const CrowsFootEdge = memo(({
     highlightedRelationship.toTable === data.fromTable &&
     highlightedRelationship.fromColumn === data.toColumn &&
     highlightedRelationship.toColumn === data.fromColumn;
+
+  // NEW: Check if this edge is hover-highlighted
+  const hoverHighlight = hoverHighlightedRelationships.find(hoverRel => 
+    data?.fromTable && data?.toTable && data?.fromColumn && data?.toColumn &&
+    hoverRel.fromTable === data.toTable &&     // PK table
+    hoverRel.toTable === data.fromTable &&     // FK table  
+    hoverRel.fromColumn === data.toColumn &&   // PK column
+    hoverRel.toColumn === data.fromColumn      // FK column
+  );
+
+  const isHoverHighlighted = !!hoverHighlight;
 
   // Determine relationship cardinality and line style
   const getRelationshipStyle = () => {
@@ -129,11 +146,7 @@ export const CrowsFootEdge = memo(({
           relationType: data.relationType || 'ONE_TO_MANY'
         };
         
-        setHighlightedRelationship(highlightData);
-        
-        setTimeout(() => {
-          setHighlightedRelationship(null);
-        }, 8000);
+        setHighlightedRelationshipWithTimer(highlightData);
       }
     }
   };
@@ -416,14 +429,23 @@ export const CrowsFootEdge = memo(({
             id={id}
             className="react-flow__edge-path crows-foot-edge-path"
             d={edgePath}
-            stroke={isHighlighted ? highlightColor : lineColor}
-            strokeWidth={1.5}
+            stroke={
+              isHighlighted ? '#ff6b35' : // Pearl orange for click-based highlighting
+              isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : // Green for PK hover, Blue for FK hover
+              lineColor // Default color
+            }
+            strokeWidth={isHighlighted || isHoverHighlighted ? 2.5 : 1.5}
             strokeDasharray={relationshipStyle.strokeDasharray}
             fill="none"
             style={{
               cursor: 'pointer',
               pointerEvents: 'all',
-              filter: isClicked || isHighlighted ? "drop-shadow(0 0 6px #3b82f6)" : "none",
+              filter: isClicked || isHighlighted || isHoverHighlighted ? 
+                `drop-shadow(0 0 6px ${
+                  isHighlighted ? '#ff6b35' : 
+                  isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : 
+                  '#3b82f6'
+                })` : "none",
               transition: 'all 0.2s ease'
             }}
             onClick={handleEdgeClick}

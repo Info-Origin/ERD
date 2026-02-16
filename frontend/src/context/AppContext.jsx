@@ -19,6 +19,14 @@ export const useApp = () => {
 export const AppProvider = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedRelationship, setHighlightedRelationship] = useState(null);
+  
+  // NEW: Hover-based relationship highlighting
+  const [hoveredTable, setHoveredTable] = useState(null);
+  const [hoverHighlightedRelationships, setHoverHighlightedRelationships] = useState([]);
+  
+  // NEW: Timer management for relationship highlighting
+  const [highlightTimer, setHighlightTimer] = useState(null);
+  
   const [routingMode] = useState('direct'); // Fixed to 'direct' stepped lines only
   const [crowsFootMode, setCrowsFootMode] = useState(false); // Toggle for crow's foot notation
   const [gridBackground, setGridBackground] = useState(true); // Toggle for grid background (default: on)
@@ -193,6 +201,84 @@ export const AppProvider = ({ children }) => {
       showNotification(`Error reverting change: ${error.message}`, "error");
     }
   };
+
+  // NEW: Hover-based relationship highlighting functions
+  const handleTableHover = (tableName) => {
+    // SMART PRIORITY: Don't show hover highlighting if there's an active search with column results
+    // This prevents confusion when user has searched for specific columns
+    if (debouncedSearch && debouncedSearch.includes('.')) {
+      // User is searching for specific columns (contains dot notation like "table.column")
+      // Skip hover highlighting to avoid confusion
+      return;
+    }
+
+    // Use working schema (includes virtual changes) or fall back to original erdData
+    const currentSchema = virtualSchema.workingSchema || erdData;
+    
+    if (!currentSchema?.relationships) {
+      setHoveredTable(null);
+      setHoverHighlightedRelationships([]);
+      return;
+    }
+
+    setHoveredTable(tableName);
+
+    // Find all relationships involving this table (both actual and virtual)
+    const relatedRelationships = currentSchema.relationships.filter(rel => 
+      rel.fromTable === tableName || rel.toTable === tableName
+    );
+
+    // Create highlight data for each relationship
+    const highlightData = relatedRelationships.map(rel => {
+      const isTablePrimaryKey = rel.fromTable === tableName;
+      const isTableForeignKey = rel.toTable === tableName;
+
+      return {
+        ...rel,
+        highlightType: isTablePrimaryKey ? 'primary' : 'foreign', // 'primary' = blue, 'foreign' = green
+        isTablePrimaryKey,
+        isTableForeignKey
+      };
+    });
+
+    setHoverHighlightedRelationships(highlightData);
+  };
+
+  const handleTableHoverEnd = () => {
+    setHoveredTable(null);
+    setHoverHighlightedRelationships([]);
+  };
+
+  // NEW: Improved relationship highlighting with proper timer management
+  const setHighlightedRelationshipWithTimer = (relationshipData) => {
+    // Clear any existing timer
+    if (highlightTimer) {
+      clearTimeout(highlightTimer);
+      setHighlightTimer(null);
+    }
+
+    // Set the new highlighted relationship
+    setHighlightedRelationship(relationshipData);
+
+    // Set new timer if relationship data is provided
+    if (relationshipData) {
+      const newTimer = setTimeout(() => {
+        setHighlightedRelationship(null);
+        setHighlightTimer(null);
+      }, 4000);
+      
+      setHighlightTimer(newTimer);
+    }
+  };
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (highlightTimer) {
+        clearTimeout(highlightTimer);
+      }
+    };
+  }, [highlightTimer]);
 
   // Toggle crow's foot notation mode
   const toggleCrowsFootMode = () => {
@@ -369,6 +455,13 @@ export const AppProvider = ({ children }) => {
     // Relationship highlighting
     highlightedRelationship,
     setHighlightedRelationship,
+    setHighlightedRelationshipWithTimer, // NEW: Improved timer management
+
+    // NEW: Hover-based relationship highlighting
+    hoveredTable,
+    hoverHighlightedRelationships,
+    handleTableHover,
+    handleTableHoverEnd,
 
     // Routing mode (fixed to direct)
     routingMode,

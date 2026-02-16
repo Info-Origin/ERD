@@ -25,6 +25,11 @@ export const TableCard = memo(({ data }) => {
     highlightedRelationship,
     erdData,
     openEditTableModal, // Use shared modal for constraint editing only
+    // NEW: Hover-based relationship highlighting
+    hoveredTable,
+    hoverHighlightedRelationships,
+    handleTableHover,
+    handleTableHoverEnd,
   } = useApp();
 
   const {
@@ -296,7 +301,12 @@ export const TableCard = memo(({ data }) => {
       {/* Smart distributed handles for optimal connection points */}
       {createSmartHandles()}
 
-      <div className="table-card-header" onContextMenu={handleContextMenu}>
+      <div 
+        className="table-card-header" 
+        onContextMenu={handleContextMenu}
+        onMouseEnter={() => handleTableHover(tableName)}
+        onMouseLeave={handleTableHoverEnd}
+      >
         <FiTable className="table-card-icon" />
         
         <span className="table-card-title" title={tableName}>
@@ -360,12 +370,18 @@ export const TableCard = memo(({ data }) => {
             {orderedColumns.map(([columnName, columnData], index) => {
               // Enhanced highlighting logic - distinguish between PK and FK
               let isHighlighted = false;
-              let highlightType = null; // 'pk', 'fk', or 'search'
+              let highlightType = null; // 'click-pk', 'click-fk', 'search', 'hover-primary', 'hover-foreign'
               
               // NEW: Check if this column is highlighted from search
               const isSearchHighlighted = highlightedColumn === columnName;
               
-              if (highlightedRelationship) {
+              // PRIORITY 1: Search highlighting takes highest priority
+              if (isSearchHighlighted) {
+                isHighlighted = true;
+                highlightType = 'search';
+              }
+              // PRIORITY 2: Click-based relationship highlighting (only if no search)
+              else if (highlightedRelationship) {
                 const { fromTable, fromColumn, toTable, toColumn } = highlightedRelationship;
                 
                 // Check if this column should be highlighted as PK (source)
@@ -375,17 +391,28 @@ export const TableCard = memo(({ data }) => {
                 
                 if (isPkMatch) {
                   isHighlighted = true;
-                  highlightType = 'pk';
+                  highlightType = 'click-pk'; // Click-based PK highlighting (Blue)
                 } else if (isFkMatch) {
                   isHighlighted = true;
-                  highlightType = 'fk';
+                  highlightType = 'click-fk'; // Click-based FK highlighting (Green)
                 }
               }
-              
-              // NEW: Search highlighting takes priority if no relationship highlighting
-              if (isSearchHighlighted && !isHighlighted) {
-                isHighlighted = true;
-                highlightType = 'search';
+              // PRIORITY 3: Hover-based relationship highlighting (only if no search or click)
+              else if (hoverHighlightedRelationships.length > 0) {
+                for (const hoverRel of hoverHighlightedRelationships) {
+                  const isPkMatch = hoverRel.fromTable === tableName && hoverRel.fromColumn === columnName;
+                  const isFkMatch = hoverRel.toTable === tableName && hoverRel.toColumn === columnName;
+                  
+                  if (isPkMatch) {
+                    isHighlighted = true;
+                    highlightType = 'hover-primary'; // Hover-based PK highlighting (Green)
+                    break;
+                  } else if (isFkMatch) {
+                    isHighlighted = true;
+                    highlightType = 'hover-foreign'; // Hover-based FK highlighting (Blue)
+                    break;
+                  }
+                }
               }
               
               return (
@@ -393,9 +420,11 @@ export const TableCard = memo(({ data }) => {
                 key={columnName}
                 className={clsx("table-card-row", {
                   "table-card-row-highlighted": isHighlighted,
-                  "table-card-row-pk-highlighted": isHighlighted && highlightType === 'pk',
-                  "table-card-row-fk-highlighted": isHighlighted && highlightType === 'fk',
-                  "table-card-row-search-highlighted": isHighlighted && highlightType === 'search', // NEW: Search highlight class
+                  "table-card-row-click-pk-highlighted": isHighlighted && highlightType === 'click-pk',
+                  "table-card-row-click-fk-highlighted": isHighlighted && highlightType === 'click-fk',
+                  "table-card-row-pk-highlighted": isHighlighted && highlightType === 'hover-primary',
+                  "table-card-row-fk-highlighted": isHighlighted && highlightType === 'hover-foreign',
+                  "table-card-row-search-highlighted": isHighlighted && highlightType === 'search',
                   "table-card-row-self-join-highlighted": isColumnInSelfJoin(columnName),
                 })}
                 onClick={(e) => e.stopPropagation()}
