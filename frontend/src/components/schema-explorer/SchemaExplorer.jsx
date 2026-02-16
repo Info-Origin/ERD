@@ -18,6 +18,7 @@ export const SchemaExplorer = ({ onToggleCollapse, isCollapsed }) => {
     searchQuery,
     setSearchQuery,
     isAnyModalOpen,
+    setIsAnyModalOpen,
     refetchSchemas,
   } = useApp();
 
@@ -105,7 +106,10 @@ export const SchemaExplorer = ({ onToggleCollapse, isCollapsed }) => {
         </h2>
         <button 
           className="connection-button"
-          onClick={() => setIsConnectionModalOpen(true)}
+          onClick={() => {
+            setIsConnectionModalOpen(true);
+            setIsAnyModalOpen(true);
+          }}
           title={isConnected ? `Connected to: ${activeConnection?.info?.name}` : "Connect to Database"}
         >
           <img src="/database-add.png" alt="Connect" className="connection-icon" />
@@ -182,7 +186,10 @@ export const SchemaExplorer = ({ onToggleCollapse, isCollapsed }) => {
       {/* Connection Modal */}
       <ConnectionModal
         isOpen={isConnectionModalOpen}
-        onClose={() => setIsConnectionModalOpen(false)}
+        onClose={() => {
+          setIsConnectionModalOpen(false);
+          setIsAnyModalOpen(false);
+        }}
         onConnect={handleConnect}
       />
 

@@ -842,6 +842,7 @@
   transition: all 0.3s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   min-width: 0; /* Allow shrinking below content size */
+  cursor: pointer; /* Pointer cursor on container */
 }
 
 .modern-search-container:focus-within {
@@ -875,12 +876,19 @@
   box-shadow: none; /* Remove any box shadow */
   min-width: 0; /* Allow input to shrink below its content */
   width: 100%; /* Take full available space */
+  cursor: pointer !important; /* Force pointer cursor on hover */
+}
+
+/* Extra specific rule to override browser defaults */
+input.modern-search-input:not(:focus) {
+  cursor: pointer !important;
 }
 
 .modern-search-input:focus {
-  outline: none;
-  border: none;
-  box-shadow: none; /* Remove focus box shadow */
+  cursor: text !important; /* Change to text cursor when focused/typing */
+  outline: none !important; /* Remove blue outline */
+  border: none !important; /* Remove any border */
+  box-shadow: none !important; /* Remove any box shadow */
 }
 
 .modern-search-input::placeholder {

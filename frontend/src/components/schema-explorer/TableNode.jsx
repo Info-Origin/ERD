@@ -24,6 +24,8 @@ export const TableNode = ({ tableName, tableData }) => {
 
   const handleClick = () => {
     selectTable(tableName);
+    // Also toggle expansion when clicking table name
+    setIsExpanded(!isExpanded);
   };
 
   // Handle right-click context menu with smart positioning

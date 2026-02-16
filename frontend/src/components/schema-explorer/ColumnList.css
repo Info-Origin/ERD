@@ -64,6 +64,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 12px !important; /* Force smaller than table names (14px) */
 }
 
 .column-meta {
@@ -218,6 +219,7 @@
   white-space: nowrap;
   flex-shrink: 1;
   opacity: 0.85; /* Slightly less opaque than table names for subtle contrast */
+  font-size: 12px !important; /* Force smaller font size - noticeably smaller than table names (14px) */
 }
 
 .column-info {
@@ -248,7 +250,7 @@
 /* Data type display - Positioned on the right for clear visibility */
 .column-type-display {
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 0.75rem;
+  font-size: 11px;
   font-weight: 400;
   color: var(--text-secondary);
   cursor: help;
