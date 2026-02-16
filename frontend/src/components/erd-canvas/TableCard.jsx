@@ -381,20 +381,33 @@ export const TableCard = memo(({ data }) => {
                 highlightType = 'search';
               }
               // PRIORITY 2: Click-based relationship highlighting (only if no search)
-              else if (highlightedRelationship) {
+              // Check against ALL bundled relationships in the ERD
+              else if (highlightedRelationship && erdData?.relationships) {
                 const { fromTable, fromColumn, toTable, toColumn } = highlightedRelationship;
                 
-                // Check if this column should be highlighted as PK (source)
-                const isPkMatch = fromTable === tableName && fromColumn === columnName;
-                // Check if this column should be highlighted as FK (target)
-                const isFkMatch = toTable === tableName && toColumn === columnName;
+                // Find all relationships that match the highlighted relationship type
+                const matchingRelationships = erdData.relationships.filter(rel => {
+                  // Check if this relationship matches the highlighted one
+                  return (
+                    (rel.toTable === fromTable && rel.fromTable === toTable) ||
+                    (rel.fromTable === toTable && rel.toTable === fromTable)
+                  );
+                });
                 
-                if (isPkMatch) {
-                  isHighlighted = true;
-                  highlightType = 'click-pk'; // Click-based PK highlighting (Blue)
-                } else if (isFkMatch) {
-                  isHighlighted = true;
-                  highlightType = 'click-fk'; // Click-based FK highlighting (Green)
+                // Check if this column is involved in any matching relationship
+                for (const rel of matchingRelationships) {
+                  const isPkMatch = rel.toTable === tableName && rel.toColumn === columnName;
+                  const isFkMatch = rel.fromTable === tableName && rel.fromColumn === columnName;
+                  
+                  if (isPkMatch) {
+                    isHighlighted = true;
+                    highlightType = 'click-pk'; // Click-based PK highlighting (Blue)
+                    break;
+                  } else if (isFkMatch) {
+                    isHighlighted = true;
+                    highlightType = 'click-fk'; // Click-based FK highlighting (Green)
+                    break;
+                  }
                 }
               }
               // PRIORITY 3: Hover-based relationship highlighting (only if no search or click)

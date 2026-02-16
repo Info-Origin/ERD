@@ -25,29 +25,29 @@ export const ELKRelationshipEdge = memo(
     const hoverColor = theme === 'dark' ? '#ecf0f1' : '#34495e';
     
     // Check if this edge is currently highlighted (with corrected semantics)
-    const isHighlighted = highlightedRelationship && 
-      data?.fromTable && data?.toTable && data?.fromColumn && data?.toColumn &&
-      // Compare with corrected semantic direction
-      highlightedRelationship.fromTable === data.toTable &&     // PK table
-      highlightedRelationship.toTable === data.fromTable &&     // FK table  
-      highlightedRelationship.fromColumn === data.toColumn &&   // PK column
-      highlightedRelationship.toColumn === data.fromColumn;     // FK column
+    // For bundled relationships, check against ALL relationships in the bundle
+    const isHighlighted = highlightedRelationship && data?.bundledRelationships && 
+      data.bundledRelationships.some(rel => 
+        highlightedRelationship.fromTable === rel.toTable &&     // PK table
+        highlightedRelationship.toTable === rel.fromTable &&     // FK table  
+        highlightedRelationship.fromColumn === rel.toColumn &&   // PK column
+        highlightedRelationship.toColumn === rel.fromColumn      // FK column
+      );
 
     const handleEdgeClick = (e) => {
       e.stopPropagation();
       
       if (data?.fromTable && data?.toTable && data?.fromColumn && data?.toColumn) {
-        // IMPORTANT: Fix ERD semantic direction
-        // ELK layout: FK → PK (for routing)
-        // ERD semantics: PK → FK (for user display)
+        // For bundled relationships, highlight the FIRST relationship in the bundle
+        // The edge highlighting logic will check ALL bundled relationships
+        const relationshipToHighlight = data.bundledRelationships?.[0] || data;
+        
         const highlightData = {
-          // Semantic "From" = PK side (target in ELK layout)
-          fromTable: data.toTable,     // PK table (parent)
-          fromColumn: data.toColumn,   // PK column (parent)
-          // Semantic "To" = FK side (source in ELK layout)  
-          toTable: data.fromTable,     // FK table (child)
-          toColumn: data.fromColumn,   // FK column (child)
-          relationType: data.relationType || 'ONE_TO_MANY'
+          fromTable: relationshipToHighlight.toTable,     // PK table (parent)
+          fromColumn: relationshipToHighlight.toColumn,   // PK column (parent)
+          toTable: relationshipToHighlight.fromTable,     // FK table (child)
+          toColumn: relationshipToHighlight.fromColumn,   // FK column (child)
+          relationType: relationshipToHighlight.relationType || 'ONE_TO_MANY'
         };
         
         setHighlightedRelationship(highlightData);

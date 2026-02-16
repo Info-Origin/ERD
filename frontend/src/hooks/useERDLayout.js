@@ -5,6 +5,7 @@ import { useVirtualSchema } from "../context/VirtualSchemaContext";
 import { useDebounce } from "./useDebounce";
 import { distributeRelationshipPorts, generateHandleId } from "../utils/smartPortDistribution";
 import { calculateHybridLayout } from "../utils/hybridLayoutEngine";
+import { bundleRelationships } from "../utils/relationshipBundler";
 
 /**
  * Simple ERD Layout Hook
@@ -62,9 +63,12 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
           return sourceVisible && targetVisible;
         });
         
+        // Bundle relationships with same type between same tables
+        const bundledRelationships = bundleRelationships(schemaFilteredRelationships);
+        
         // Create edges using current node positions
         const distributedRelationships = distributeRelationshipPorts(
-          schemaFilteredRelationships, 
+          bundledRelationships, 
           currentNodes
         );
         
@@ -90,8 +94,13 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
             'target'
           );
 
+          // Create unique ID for bundled relationships
+          const edgeId = rel.isBundled 
+            ? `db-rel-bundle-${rel.fromTable}-${rel.toTable}-${rel.cardinalityType}-${rel.isIdentifying}`
+            : `db-rel-${rel.fromTable}.${rel.fromColumn}->${rel.toTable}.${rel.toColumn}`;
+
           return {
-            id: `db-rel-${rel.fromTable}.${rel.fromColumn}->${rel.toTable}.${rel.toColumn}`,
+            id: edgeId,
             source: visualSource,  // Parent (circle)
             target: visualTarget,  // Child (crow's foot)
             sourceHandle: sourceHandle,
@@ -114,7 +123,11 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
               sourceSide: rel.sourceSide,
               targetSide: rel.targetSide,
               sourcePortIndex: rel.sourcePortIndex,
-              targetPortIndex: rel.targetPortIndex
+              targetPortIndex: rel.targetPortIndex,
+              // Bundle information
+              isBundled: rel.isBundled || false,
+              bundledRelationships: rel.bundledRelationships || [rel],
+              bundleCount: rel.bundleCount || 1
             }
           };
         });
@@ -211,9 +224,12 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
         return sourceVisible && targetVisible;
       });
       
+      // Bundle relationships with same type between same tables
+      const bundledRelationships = bundleRelationships(schemaFilteredRelationships);
+      
       // Create edges using smart port distribution with initial node positions
       const distributedRelationships = distributeRelationshipPorts(
-        schemaFilteredRelationships, 
+        bundledRelationships, 
         simpleNodes
       );
       
@@ -239,8 +255,13 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
           'target'
         );
 
+        // Create unique ID for bundled relationships
+        const edgeId = rel.isBundled 
+          ? `db-rel-bundle-${rel.fromTable}-${rel.toTable}-${rel.cardinalityType}-${rel.isIdentifying}`
+          : `db-rel-${rel.fromTable}.${rel.fromColumn}->${rel.toTable}.${rel.toColumn}`;
+
         return {
-          id: `db-rel-${rel.fromTable}.${rel.fromColumn}->${rel.toTable}.${rel.toColumn}`,
+          id: edgeId,
           source: visualSource,  // Parent (circle)
           target: visualTarget,  // Child (crow's foot)
           sourceHandle: sourceHandle,
@@ -264,7 +285,11 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
             sourceSide: rel.sourceSide,
             targetSide: rel.targetSide,
             sourcePortIndex: rel.sourcePortIndex,
-            targetPortIndex: rel.targetPortIndex
+            targetPortIndex: rel.targetPortIndex,
+            // Bundle information
+            isBundled: rel.isBundled || false,
+            bundledRelationships: rel.bundledRelationships || [rel],
+            bundleCount: rel.bundleCount || 1
           }
         };
       });

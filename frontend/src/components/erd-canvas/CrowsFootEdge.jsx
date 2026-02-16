@@ -40,20 +40,24 @@ export const CrowsFootEdge = memo(({
   const highlightColor = '#3b82f6';
   
   // Check if this edge is currently highlighted
-  const isHighlighted = highlightedRelationship && 
-    data?.fromTable && data?.toTable && data?.fromColumn && data?.toColumn &&
-    highlightedRelationship.fromTable === data.toTable &&
-    highlightedRelationship.toTable === data.fromTable &&
-    highlightedRelationship.fromColumn === data.toColumn &&
-    highlightedRelationship.toColumn === data.fromColumn;
+  // For bundled relationships, check against ALL relationships in the bundle
+  const isHighlighted = highlightedRelationship && data?.bundledRelationships && 
+    data.bundledRelationships.some(rel => 
+      highlightedRelationship.fromTable === rel.toTable &&
+      highlightedRelationship.toTable === rel.fromTable &&
+      highlightedRelationship.fromColumn === rel.toColumn &&
+      highlightedRelationship.toColumn === rel.fromColumn
+    );
 
   // NEW: Check if this edge is hover-highlighted
-  const hoverHighlight = hoverHighlightedRelationships.find(hoverRel => 
-    data?.fromTable && data?.toTable && data?.fromColumn && data?.toColumn &&
-    hoverRel.fromTable === data.toTable &&     // PK table
-    hoverRel.toTable === data.fromTable &&     // FK table  
-    hoverRel.fromColumn === data.toColumn &&   // PK column
-    hoverRel.toColumn === data.fromColumn      // FK column
+  // For bundled relationships, check against ALL relationships in the bundle
+  const hoverHighlight = data?.bundledRelationships && hoverHighlightedRelationships.find(hoverRel => 
+    data.bundledRelationships.some(rel =>
+      hoverRel.fromTable === rel.toTable &&     // PK table
+      hoverRel.toTable === rel.fromTable &&     // FK table  
+      hoverRel.fromColumn === rel.toColumn &&   // PK column
+      hoverRel.toColumn === rel.fromColumn      // FK column
+    )
   );
 
   const isHoverHighlighted = !!hoverHighlight;
@@ -137,13 +141,18 @@ export const CrowsFootEdge = memo(({
       setIsClicked(true);
       setTimeout(() => setIsClicked(false), 5000);
       
-      if (data.fromColumn && data.toColumn && data.fromTable && data.toTable) {
+      // For bundled relationships, highlight the FIRST relationship in the bundle
+      // The edge highlighting logic will check ALL bundled relationships
+      const relationshipToHighlight = data.bundledRelationships?.[0] || data;
+      
+      if (relationshipToHighlight.fromColumn && relationshipToHighlight.toColumn && 
+          relationshipToHighlight.fromTable && relationshipToHighlight.toTable) {
         const highlightData = {
-          fromTable: data.toTable,
-          fromColumn: data.toColumn,
-          toTable: data.fromTable,
-          toColumn: data.fromColumn,
-          relationType: data.relationType || 'ONE_TO_MANY'
+          fromTable: relationshipToHighlight.toTable,
+          fromColumn: relationshipToHighlight.toColumn,
+          toTable: relationshipToHighlight.fromTable,
+          toColumn: relationshipToHighlight.fromColumn,
+          relationType: relationshipToHighlight.relationType || 'ONE_TO_MANY'
         };
         
         setHighlightedRelationshipWithTimer(highlightData);
@@ -469,29 +478,39 @@ export const CrowsFootEdge = memo(({
             data-relationship-id={id}
           />
           
-          {/* Cardinality label */}
-          <text
-            x={labelX}
-            y={labelY - 10}
-            textAnchor="middle"
-            fill={lineColor}
-            fontSize="10"
-            fontWeight="500"
-            fontFamily="monospace"
-            style={{
-              cursor: 'pointer',
-              pointerEvents: 'all',
-              userSelect: 'none',
-              background: 'var(--bg-primary)',
-              padding: '2px 4px',
-              borderRadius: '2px'
-            }}
-            onClick={handleEdgeClick}
-            data-relationship-id={id}
-          >
-            {data?.cardinalityType || relationshipStyle.cardinality}
-            {data?.type === 'ONE_TO_ONE_UNIQUE' && ' (U)'}
-          </text>
+          {/* Cardinality label with background */}
+          <g onClick={handleEdgeClick} style={{ cursor: 'pointer', pointerEvents: 'all' }}>
+            {/* Background rectangle for better visibility */}
+            <rect
+              x={labelX - 18}
+              y={labelY - 20}
+              width="36"
+              height="16"
+              fill="var(--bg-primary)"
+              stroke="var(--border-color)"
+              strokeWidth="0.5"
+              rx="3"
+              opacity="0.95"
+            />
+            {/* Label text */}
+            <text
+              x={labelX}
+              y={labelY - 10}
+              textAnchor="middle"
+              fill={lineColor}
+              fontSize="10"
+              fontWeight="500"
+              fontFamily="monospace"
+              style={{
+                userSelect: 'none',
+                pointerEvents: 'none'
+              }}
+              data-relationship-id={id}
+            >
+              {data?.cardinalityType || relationshipStyle.cardinality}
+              {data?.type === 'ONE_TO_ONE_UNIQUE' && ' (U)'}
+            </text>
+          </g>
         </>
       )}
       

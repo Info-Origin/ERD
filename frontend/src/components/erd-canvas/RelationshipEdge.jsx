@@ -214,21 +214,24 @@ export const RelationshipEdge = memo(
     const lineColor = theme === 'dark' ? '#bdc3c7' : '#2c3e50';
     
     // Check if this edge is currently highlighted (with corrected semantics)
-    const isHighlighted = highlightedRelationship && 
-      data?.fromTable && data?.toTable && data?.fromColumn && data?.toColumn &&
-      // Compare with corrected semantic direction
-      highlightedRelationship.fromTable === data.toTable &&     // PK table
-      highlightedRelationship.toTable === data.fromTable &&     // FK table  
-      highlightedRelationship.fromColumn === data.toColumn &&   // PK column
-      highlightedRelationship.toColumn === data.fromColumn;     // FK column
+    // For bundled relationships, check against ALL relationships in the bundle
+    const isHighlighted = highlightedRelationship && data?.bundledRelationships && 
+      data.bundledRelationships.some(rel => 
+        highlightedRelationship.fromTable === rel.toTable &&     // PK table
+        highlightedRelationship.toTable === rel.fromTable &&     // FK table  
+        highlightedRelationship.fromColumn === rel.toColumn &&   // PK column
+        highlightedRelationship.toColumn === rel.fromColumn      // FK column
+      );
 
     // NEW: Check if this edge is hover-highlighted
-    const hoverHighlight = hoverHighlightedRelationships.find(hoverRel => 
-      data?.fromTable && data?.toTable && data?.fromColumn && data?.toColumn &&
-      hoverRel.fromTable === data.toTable &&     // PK table
-      hoverRel.toTable === data.fromTable &&     // FK table  
-      hoverRel.fromColumn === data.toColumn &&   // PK column
-      hoverRel.toColumn === data.fromColumn      // FK column
+    // For bundled relationships, check against ALL relationships in the bundle
+    const hoverHighlight = data?.bundledRelationships && hoverHighlightedRelationships.find(hoverRel => 
+      data.bundledRelationships.some(rel =>
+        hoverRel.fromTable === rel.toTable &&     // PK table
+        hoverRel.toTable === rel.fromTable &&     // FK table  
+        hoverRel.fromColumn === rel.toColumn &&   // PK column
+        hoverRel.toColumn === rel.fromColumn      // FK column
+      )
     );
 
     const isHoverHighlighted = !!hoverHighlight;
@@ -269,52 +272,22 @@ export const RelationshipEdge = memo(
         setIsClicked(true);
         setTimeout(() => setIsClicked(false), 5000);
         
-        let highlightData = null;
+        // For bundled relationships, highlight the FIRST relationship in the bundle
+        // The edge highlighting logic will check ALL bundled relationships
+        const relationshipToHighlight = data.bundledRelationships?.[0] || data;
         
-        // For all relationships, we should have column information
-        if (data.fromColumn && data.toColumn && data.fromTable && data.toTable) {
-          // IMPORTANT: Fix ERD semantic direction
-          // Database stores: FK → PK (for foreign key constraint direction)
-          // ERD semantics: PK → FK (for user display - parent to child)
-          
-          // Determine which side is PK and which is FK based on column names and relationship
-          // In most cases: fromTable.fromColumn is FK, toTable.toColumn is PK
-          // So we need to reverse for proper ERD semantics
-          
-          highlightData = {
-            // Semantic "From" = PK side (parent) - this is usually the "to" in database terms
-            fromTable: data.toTable,     // PK table (parent)
-            fromColumn: data.toColumn,   // PK column (parent)
-            // Semantic "To" = FK side (child) - this is usually the "from" in database terms
-            toTable: data.fromTable,     // FK table (child)
-            toColumn: data.fromColumn,   // FK column (child)
-            relationType: data.relationType || 'ONE_TO_MANY'
+        if (relationshipToHighlight.fromColumn && relationshipToHighlight.toColumn && 
+            relationshipToHighlight.fromTable && relationshipToHighlight.toTable) {
+          const highlightData = {
+            fromTable: relationshipToHighlight.toTable,     // PK table (parent)
+            fromColumn: relationshipToHighlight.toColumn,   // PK column (parent)
+            toTable: relationshipToHighlight.fromTable,     // FK table (child)
+            toColumn: relationshipToHighlight.fromColumn,   // FK column (child)
+            relationType: relationshipToHighlight.relationType || 'ONE_TO_MANY'
           };
           
-          // Set the highlighted relationship
           setHighlightedRelationshipWithTimer(highlightData);
-          
-        } else {
-          // Try to extract basic info for fallback highlighting
-          if (data.fromTable && data.toTable) {
-            const pkColumn = 'id';
-            const fkColumn = `${data.fromTable}_id`;
-            
-            highlightData = {
-              fromTable: data.fromTable,
-              fromColumn: pkColumn,
-              toTable: data.toTable,
-              toColumn: fkColumn,
-              relationType: 'ONE_TO_MANY'
-            };
-            
-            setHighlightedRelationshipWithTimer(highlightData);
-          } else {
-            console.warn('❌ Missing table data:', { fromTable: data.fromTable, toTable: data.toTable });
-          }
         }
-      } else {
-        console.warn('❌ No data available for edge:', id);
       }
     };
 
@@ -373,25 +346,38 @@ export const RelationshipEdge = memo(
           data-relationship-id={id}
         />
         
-        {/* Optional: Relationship label at calculated position */}
+        {/* Optional: Relationship label at calculated position with background */}
         {label && (
-          <text
-            x={labelXToUse}
-            y={labelYToUse}
-            textAnchor="middle"
-            fill={lineColor}
-            fontSize="12"
-            fontWeight="500"
-            style={{
-              cursor: 'pointer',
-              pointerEvents: 'all',
-              userSelect: 'none'
-            }}
-            onClick={handleEdgeClick}
-            data-relationship-id={id}
-          >
-            {label}
-          </text>
+          <g onClick={handleEdgeClick} style={{ cursor: 'pointer', pointerEvents: 'all' }}>
+            {/* Background rectangle for better visibility */}
+            <rect
+              x={labelXToUse - 20}
+              y={labelYToUse - 18}
+              width="40"
+              height="16"
+              fill="var(--bg-primary)"
+              stroke="var(--border-color)"
+              strokeWidth="0.5"
+              rx="3"
+              opacity="0.95"
+            />
+            {/* Label text */}
+            <text
+              x={labelXToUse}
+              y={labelYToUse}
+              textAnchor="middle"
+              fill={lineColor}
+              fontSize="12"
+              fontWeight="500"
+              style={{
+                userSelect: 'none',
+                pointerEvents: 'none'
+              }}
+              data-relationship-id={id}
+            >
+              {label}
+            </text>
+          </g>
         )}
       </g>
     );
