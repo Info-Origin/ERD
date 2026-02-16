@@ -736,12 +736,13 @@
 
 /* Search highlighting - Warm peachy/tan color (matching image 2) */
 .table-card-row-search-highlighted {
- background: #fde883 !important;
+ background: #fcc95a41 !important;
   border: 0 !important;
   border-width: 0 !important;
   border-style: none !important;
   border-color: transparent !important;
-  border-radius: 1.5px !important;
+  border-left: 6px solid #e79213 !important; /* Yellow/orange left border accent */
+  border-radius: 0 4px 4px 0 !important; /* Rounded on right only */
   transform: none !important;
   z-index: 100 !important;
   position: relative !important;

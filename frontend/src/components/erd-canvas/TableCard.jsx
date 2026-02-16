@@ -352,8 +352,15 @@ export const TableCard = memo(({ data }) => {
               border: selfJoinHover ? '1px solid rgba(107, 114, 128, 0.2)' : '1px solid transparent',
               fontStyle: 'italic'
             }}
-            onMouseEnter={() => setSelfJoinHover(true)}
-            onMouseLeave={() => setSelfJoinHover(false)}
+            onMouseEnter={(e) => {
+              e.stopPropagation();
+              handleTableHoverEnd(); // Clear any existing table hover
+              setSelfJoinHover(true);
+            }}
+            onMouseLeave={(e) => {
+              e.stopPropagation();
+              setSelfJoinHover(false);
+            }}
           >
             Self Joined
           </span>
@@ -410,8 +417,8 @@ export const TableCard = memo(({ data }) => {
                   }
                 }
               }
-              // PRIORITY 3: Hover-based relationship highlighting (only if no search or click)
-              else if (hoverHighlightedRelationships.length > 0) {
+              // PRIORITY 3: Hover-based relationship highlighting (only if no search or click, and NOT hovering on Self Joined text)
+              else if (hoverHighlightedRelationships.length > 0 && !selfJoinHover) {
                 for (const hoverRel of hoverHighlightedRelationships) {
                   const isPkMatch = hoverRel.fromTable === tableName && hoverRel.fromColumn === columnName;
                   const isFkMatch = hoverRel.toTable === tableName && hoverRel.toColumn === columnName;
