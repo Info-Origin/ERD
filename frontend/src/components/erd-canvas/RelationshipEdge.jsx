@@ -1,4 +1,5 @@
 import { memo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useApp } from "../../context/AppContext";
 import { useTheme } from "../../context/ThemeContext";
 import "./RelationshipEdge.css";
@@ -205,10 +206,19 @@ export const RelationshipEdge = memo(
       routingMode,
       setHighlightedRelationshipWithTimer, // NEW: Improved timer management
       // NEW: Hover-based highlighting
-      hoverHighlightedRelationships 
+      hoverHighlightedRelationships,
+      // Relationship deletion
+      deleteRelationships,
+      showNotification,
+      // Relationship modals
+      openRelationshipDetailsModal,
+      openRelationshipDeleteModal
     } = useApp();
     const { theme } = useTheme();
     const [isClicked, setIsClicked] = useState(false);
+    
+    // Context menu state
+    const [contextMenu, setContextMenu] = useState({ isOpen: false, x: 0, y: 0 });
     
     // Theme-aware colors
     const lineColor = theme === 'dark' ? '#bdc3c7' : '#2c3e50';
@@ -291,6 +301,51 @@ export const RelationshipEdge = memo(
       }
     };
 
+    // Handle right-click context menu
+    const handleContextMenu = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      setContextMenu({
+        isOpen: true,
+        x: e.clientX,
+        y: e.clientY
+      });
+    };
+
+    const closeContextMenu = () => {
+      setContextMenu({ isOpen: false, x: 0, y: 0 });
+    };
+
+    const handleViewDetails = () => {
+      const rels = getAllRelationships();
+      closeContextMenu();
+      openRelationshipDetailsModal(rels);
+    };
+
+    const handleDeleteClick = () => {
+      closeContextMenu();
+      const rels = getAllRelationships().filter(rel => rel.isUserCreated);
+      openRelationshipDeleteModal(rels);
+    };
+
+    // Get all relationships for this edge (bundled or single)
+    const getAllRelationships = () => {
+      if (data?.bundledRelationships && data.bundledRelationships.length > 0) {
+        return data.bundledRelationships;
+      }
+      // If no bundled relationships, create array from data
+      if (data?.fromTable && data?.fromColumn && data?.toTable && data?.toColumn) {
+        return [data];
+      }
+      return [];
+    };
+
+    // Check if any relationship is user-created
+    const hasUserCreatedRelationships = () => {
+      return getAllRelationships().some(rel => rel.isUserCreated);
+    };
+
     // Get relationship type for self-join detection
     const selfJoin = isSelfJoin(data);
 
@@ -329,6 +384,7 @@ export const RelationshipEdge = memo(
             filter: edgeStyle.filter
           }}
           onClick={handleEdgeClick}
+          onContextMenu={handleContextMenu}
           data-relationship-id={id}
         />
         
@@ -343,12 +399,13 @@ export const RelationshipEdge = memo(
             pointerEvents: 'all'
           }}
           onClick={handleEdgeClick}
+          onContextMenu={handleContextMenu}
           data-relationship-id={id}
         />
         
         {/* Optional: Relationship label at calculated position with background */}
         {label && (
-          <g onClick={handleEdgeClick} style={{ cursor: 'pointer', pointerEvents: 'all' }}>
+          <g onClick={handleEdgeClick} onContextMenu={handleContextMenu} style={{ cursor: 'pointer', pointerEvents: 'all' }}>
             {/* Background rectangle for better visibility */}
             <rect
               x={labelXToUse - 20}
@@ -378,6 +435,67 @@ export const RelationshipEdge = memo(
               {label}
             </text>
           </g>
+        )}
+
+        {/* Context Menu */}
+        {contextMenu.isOpen && createPortal(
+          <>
+            <div 
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 9998
+              }}
+              onClick={closeContextMenu}
+            />
+            <div
+              style={{
+                position: 'fixed',
+                left: contextMenu.x,
+                top: contextMenu.y,
+                zIndex: 9999,
+                background: 'var(--bg-primary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '6px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                minWidth: '180px',
+                padding: '4px 0'
+              }}
+            >
+              <div
+                style={{
+                  padding: '8px 12px',
+                  cursor: 'pointer',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.9rem'
+                }}
+                onClick={handleViewDetails}
+                onMouseEnter={(e) => e.target.style.background = 'var(--bg-hover)'}
+                onMouseLeave={(e) => e.target.style.background = 'transparent'}
+              >
+                View Details {data?.isBundled && `(${data.bundleCount})`}
+              </div>
+              {hasUserCreatedRelationships() && (
+                <div
+                  style={{
+                    padding: '8px 12px',
+                    cursor: 'pointer',
+                    color: '#ef4444',
+                    fontSize: '0.9rem'
+                  }}
+                  onClick={handleDeleteClick}
+                  onMouseEnter={(e) => e.target.style.background = 'var(--bg-hover)'}
+                  onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                >
+                  Delete Relationship{data?.isBundled && 's...'}
+                </div>
+              )}
+            </div>
+          </>,
+          document.body
         )}
       </g>
     );

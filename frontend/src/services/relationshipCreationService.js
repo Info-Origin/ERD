@@ -63,7 +63,7 @@ export const createOneToManyRelationship = (schemaModel, parentTable, childTable
     fk: true,
     unique: isOneToOne, // 1:1 relationships need unique FK
     nullable: !relationshipType.isIdentifying, // Identifying = NOT NULL, Non-identifying = NULL
-    isVirtual: true // Mark as user-created
+    isUserCreated: true // Mark as user-created
   };
   
   // Add FK column to child table
@@ -80,7 +80,8 @@ export const createOneToManyRelationship = (schemaModel, parentTable, childTable
     type: isOneToOne ? 'ONE_TO_ONE' : 'ONE_TO_MANY',
     cardinalityType: relationshipType.cardinality, // Use the cardinality from relationshipType (1:1 or 1:N)
     constraintName: `fk_${childTable}_${fkColumnName}`,
-    isVirtual: true, // Mark as user-created
+    isUserCreated: true, // Mark as user-created
+    createdAt: Date.now(), // Timestamp for "created X minutes ago"
     lineStyle: relationshipType.lineStyle,
     isIdentifying: relationshipType.isIdentifying
   };
@@ -138,7 +139,7 @@ export const createManyToManyRelationship = (schemaModel, table1, table2, relati
         fk: true,
         unique: false,
         nullable: false,
-        isVirtual: true,
+        isUserCreated: true,
         compositeKey: true // Mark as part of composite key
       },
       [fk2ColumnName]: {
@@ -148,11 +149,11 @@ export const createManyToManyRelationship = (schemaModel, table1, table2, relati
         fk: true,
         unique: false,
         nullable: false,
-        isVirtual: true,
+        isUserCreated: true,
         compositeKey: true // Mark as part of composite key
       }
     },
-    isVirtual: true // Mark entire table as user-created
+    isUserCreated: true // Mark entire table as user-created
   };
   
   // Add junction table to schema
@@ -167,7 +168,8 @@ export const createManyToManyRelationship = (schemaModel, table1, table2, relati
     toColumn: table1PKName,
     type: 'ONE_TO_MANY',
     constraintName: `fk_${junctionTableName}_${fk1ColumnName}`,
-    isVirtual: true,
+    isUserCreated: true,
+    createdAt: Date.now(), // Timestamp for "created X minutes ago"
     lineStyle: 'solid', // Many-to-Many is always identifying
     isIdentifying: true
   };
@@ -179,7 +181,8 @@ export const createManyToManyRelationship = (schemaModel, table1, table2, relati
     toColumn: table2PKName,
     type: 'ONE_TO_MANY',
     constraintName: `fk_${junctionTableName}_${fk2ColumnName}`,
-    isVirtual: true,
+    isUserCreated: true,
+    createdAt: Date.now(), // Timestamp for "created X minutes ago"
     lineStyle: 'solid', // Many-to-Many is always identifying
     isIdentifying: true
   };

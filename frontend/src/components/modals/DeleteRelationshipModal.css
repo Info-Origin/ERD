@@ -1,0 +1,165 @@
+.delete-relationship-modal {
+  max-width: 480px;
+  width: 90%;
+}
+
+.delete-confirmation-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.confirmation-message {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin: 0;
+  font-weight: 400;
+}
+
+.relationships-to-delete {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  background: var(--bg-secondary);
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.relationship-to-delete-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.relationship-arrow {
+  color: var(--primary-color);
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+.relationship-text {
+  flex: 1;
+  font-weight: 500;
+}
+
+.relationship-type {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.warning-box {
+  padding: 12px;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 6px;
+}
+
+.warning-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.warning-icon {
+  color: #ef4444;
+  font-size: 1rem;
+}
+
+.warning-title {
+  font-weight: 600;
+  color: #ef4444;
+  font-size: 0.85rem;
+}
+
+.warning-list {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.warning-list li {
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.warning-list li.critical {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.undo-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(59, 130, 246, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.undo-icon {
+  font-size: 1.2rem;
+  color: var(--primary-color);
+}
+
+.modal-title-icon.warning {
+  color: #ef4444;
+}
+
+/* Modal footer buttons */
+.delete-relationship-modal .modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 12px 24px;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--bg-tertiary);
+}
+
+.delete-relationship-modal .modal-footer .btn {
+  min-width: 90px;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  border: none;
+}
+
+.delete-relationship-modal .modal-footer .btn-secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.delete-relationship-modal .modal-footer .btn-secondary:hover {
+  background: var(--bg-hover);
+  border-color: var(--text-secondary);
+}
+
+.delete-relationship-modal .modal-footer .btn-danger {
+  background: #ef4444;
+  color: white;
+}
+
+.delete-relationship-modal .modal-footer .btn-danger:hover {
+  background: #dc2626;
+}

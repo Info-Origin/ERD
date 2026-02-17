@@ -16,6 +16,8 @@ import { ERDHeader } from "./ERDHeader";
 import { CanvasControls } from "./CanvasControls";
 import { RelationshipToolbar } from "./RelationshipToolbar";
 import { Loader } from "../common/Loader";
+import { RelationshipDetailsModal } from "../modals/RelationshipDetailsModal";
+import { DeleteRelationshipModal } from "../modals/DeleteRelationshipModal";
 import { useApp } from "../../context/AppContext";
 import { useERDLayout } from "../../hooks/useERDLayout";
 import { useVirtualSchema } from "../../context/VirtualSchemaContext";
@@ -35,8 +37,26 @@ const edgeTypes = {
 };
 
 const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
-  const { erdData, erdLoading, erdError, selectedSchema, selectedTable, setHighlightedRelationship, highlightedRelationship, routingMode, crowsFootMode, gridBackground, showNotification } =
-    useApp();
+  const { 
+    erdData, 
+    erdLoading, 
+    erdError, 
+    selectedSchema, 
+    selectedTable, 
+    setHighlightedRelationship, 
+    highlightedRelationship, 
+    routingMode, 
+    crowsFootMode, 
+    gridBackground, 
+    showNotification,
+    // Relationship modals
+    relationshipDetailsModal,
+    closeRelationshipDetailsModal,
+    relationshipDeleteModal,
+    closeRelationshipDeleteModal,
+    openRelationshipDeleteModal,
+    deleteRelationships
+  } = useApp();
   const virtualSchema = useVirtualSchema(); // Get full virtual schema context
   const { 
     selectedTables, 
@@ -470,6 +490,28 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
           </div>
         )} */}
       </div>
+
+      {/* Relationship Details Modal */}
+      <RelationshipDetailsModal
+        isOpen={relationshipDetailsModal.isOpen}
+        onClose={closeRelationshipDetailsModal}
+        relationships={relationshipDetailsModal.relationships}
+        onDelete={(rels) => {
+          closeRelationshipDetailsModal();
+          openRelationshipDeleteModal(rels);
+        }}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteRelationshipModal
+        isOpen={relationshipDeleteModal.isOpen}
+        onClose={closeRelationshipDeleteModal}
+        relationships={relationshipDeleteModal.relationships}
+        onConfirm={async (rels) => {
+          closeRelationshipDeleteModal();
+          await deleteRelationships(rels);
+        }}
+      />
     </div>
   );
 };

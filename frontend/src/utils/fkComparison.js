@@ -117,8 +117,8 @@ export const compareForeignKeys = (baselineSchema, virtualSchema) => {
       const baselineRelationship = findRelationshipForColumn(baselineSchema, tableName, columnName);
 
       if (baselineFKs.has(columnName)) {
-        // FK exists in both schemas - check if it was originally virtual
-        if (virtualRelationship?.isVirtual) {
+        // FK exists in both schemas - check if it was originally user-created
+        if (virtualRelationship?.isUserCreated) {
           // This was originally added virtually but now exists in actual DB - SYNCED
           const columnData = virtualTable.columns[columnName];
           tableChanges.synced.push({

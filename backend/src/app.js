@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import schemaRoutes from "./routes/schemaRoutes.js";
 import connectionRoutes from "./routes/connectionRoutes.js";
+import relationshipRoutes from "./routes/relationshipRoutes.js";
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
 
 const app = express();
@@ -14,6 +15,7 @@ app.get("/api/health", (req, res) => {
 });
 
 app.use("/api", connectionRoutes);
+app.use("/api/schemas", relationshipRoutes);
 app.use("/api", schemaRoutes);
 
 app.use(notFound);

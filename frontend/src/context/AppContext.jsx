@@ -58,7 +58,7 @@ export const AppProvider = ({ children }) => {
     const notification = { id, message, type };
     setNotifications(prev => [...prev, notification]);
     
-    // Auto-remove after 5 seconds for success/info, keep error/warning until manually closed
+    // Auto-remove after 5 seconds for success/info
     if (type === "success" || type === "info") {
       setTimeout(() => {
         removeNotification(id);
@@ -412,6 +412,106 @@ export const AppProvider = ({ children }) => {
     // Debug logging removed for production
   }, [virtualSchema.workingSchema]);
 
+  // Relationship details and delete modals
+  const [relationshipDetailsModal, setRelationshipDetailsModal] = useState({
+    isOpen: false,
+    relationships: []
+  });
+  const [relationshipDeleteModal, setRelationshipDeleteModal] = useState({
+    isOpen: false,
+    relationships: []
+  });
+
+  const openRelationshipDetailsModal = (relationships) => {
+    setRelationshipDetailsModal({
+      isOpen: true,
+      relationships
+    });
+    setIsAnyModalOpen(true);
+  };
+
+  const closeRelationshipDetailsModal = () => {
+    setRelationshipDetailsModal({
+      isOpen: false,
+      relationships: []
+    });
+    setIsAnyModalOpen(false);
+  };
+
+  const openRelationshipDeleteModal = (relationships) => {
+    setRelationshipDeleteModal({
+      isOpen: true,
+      relationships
+    });
+    setIsAnyModalOpen(true);
+  };
+
+  const closeRelationshipDeleteModal = () => {
+    setRelationshipDeleteModal({
+      isOpen: false,
+      relationships: []
+    });
+    setIsAnyModalOpen(false);
+  };
+
+  const deleteRelationships = async (relationships) => {
+    try {
+      // Call backend API to delete relationships
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:4001/api'}/schemas/${selectedSchema}/relationships`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ relationships }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete relationships');
+      }
+
+      // Update working schema
+      if (virtualSchema.workingSchema) {
+        const updatedSchema = {
+          ...virtualSchema.workingSchema,
+          relationships: virtualSchema.workingSchema.relationships.filter(rel => 
+            !relationships.some(delRel => 
+              rel.fromTable === delRel.fromTable &&
+              rel.fromColumn === delRel.fromColumn &&
+              rel.toTable === delRel.toTable &&
+              rel.toColumn === delRel.toColumn
+            )
+          ),
+          tables: { ...virtualSchema.workingSchema.tables }
+        };
+
+        // Remove FK columns from tables
+        relationships.forEach(rel => {
+          if (updatedSchema.tables[rel.fromTable]) {
+            const table = updatedSchema.tables[rel.fromTable];
+            if (table.columns[rel.fromColumn]) {
+              delete updatedSchema.tables[rel.fromTable].columns[rel.fromColumn];
+            }
+          }
+        });
+
+        virtualSchema.updateWorkingSchema(updatedSchema);
+      }
+
+      // Show success notification
+      const count = relationships.length;
+      showNotification(
+        `${count} relationship${count > 1 ? 's' : ''} deleted successfully.`,
+        'success'
+      );
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting relationships:', error);
+      showNotification('Failed to delete relationships: ' + error.message, 'error');
+      return { success: false, error: error.message };
+    }
+  };
+
   const value = {
     // Schemas
     schemas,
@@ -490,6 +590,17 @@ export const AppProvider = ({ children }) => {
     notifications,
     showNotification,
     removeNotification,
+
+    // Relationship deletion
+    deleteRelationships,
+
+    // Relationship modals
+    relationshipDetailsModal,
+    openRelationshipDetailsModal,
+    closeRelationshipDetailsModal,
+    relationshipDeleteModal,
+    openRelationshipDeleteModal,
+    closeRelationshipDeleteModal,
 
     // Global modal state
     isAnyModalOpen,

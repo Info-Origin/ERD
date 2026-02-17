@@ -62,7 +62,7 @@ export const MainPage = () => {
             key={notification.id}
             message={notification.message}
             type={notification.type}
-            duration={0} // Don't auto-remove, let user close manually
+            duration={5000}
             onClose={() => removeNotification(notification.id)}
             position="top-right"
           />

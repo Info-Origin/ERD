@@ -7,7 +7,8 @@ export const Notification = ({
   type = 'info', 
   duration = 5000, 
   onClose, 
-  position = 'top-right' 
+  position = 'top-right',
+  action = null // NEW: Optional action button { label: 'Undo', onClick: () => {} }
 }) => {
   const [isVisible, setIsVisible] = useState(true);
 
@@ -49,13 +50,26 @@ export const Notification = ({
         {getIcon()}
         <span className="notification-message">{message}</span>
       </div>
-      <button 
-        className="notification-close" 
-        onClick={handleClose}
-        aria-label="Close notification"
-      >
-        <FiX />
-      </button>
+      <div className="notification-actions">
+        {action && (
+          <button 
+            className="notification-action-btn" 
+            onClick={() => {
+              action.onClick();
+              handleClose();
+            }}
+          >
+            {action.label}
+          </button>
+        )}
+        <button 
+          className="notification-close" 
+          onClick={handleClose}
+          aria-label="Close notification"
+        >
+          <FiX />
+        </button>
+      </div>
     </div>
   );
 };
