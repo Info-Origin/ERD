@@ -9,7 +9,7 @@ const router = express.Router();
  */
 router.delete('/:schemaName/relationships', async (req, res) => {
   const { schemaName } = req.params;
-  const { relationships } = req.body;
+  const { relationships, junctionTables } = req.body;
 
   if (!relationships || !Array.isArray(relationships) || relationships.length === 0) {
     return res.status(400).json({ error: 'Relationships array is required' });
@@ -47,7 +47,7 @@ router.delete('/:schemaName/relationships', async (req, res) => {
       `, [schemaName, fromTable, fromColumn, schemaName, toTable, toColumn]);
 
       if (constraints.length === 0) {
-        console.warn(`No FK constraint found for ${fromTable}.${fromColumn} -> ${toTable}.${toColumn}`);
+        // Skip if constraint doesn't exist (user-created relationship not yet persisted)
         continue;
       }
 
@@ -75,11 +75,24 @@ router.delete('/:schemaName/relationships', async (req, res) => {
       });
     }
 
+    // Step 4: Drop junction tables if provided
+    if (junctionTables && Array.isArray(junctionTables) && junctionTables.length > 0) {
+      for (const junctionTable of junctionTables) {
+        await connection.query(`
+          DROP TABLE IF EXISTS \`${schemaName}\`.\`${junctionTable}\`
+        `);
+        results.push({
+          table: junctionTable,
+          status: 'junction_table_deleted'
+        });
+      }
+    }
+
     await connection.commit();
 
     res.json({
       success: true,
-      message: `${results.length} relationship(s) deleted successfully`,
+      message: `${results.length} item(s) deleted successfully`,
       results
     });
 

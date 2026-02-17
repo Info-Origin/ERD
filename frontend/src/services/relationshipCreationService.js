@@ -153,7 +153,9 @@ export const createManyToManyRelationship = (schemaModel, table1, table2, relati
         compositeKey: true // Mark as part of composite key
       }
     },
-    isUserCreated: true // Mark entire table as user-created
+    isUserCreated: true, // Mark entire table as user-created
+    isJunctionTable: true, // NEW: Mark as junction table for N:M
+    junctionFor: [table1, table2].sort() // Track which tables this joins
   };
   
   // Add junction table to schema
@@ -171,7 +173,9 @@ export const createManyToManyRelationship = (schemaModel, table1, table2, relati
     isUserCreated: true,
     createdAt: Date.now(), // Timestamp for "created X minutes ago"
     lineStyle: 'solid', // Many-to-Many is always identifying
-    isIdentifying: true
+    isIdentifying: true,
+    isJunctionRelationship: true, // NEW: Mark as part of N:M
+    junctionTable: junctionTableName
   };
   
   const relationship2 = {
@@ -184,7 +188,9 @@ export const createManyToManyRelationship = (schemaModel, table1, table2, relati
     isUserCreated: true,
     createdAt: Date.now(), // Timestamp for "created X minutes ago"
     lineStyle: 'solid', // Many-to-Many is always identifying
-    isIdentifying: true
+    isIdentifying: true,
+    isJunctionRelationship: true, // NEW: Mark as part of N:M
+    junctionTable: junctionTableName
   };
   
   // Add relationships

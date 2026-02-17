@@ -12,6 +12,15 @@ export const DeleteRelationshipModal = ({
 
   const isSingle = relationships.length === 1;
   const relationship = relationships[0];
+  
+  // Check if this involves a junction table
+  const junctionTables = new Set();
+  relationships.forEach(rel => {
+    if (rel.isJunctionRelationship && rel.junctionTable) {
+      junctionTables.add(rel.junctionTable);
+    }
+  });
+  const hasJunctionTable = junctionTables.size > 0;
 
   const handleConfirm = () => {
     onConfirm(relationships);
@@ -58,8 +67,10 @@ export const DeleteRelationshipModal = ({
               <ul className="warning-list">
                 <li>Drop foreign key constraint{isSingle ? '' : 's'}</li>
                 <li>Remove FK column{isSingle ? '' : 's'} from table{isSingle ? '' : 's'}</li>
-                {relationships.some(rel => rel.isJunctionTable) && (
-                  <li className="critical">Drop junction table (for N:M relationships)</li>
+                {hasJunctionTable && (
+                  <li className="critical">
+                    Drop junction table{junctionTables.size > 1 ? 's' : ''}: {Array.from(junctionTables).join(', ')} (N:M relationship)
+                  </li>
                 )}
                 <li>Update ERD diagram</li>
               </ul>

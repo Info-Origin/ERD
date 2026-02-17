@@ -276,7 +276,6 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
           // Update the working schema
           virtualSchema.updateWorkingSchema(updatedSchema);
           
-          console.log('✅ Relationship created successfully');
           showNotification('Relationship created successfully!', 'success');
           
         } catch (error) {

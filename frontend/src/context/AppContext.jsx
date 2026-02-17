@@ -456,13 +456,44 @@ export const AppProvider = ({ children }) => {
 
   const deleteRelationships = async (relationships) => {
     try {
+      // Check if any relationship is part of a junction table
+      const junctionTables = new Set();
+      relationships.forEach(rel => {
+        if (rel.isJunctionRelationship && rel.junctionTable) {
+          junctionTables.add(rel.junctionTable);
+        }
+      });
+
+      // If deleting from junction table, include ALL relationships from that junction table
+      let allRelationshipsToDelete = [...relationships];
+      if (junctionTables.size > 0) {
+        junctionTables.forEach(junctionTable => {
+          const junctionRels = virtualSchema.workingSchema.relationships.filter(rel =>
+            rel.fromTable === junctionTable || rel.toTable === junctionTable
+          );
+          junctionRels.forEach(rel => {
+            if (!allRelationshipsToDelete.find(r => 
+              r.fromTable === rel.fromTable && 
+              r.fromColumn === rel.fromColumn &&
+              r.toTable === rel.toTable &&
+              r.toColumn === rel.toColumn
+            )) {
+              allRelationshipsToDelete.push(rel);
+            }
+          });
+        });
+      }
+
       // Call backend API to delete relationships
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:4001/api'}/schemas/${selectedSchema}/relationships`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ relationships }),
+        body: JSON.stringify({ 
+          relationships: allRelationshipsToDelete,
+          junctionTables: Array.from(junctionTables) // Send junction tables to delete
+        }),
       });
 
       if (!response.ok) {
@@ -474,7 +505,7 @@ export const AppProvider = ({ children }) => {
         const updatedSchema = {
           ...virtualSchema.workingSchema,
           relationships: virtualSchema.workingSchema.relationships.filter(rel => 
-            !relationships.some(delRel => 
+            !allRelationshipsToDelete.some(delRel => 
               rel.fromTable === delRel.fromTable &&
               rel.fromColumn === delRel.fromColumn &&
               rel.toTable === delRel.toTable &&
@@ -485,7 +516,7 @@ export const AppProvider = ({ children }) => {
         };
 
         // Remove FK columns from tables
-        relationships.forEach(rel => {
+        allRelationshipsToDelete.forEach(rel => {
           if (updatedSchema.tables[rel.fromTable]) {
             const table = updatedSchema.tables[rel.fromTable];
             if (table.columns[rel.fromColumn]) {
@@ -494,13 +525,21 @@ export const AppProvider = ({ children }) => {
           }
         });
 
+        // Remove junction tables
+        junctionTables.forEach(junctionTable => {
+          if (updatedSchema.tables[junctionTable]) {
+            delete updatedSchema.tables[junctionTable];
+          }
+        });
+
         virtualSchema.updateWorkingSchema(updatedSchema);
       }
 
       // Show success notification
-      const count = relationships.length;
+      const count = allRelationshipsToDelete.length;
+      const junctionMsg = junctionTables.size > 0 ? ` and ${junctionTables.size} junction table${junctionTables.size > 1 ? 's' : ''}` : '';
       showNotification(
-        `${count} relationship${count > 1 ? 's' : ''} deleted successfully.`,
+        `${count} relationship${count > 1 ? 's' : ''} deleted successfully${junctionMsg}.`,
         'success'
       );
 

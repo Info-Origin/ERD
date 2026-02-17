@@ -187,7 +187,18 @@ export const CrowsFootEdge = memo(({
   };
 
   const handleViewDetails = () => {
-    const rels = getAllRelationships();
+    let rels = getAllRelationships();
+    
+    // If this is a junction table relationship, include ALL relationships from the junction table
+    if (rels.length > 0 && rels[0].isJunctionRelationship) {
+      const junctionTable = rels[0].junctionTable;
+      // Get all relationships involving this junction table
+      const allJunctionRels = data?.bundledRelationships?.filter(r => 
+        r.fromTable === junctionTable || r.toTable === junctionTable
+      ) || rels;
+      rels = allJunctionRels;
+    }
+    
     closeContextMenu();
     openRelationshipDetailsModal(rels);
   };
