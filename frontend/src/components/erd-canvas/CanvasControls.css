@@ -99,3 +99,30 @@
 .layout-icon {
   font-size: 18px;
 }
+
+.canvas-control-button.reset-layout-button {
+  width: auto;
+  padding: var(--spacing-sm) var(--spacing-md);
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+}
+
+.canvas-control-button.reset-layout-button:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
+.canvas-control-button.reset-layout-button:disabled {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-disabled);
+}
+
+.reset-layout-button-text {
+  white-space: nowrap;
+}

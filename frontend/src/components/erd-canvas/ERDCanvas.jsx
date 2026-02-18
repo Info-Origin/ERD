@@ -21,8 +21,6 @@ import { DeleteRelationshipModal } from "../modals/DeleteRelationshipModal";
 import { useApp } from "../../context/AppContext";
 import { useERDLayout } from "../../hooks/useERDLayout";
 import { useVirtualSchema } from "../../context/VirtualSchemaContext";
-import { useRelationshipCreation } from "../../context/RelationshipCreationContext";
-import { createRelationship, validateRelationshipCreation } from "../../services/relationshipCreationService";
 import "./ERDCanvas.css";
 
 // Move nodeTypes and edgeTypes outside component to prevent React Flow warning
@@ -58,19 +56,13 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
     deleteRelationships
   } = useApp();
   const virtualSchema = useVirtualSchema(); // Get full virtual schema context
-  const { 
-    selectedTables, 
-    relationshipType, 
-    canCompleteRelationship, 
-    completeRelationshipCreation,
-    cancelRelationshipCreation 
-  } = useRelationshipCreation();
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   
   // Table filtering state
   const [filteredTables, setFilteredTables] = useState(null);
   const [highlightedTable, setHighlightedTable] = useState(null); // Track highlighted table
   const [highlightedColumn, setHighlightedColumn] = useState(null); // NEW: Track highlighted column
+  const [layoutResetKey, setLayoutResetKey] = useState(0); // Key to force layout reset
 
   const { nodes, edges: rawEdges, getInitialViewport, onNodesChange, onEdgesChange, forceLayout, layoutError } = useERDLayout(
     erdData,
@@ -249,43 +241,6 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
     };
   }, []);
 
-  // Handle relationship creation when two tables are selected
-  useEffect(() => {
-    if (canCompleteRelationship && virtualSchema.workingSchema) {
-      const relationshipData = completeRelationshipCreation();
-      
-      if (relationshipData) {
-        try {
-          // Validate the relationship
-          const errors = validateRelationshipCreation(
-            virtualSchema.workingSchema,
-            relationshipData.parentTable,
-            relationshipData.childTable,
-            relationshipData.type
-          );
-
-          if (errors.length > 0) {
-            console.error('❌ Relationship validation failed:', errors);
-            showNotification(`Cannot create relationship: ${errors.join(', ')}`, 'error');
-            return;
-          }
-
-          // Create the relationship
-          const updatedSchema = createRelationship(virtualSchema.workingSchema, relationshipData);
-          
-          // Update the working schema
-          virtualSchema.updateWorkingSchema(updatedSchema);
-          
-          showNotification('Relationship created successfully!', 'success');
-          
-        } catch (error) {
-          console.error('❌ Failed to create relationship:', error);
-          showNotification(`Failed to create relationship: ${error.message}`, 'error');
-        }
-      }
-    }
-  }, [canCompleteRelationship, selectedTables, relationshipType, virtualSchema]);
-
   const handleZoomIn = useCallback(() => {
     zoomIn({ duration: 300 });
   }, [zoomIn]);
@@ -298,16 +253,33 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
     fitView({ duration: 300, padding: 0.2 });
   }, [fitView]);
 
+  // Handle reset layout - force re-render with initial positions
+  const handleResetLayout = useCallback(() => {
+    // Increment key to force React Flow to remount with fresh layout
+    setLayoutResetKey(prev => prev + 1);
+    
+    // Force layout recalculation which will use initial positions since localStorage was cleared
+    setTimeout(() => {
+      forceLayout();
+      
+      // Also trigger fitView to center the reset layout
+      setTimeout(() => {
+        fitView({ duration: 500, padding: 0.2 });
+      }, 100);
+    }, 50);
+  }, [forceLayout, fitView]);
+
   // Expose canvas controls to parent
   useEffect(() => {
     if (onControlsReady) {
       onControlsReady({
         onZoomIn: handleZoomIn,
         onZoomOut: handleZoomOut,
-        onFitView: handleFitView
+        onFitView: handleFitView,
+        onResetLayout: handleResetLayout
       });
     }
-  }, [onControlsReady, handleZoomIn, handleZoomOut, handleFitView]);
+  }, [onControlsReady, handleZoomIn, handleZoomOut, handleFitView, handleResetLayout]);
 
   // Handle new connections between tables (disabled)
   const onConnect = useCallback(() => {
@@ -368,6 +340,7 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
       
       <div className="erd-canvas-content">
         <ReactFlow
+          key={`reactflow-${selectedSchema}-${layoutResetKey}`}
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
@@ -427,6 +400,7 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
         >
           {/* Draggable MiniMap for navigation overview */}
           <DraggableMiniMap
+            key={`minimap-${layoutResetKey}`}
             nodeColor={(node) => {
               // Color nodes based on selection/highlight
               if (node.data?.isSelected) return '#3b82f6'; // Blue for selected
@@ -446,7 +420,7 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
           />
         </ReactFlow>
 
-        {/* Canvas Controls - Only Compare Button */}
+        {/* Canvas Controls - Compare Button */}
         <CanvasControls isCollapsed={isSchemaCollapsed} />
 
         {/* Legend is now in the header, so we don't render it here */}

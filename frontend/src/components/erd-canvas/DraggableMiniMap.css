@@ -1,79 +1,100 @@
-.draggable-minimap-wrapper {
+/* Static Minimap Wrapper - Fixed position in bottom-right corner */
+.static-minimap-wrapper {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   background: var(--bg-primary);
   border: 3px solid var(--border-color);
   overflow: hidden;
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition: all 0.3s ease;
   z-index: 9999;
   padding: 0;
-  pointer-events: auto; /* Ensure it receives pointer events */
+  pointer-events: auto;
+  width: 220px; /* Same width for both collapsed and expanded */
 }
 
-/* When in default position */
-.draggable-minimap-wrapper.default-position {
-  position: fixed !important; /* Force fixed positioning */
-  bottom: 20px;
-  right: 20px;
+/* Collapsed state - only show toggle button */
+.static-minimap-wrapper.collapsed {
+  height: auto;
 }
 
-.draggable-minimap-wrapper.dragging {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-  cursor: grabbing !important;
+/* Expanded state - show toggle button + minimap content */
+.static-minimap-wrapper.expanded {
+  /* Width already set in base class */
 }
 
-/* Drag Handle */
-.minimap-drag-handle {
+/* Toggle Button */
+.minimap-toggle-button {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  padding: 2px 6px;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
   background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
-  cursor: grab;
+  border: none;
+  border-top: 1px solid var(--border-color);
+  cursor: pointer;
   user-select: none;
-  min-height: 20px;
-  width: 220px; /* Match minimap content width */
+  min-height: 32px;
+  width: 100%;
   box-sizing: border-box;
-  border-radius: 8px 8px 0 0;
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 600;
 }
 
-.minimap-drag-handle:active {
-  cursor: grabbing;
+/* Toggle icon */
+.minimap-toggle-button svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
 }
 
-.minimap-title {
+/* Toggle text */
+.minimap-toggle-text {
   font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary);
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
-.minimap-drag-icon {
-  width: 16px;
-  height: 16px;
-  color: var(--text-secondary);
-  opacity: 0.6;
-  transition: opacity 0.2s ease;
-  flex-shrink: 0;
-}
-
-.minimap-drag-handle:hover .minimap-drag-icon {
-  opacity: 1; /* Full opacity on hover */
+/* Show toggle text in both states */
+.minimap-toggle-text {
+  display: block;
 }
 
 /* MiniMap Content */
 .minimap-content-wrapper {
   position: relative;
-  width: 220px;
+  width: 100%;
   height: 170px;
   display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  transition: opacity 0.3s ease, max-height 0.3s ease;
+  padding: 10px;
+}
+
+/* Hide content when collapsed */
+.static-minimap-wrapper.collapsed .minimap-content-wrapper {
+  display: none;
+  max-height: 0;
+  opacity: 0;
+}
+
+/* Show content when expanded */
+.static-minimap-wrapper.expanded .minimap-content-wrapper {
+  display: flex;
+  max-height: 170px;
+  opacity: 1;
 }
 
 .minimap-content-wrapper.no-pointer {
@@ -86,19 +107,31 @@
   box-shadow: none;
   width: 200px !important;
   height: 150px !important;
-  margin: auto !important; /* Center the minimap */
-  position: relative !important; /* Override any absolute positioning */
+  position: relative !important;
 }
 
 /* Responsive sizing */
 @media (max-width: 768px) {
+  .static-minimap-wrapper {
+    bottom: 10px;
+    right: 10px;
+  }
+  
   .minimap-content-wrapper {
     width: 150px;
     height: 100px;
   }
+  
+  .static-minimap-wrapper.expanded {
+    width: 150px;
+  }
 }
 
 /* Dark theme adjustments */
-[data-theme="dark"] .minimap-drag-handle {
+[data-theme="dark"] .minimap-toggle-button {
   background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .minimap-toggle-button:hover {
+  background: var(--bg-secondary);
 }

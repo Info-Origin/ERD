@@ -26,7 +26,8 @@ export const MainPage = () => {
   const [canvasControls, setCanvasControls] = useState({
     onZoomIn: null,
     onZoomOut: null,
-    onFitView: null
+    onFitView: null,
+    onResetLayout: null
   });
 
   return (

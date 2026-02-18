@@ -7,7 +7,7 @@
   flex-direction: column;
   align-items: center;
   padding: 0; /* Remove default padding */
-  gap: var(--spacing-sm);
+  gap: 0; /* Remove gap between sections for consistent spacing */
   flex-shrink: 0;
   z-index: var(--z-sticky);
   box-sizing: border-box;
@@ -23,25 +23,59 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px; /* Reduced gap between buttons */
+  gap: 0; /* Remove gap, we'll handle spacing manually */
   width: 100%;
   padding: 0 6px; /* More padding from toolbar edge */
+  margin-bottom: 0; /* Remove section spacing */
+}
+
+/* Remove margin from last section */
+.toolbar-section:last-child {
+  margin-bottom: 0;
+}
+
+/* Hide the toolbar-divider elements */
+.toolbar-divider {
+  display: none;
+}
+
+/* Add consistent spacing and divider for each button */
+.toolbar-section > * {
+  position: relative;
+  margin-bottom: 12px; /* Consistent spacing between all buttons */
+}
+
+/* Remove margin from last button in last section only */
+.toolbar-section:last-child > *:last-child {
+  margin-bottom: 0;
+}
+
+/* Add straight divider line after each button using ::after pseudo-element */
+.toolbar-section > *:not(:last-child)::after {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 1px;
+  background-color: var(--border-color);
+  position: absolute;
+  left: 0;
+  bottom: -6px; /* Half of margin-bottom for centered divider */
+}
+
+/* Add divider after last button in section (except last section) */
+.toolbar-section:not(:last-child) > *:last-child::after {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 1px;
+  background-color: var(--border-color);
+  position: absolute;
+  left: 0;
+  bottom: -6px;
 }
 
 .toolbar-divider {
-  width: 80%;
-  height: 1px;
-  background-color: var(--border-color);
-  margin: 6px 0; /* Match the gap */
-}
-
-/* First divider should align with header bottom border (60px from top) */
-.vertical-toolbar .toolbar-section:first-child + .toolbar-divider {
-  position: absolute;
-  top: 60px; /* Align with header height */
-  left: 10%;
-  width: 80%;
-  margin: 0;
+  display: none;
 }
 
 /* Adjust button styles for vertical layout */
@@ -95,12 +129,47 @@
   filter: var(--icon-filter, none);
 }
 
-/* Dark mode: invert black icon to white */
-[data-theme="dark"] .layout-toggle-icon {
-  filter: invert(1) brightness(1);
+/* Dark mode: invert black icons to white for PNG images */
+[data-theme="dark"] .layout-toggle-icon,
+[data-theme="dark"] .toolbar-img-icon {
+  filter: brightness(0) invert(1) opacity(0.7);
 }
 
-/* Light mode: keep black icon as is */
-[data-theme="light"] .layout-toggle-icon {
+/* Light mode: keep black icons as is */
+[data-theme="light"] .layout-toggle-icon,
+[data-theme="light"] .toolbar-img-icon {
   filter: none;
+}
+
+/* Disabled state - add grayscale on top of theme filter */
+[data-theme="dark"] .toolbar-img-icon.disabled {
+  filter: brightness(0) invert(1) opacity(0.4);
+}
+
+[data-theme="light"] .toolbar-img-icon.disabled {
+  filter: grayscale(100%) opacity(0.5);
+}
+
+/* Wrapper for button + label */
+.toolbar-button-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px; /* Small gap between button and label */
+  position: relative;
+  margin-bottom: 10px; /* Consistent spacing between all buttons */
+}
+
+/* Label styling */
+.toolbar-button-label {
+  font-size: 9px;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+  pointer-events: none;
+  max-width: 42px; /* Slightly less than toolbar width for padding */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
