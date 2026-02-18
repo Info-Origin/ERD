@@ -78,7 +78,8 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
     selectedTable,
     filteredTables, // Pass filtered tables to layout hook
     highlightedTable, // Pass highlighted table to layout hook
-    highlightedColumn // NEW: Pass highlighted column to layout hook
+    highlightedColumn, // NEW: Pass highlighted column to layout hook
+    layoutResetKey // Pass layout reset key to force recalculation
   );
 
   // Handle table filtering from ERD header

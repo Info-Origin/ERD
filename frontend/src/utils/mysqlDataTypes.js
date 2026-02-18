@@ -170,3 +170,64 @@ export const buildFullType = (baseType, length) => {
   
   return baseType.toUpperCase();
 };
+
+/**
+ * Check if two data types are compatible for foreign key relationships
+ * MySQL requires EXACT type match including length, unsigned, etc.
+ * @param {string} childType - Child column data type (e.g., "INT(11)", "VARCHAR(255)")
+ * @param {string} parentType - Parent column data type
+ * @returns {Object} { compatible: boolean, reason: string }
+ */
+export const areDataTypesCompatible = (childType, parentType) => {
+  if (!childType || !parentType) {
+    return { compatible: false, reason: 'Missing data type' };
+  }
+
+  // Normalize types for comparison (trim and uppercase)
+  const normalizeType = (type) => {
+    return type.trim().toUpperCase()
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .replace(/UNSIGNED/g, 'UNSIGNED') // Normalize unsigned keyword
+      .replace(/ZEROFILL/g, 'ZEROFILL'); // Normalize zerofill keyword
+  };
+
+  const childNormalized = normalizeType(childType);
+  const parentNormalized = normalizeType(parentType);
+
+  // MySQL requires EXACT match for foreign keys
+  if (childNormalized === parentNormalized) {
+    return { compatible: true, reason: 'Exact type match' };
+  }
+
+  // Check if only difference is default length (MySQL adds default lengths)
+  // For example: INT is stored as INT(11), BIGINT as BIGINT(20)
+  const childBase = getBaseDataType(childType);
+  const parentBase = getBaseDataType(parentType);
+  
+  if (childBase === parentBase) {
+    // Same base type, check if difference is just default length
+    const childLength = getTypeLength(childType);
+    const parentLength = getTypeLength(parentType);
+    
+    // If one has no length and other has default length, consider compatible
+    if (!childLength || !parentLength) {
+      return { compatible: true, reason: 'Same base type (default length)' };
+    }
+    
+    // If lengths are different, not compatible
+    if (childLength !== parentLength) {
+      return { 
+        compatible: false, 
+        reason: `Same base type but different lengths: ${childBase}(${childLength}) vs ${parentBase}(${parentLength})` 
+      };
+    }
+    
+    return { compatible: true, reason: 'Same type and length' };
+  }
+
+  // Not compatible - different base types
+  return { 
+    compatible: false, 
+    reason: `Incompatible types: ${childBase} cannot reference ${parentBase}. MySQL requires exact type match for foreign keys.` 
+  };
+};

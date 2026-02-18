@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useMemo } from "react";
 import { applyNodeChanges, applyEdgeChanges } from "@xyflow/react";
 import { useApp } from "../context/AppContext";
 import { useVirtualSchema } from "../context/VirtualSchemaContext";
@@ -11,7 +11,7 @@ import { bundleRelationships } from "../utils/relationshipBundler";
  * Simple ERD Layout Hook
  * Basic layout without complex ELK.js routing
  */
-export const useERDLayout = (erdData, selectedTable, filteredTables = null, highlightedTable = null, highlightedColumn = null) => {
+export const useERDLayout = (erdData, selectedTable, filteredTables = null, highlightedTable = null, highlightedColumn = null, layoutResetKey = 0) => {
   const { 
     tablePositions, 
     updateTablePosition
@@ -313,7 +313,7 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
       console.error('❌ Layout failed:', error);
       setLayoutError(error.message);
     }
-  }, [erdData, selectedTable, filteredTables, highlightedTable, highlightedColumn, tablePositions]); // Added highlightedColumn
+  }, [erdData, selectedTable, filteredTables, highlightedTable, highlightedColumn, tablePositions, layoutResetKey]); // Added layoutResetKey
 
   // Initial positioning - only runs when schema changes, not on every position update
   const applyInitialPositions = useCallback((nodes) => {

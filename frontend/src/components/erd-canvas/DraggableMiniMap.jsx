@@ -54,7 +54,6 @@ export const DraggableMiniMap = ({ nodeColor, nodeStrokeColor, nodeBorderRadius,
       <button 
         className="minimap-toggle-button" 
         onClick={toggleExpanded}
-        title={isExpanded ? "Collapse Minimap" : "Expand Minimap"}
       >
         {isExpanded ? (
           <>

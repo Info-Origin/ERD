@@ -362,6 +362,50 @@ export const VirtualSchemaProvider = ({ children }) => {
     };
   }, []);
 
+  // Helper function to recalculate isIdentifying for all relationships based on current PK status
+  const recalculateIsIdentifying = useCallback((schema) => {
+    if (!schema || !schema.tables || !schema.relationships) return schema;
+
+    console.log('🔄 recalculateIsIdentifying called, relationships:', schema.relationships.length);
+
+    const updatedRelationships = schema.relationships.map(rel => {
+      // Check if the FK column is part of the PK in the child table
+      const childTable = schema.tables[rel.fromTable];
+      if (!childTable || !childTable.columns[rel.fromColumn]) {
+        return rel;
+      }
+
+      const fkColumn = childTable.columns[rel.fromColumn];
+      const isIdentifying = fkColumn.pk === true;
+      
+      // Also recalculate cardinality based on UNIQUE or PK status
+      // If FK is PK or UNIQUE, it's 1:1, otherwise 1:N
+      const isOneToOne = fkColumn.pk || fkColumn.unique;
+      const cardinalityType = isOneToOne ? '1:1' : '1:N';
+      const relationType = isOneToOne ? 'ONE_TO_ONE' : 'ONE_TO_MANY';
+      
+      // Log if anything changed
+      if (rel.isIdentifying !== isIdentifying || rel.cardinalityType !== cardinalityType) {
+        console.log(`✏️ Updated relationship ${rel.fromTable}.${rel.fromColumn} → ${rel.toTable}.${rel.toColumn}:`, {
+          isIdentifying: `${rel.isIdentifying} → ${isIdentifying}`,
+          cardinality: `${rel.cardinalityType} → ${cardinalityType}`
+        });
+      }
+
+      return {
+        ...rel,
+        isIdentifying,
+        cardinalityType,
+        type: relationType
+      };
+    });
+
+    return {
+      ...schema,
+      relationships: updatedRelationships
+    };
+  }, []);
+
   // Initialize virtual schema from original or localStorage
   const initializeSchema = useCallback((erdData) => {
     if (!erdData) return;
@@ -424,6 +468,10 @@ export const VirtualSchemaProvider = ({ children }) => {
         
         // Apply FK detection to merged schema to ensure relationships are properly marked
         newWorkingSchema = applyFKDetection(mergedSchema);
+        
+        // Recalculate isIdentifying for all relationships based on current PK status
+        newWorkingSchema = recalculateIsIdentifying(newWorkingSchema);
+        
         newHistory = [JSON.parse(JSON.stringify(erdData)), newWorkingSchema];
         newHistoryIndex = 1;
         newIsModified = true;
@@ -581,7 +629,11 @@ export const VirtualSchemaProvider = ({ children }) => {
       const mergedSchema = mergeSchemas(erdData, savedSchema, baselineSchema, updatedRealDbHistory);
       
       // Apply FK detection to merged schema to ensure relationships are properly marked
-      const updatedSchema = applyFKDetection(mergedSchema);
+      let updatedSchema = applyFKDetection(mergedSchema);
+      
+      // Recalculate isIdentifying for all relationships based on current PK status
+      updatedSchema = recalculateIsIdentifying(updatedSchema);
+      
       setWorkingSchema(updatedSchema);
       const newHistory = [JSON.parse(JSON.stringify(erdData)), updatedSchema];
       setHistory(newHistory);
@@ -668,7 +720,10 @@ export const VirtualSchemaProvider = ({ children }) => {
         return updatedSchema;
       };
 
-      const finalSchema = applyFKDetection(mergedSchema);
+      let finalSchema = applyFKDetection(mergedSchema);
+      
+      // Recalculate isIdentifying for all relationships based on current PK status
+      finalSchema = recalculateIsIdentifying(finalSchema);
       
       // Update state - DO NOT update originalSchema here, keep it as the stable baseline
       setWorkingSchema(finalSchema);
@@ -684,7 +739,7 @@ export const VirtualSchemaProvider = ({ children }) => {
       console.error('Error in refreshAndMerge:', error);
       throw error;
     }
-  }, [workingSchema, currentSchemaName, realDbHistory, originalSchema, mergeSchemas]);
+  }, [workingSchema, currentSchemaName, realDbHistory, originalSchema, mergeSchemas, recalculateIsIdentifying]);
 
   // Force refresh from backend (ignore localStorage)
   const forceRefreshFromBackend = useCallback(() => {
@@ -1040,9 +1095,12 @@ export const VirtualSchemaProvider = ({ children }) => {
         }
       };
 
-      updateWorkingSchema(newSchema);
+      // Recalculate isIdentifying for ALL relationships based on new PK status
+      const schemaWithUpdatedRelationships = recalculateIsIdentifying(newSchema);
+
+      updateWorkingSchema(schemaWithUpdatedRelationships);
     },
-    [workingSchema, updateWorkingSchema],
+    [workingSchema, updateWorkingSchema, recalculateIsIdentifying],
   );
 
   const toggleUnique = useCallback(

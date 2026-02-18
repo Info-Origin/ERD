@@ -9,7 +9,8 @@ import {
   COMMON_DEFAULTS,
   getBaseDataType,
   getTypeLength,
-  buildFullType
+  buildFullType,
+  areDataTypesCompatible
 } from '../../utils/mysqlDataTypes';
 import { analyzeColumnChange, applyCascadingChanges } from '../../utils/conflictDetection';
 import { ConflictWarningModal } from './ConflictWarningModal';
@@ -42,6 +43,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
   const [editingFK, setEditingFK] = useState(null);
   const [editingColumn, setEditingColumn] = useState(null);
   const [showAddFK, setShowAddFK] = useState(false);
+  const [columnNotes, setColumnNotes] = useState({}); // Store notes for each column
+  const [isApplyingConstraints, setIsApplyingConstraints] = useState(false); // Track when we're applying constraints
   
   // Pending constraint changes state
   const [pendingConstraintChanges, setPendingConstraintChanges] = useState({});
@@ -124,7 +127,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
           toColumn: rel.toColumn,
           onUpdate: rel.onUpdate || 'RESTRICT',
           onDelete: rel.onDelete || 'RESTRICT',
-          isVirtual: rel.isVirtual !== undefined ? rel.isVirtual : false // Default to false for real DB FKs
+          isVirtual: rel.isVirtual || rel.isUserCreated || false // Check both isVirtual and isUserCreated
         }));
       setForeignKeys(tableFKs);
       
@@ -132,6 +135,53 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       setEditingFK(null);
     }
   }, [isOpen, tableName, workingSchema]); // Add workingSchema back to dependencies to ensure updates
+
+  // Refresh columns when switching to Columns or Constraints tab
+  useEffect(() => {
+    if ((activeTab === 'columns' || activeTab === 'constraints') && workingSchema && tableName) {
+      const tableData = workingSchema.tables[tableName];
+      if (tableData && tableData.columns) {
+        const columnList = Object.entries(tableData.columns).map(([columnName, columnData]) => ({
+          ...columnData,
+          name: columnName,
+          originalName: columnName,
+          pk: columnData.pk || false,
+          nullable: columnData.nullable !== undefined ? columnData.nullable : true,
+          unique: columnData.unique || false,
+          fk: columnData.fk || false,
+          autoIncrement: columnData.autoIncrement || false,
+          baseType: getBaseDataType(columnData.type),
+          typeLength: getTypeLength(columnData.type),
+          defaultValue: columnData.defaultValue || ''
+        }));
+        setColumns(columnList);
+      }
+    }
+  }, [activeTab, workingSchema, tableName]);
+
+  // Watch for workingSchema changes after applying constraints
+  useEffect(() => {
+    if (isApplyingConstraints && workingSchema && tableName) {
+      const tableData = workingSchema.tables[tableName];
+      if (tableData && tableData.columns) {
+        const columnList = Object.entries(tableData.columns).map(([columnName, columnData]) => ({
+          ...columnData,
+          name: columnName,
+          originalName: columnName,
+          pk: Boolean(columnData.pk),
+          nullable: columnData.nullable !== undefined ? columnData.nullable : true,
+          unique: Boolean(columnData.unique),
+          fk: Boolean(columnData.fk),
+          autoIncrement: Boolean(columnData.autoIncrement),
+          baseType: getBaseDataType(columnData.type),
+          typeLength: getTypeLength(columnData.type),
+          defaultValue: columnData.defaultValue || ''
+        }));
+        setColumns(columnList);
+        setIsApplyingConstraints(false);
+      }
+    }
+  }, [workingSchema, isApplyingConstraints, tableName]);
 
   // Refresh function to reload foreign keys and columns from schema
   const refreshForeignKeys = useCallback(() => {
@@ -165,7 +215,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
           toColumn: rel.toColumn,
           onUpdate: rel.onUpdate || 'RESTRICT',
           onDelete: rel.onDelete || 'RESTRICT',
-          isVirtual: rel.isVirtual || false
+          isVirtual: rel.isVirtual || rel.isUserCreated || false // Check both isVirtual and isUserCreated
         }));
       setForeignKeys(tableFKs);
     }
@@ -414,13 +464,16 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
     const columnName = column.name;
     
     // Update pending changes
-    setPendingConstraintChanges(prev => ({
-      ...prev,
-      [columnName]: {
-        ...prev[columnName],
-        [constraintType]: newValue
-      }
-    }));
+    setPendingConstraintChanges(prev => {
+      const updated = {
+        ...prev,
+        [columnName]: {
+          ...prev[columnName],
+          [constraintType]: newValue
+        }
+      };
+      return updated;
+    });
     
     // Update the local columns state for UI display
     setColumns(prevColumns => {
@@ -547,15 +600,26 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
 
   // Apply all constraint changes to virtual schema
   const applyAllConstraintChanges = async () => {
+    // Set flag to trigger reload when workingSchema updates
+    setIsApplyingConstraints(true);
+    
+    // Group changes by column to apply them together
     for (const [columnName, changes] of Object.entries(pendingConstraintChanges)) {
-      // Apply each constraint change
-      for (const [constraintType, newValue] of Object.entries(changes)) {
-        if (constraintType === 'pk') {
-          togglePrimaryKey(tableName, columnName);
-        } else if (constraintType === 'nullable') {
-          toggleNullable(tableName, columnName);
-        } else if (constraintType === 'unique') {
-          toggleUnique(tableName, columnName);
+      // Check if this column is being set as PK
+      const isSettingPK = changes.pk === true;
+      
+      if (isSettingPK) {
+        // If setting PK, only call togglePrimaryKey (it will handle nullable automatically)
+        togglePrimaryKey(tableName, columnName);
+      } else {
+        // Apply other constraint changes
+        for (const [constraintType, newValue] of Object.entries(changes)) {
+          if (constraintType === 'nullable') {
+            toggleNullable(tableName, columnName);
+          } else if (constraintType === 'unique') {
+            toggleUnique(tableName, columnName);
+          }
+          // Skip 'pk' here as it's handled above
         }
       }
     }
@@ -592,18 +656,18 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
     try {
       // Apply the constraint toggle using the appropriate virtual schema method
       if (constraintType === 'pk') {
-        togglePrimaryKey(tableName, column.name);
+        await togglePrimaryKey(tableName, column.name);
       } else if (constraintType === 'nullable') {
-        toggleNullable(tableName, column.name);
+        await toggleNullable(tableName, column.name);
       } else if (constraintType === 'unique') {
-        toggleUnique(tableName, column.name);
+        await toggleUnique(tableName, column.name);
       }
       
       // Apply cascading changes if any
       if (cascadingChanges.length > 0) {
         for (const change of cascadingChanges) {
           if (change.type === 'DATA_TYPE_CASCADE') {
-            updateColumn(change.tableName, change.columnName, {
+            await updateColumn(change.tableName, change.columnName, {
               type: change.newType
             });
             
@@ -613,13 +677,29 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         }
       }
       
-      // Update local state to reflect changes immediately
-      const newColumns = [...columns];
-      newColumns[index] = {
-        ...newColumns[index],
-        ...newProperties
-      };
-      setColumns(newColumns);
+      // Force reload columns from workingSchema after state update
+      // Use a longer delay to ensure workingSchema has been updated
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Reload columns from the updated workingSchema
+      if (workingSchema && tableName && workingSchema.tables[tableName]) {
+        const tableData = workingSchema.tables[tableName];
+        const columnList = Object.entries(tableData.columns).map(([columnName, columnData]) => ({
+          ...columnData,
+          name: columnName,
+          originalName: columnName,
+          pk: Boolean(columnData.pk),
+          nullable: columnData.nullable !== undefined ? columnData.nullable : true,
+          unique: Boolean(columnData.unique),
+          fk: Boolean(columnData.fk),
+          autoIncrement: Boolean(columnData.autoIncrement),
+          baseType: getBaseDataType(columnData.type),
+          typeLength: getTypeLength(columnData.type),
+          defaultValue: columnData.defaultValue || ''
+        }));
+        setColumns(columnList);
+        console.log('Columns reloaded after constraint toggle:', columnList.find(c => c.name === column.name));
+      }
       
       // Show success message if cascading changes were applied
       if (cascadingChanges.length > 0) {
@@ -662,11 +742,12 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
     const newFK = {
       name: `FK_${tableName}_new`,
       fromColumn: '__CREATE_NEW__', // Default to creating new column
-      newColumnName: '', // Will be filled by user
+      newColumnName: '', // Will be filled by user in FK Name field
       toTable: '',
       toColumn: '',
       onUpdate: 'RESTRICT',
       onDelete: 'RESTRICT',
+      cardinality: '1:N', // Default cardinality
       isNew: true,
       isVirtual: true // Mark new FKs as virtual (user-created)
     };
@@ -721,7 +802,6 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
   };
 
   const handleFKChange = useCallback((index, field, value) => {
-    
     setForeignKeys(prevFKs => {
       const newFKs = [...prevFKs];
       newFKs[index] = {
@@ -736,9 +816,55 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         newFKs[index].name = `FK_${tableName}_${suggestedColumnName}`;
       }
 
+      // Handle cardinality change - update UNIQUE constraint on FK column
+      if (field === 'cardinality' && newFKs[index].fromColumn && newFKs[index].fromColumn !== '__CREATE_NEW__') {
+        const fkColumnName = newFKs[index].fromColumn;
+        const shouldBeUnique = value === '1:1';
+        
+        // Check if the FK column is a PK
+        const fkColumn = columns.find(col => col.name === fkColumnName);
+        const isPK = fkColumn?.pk || false;
+        
+        // If the column is a PK, it's always unique (1:1), so don't allow changing to 1:N
+        if (isPK && !shouldBeUnique) {
+          console.warn('Cannot change cardinality to 1:N for a PK column - PKs are always unique');
+          // Revert the change
+          newFKs[index].cardinality = '1:1';
+          return newFKs;
+        }
+        
+        // Update the column's unique constraint in local state (only if not a PK)
+        if (!isPK) {
+          setColumns(prevColumns => {
+            const newColumns = [...prevColumns];
+            const columnIndex = newColumns.findIndex(col => col.name === fkColumnName);
+            
+            if (columnIndex !== -1) {
+              newColumns[columnIndex] = {
+                ...newColumns[columnIndex],
+                unique: shouldBeUnique
+              };
+            }
+            
+            return newColumns;
+          });
+          
+          // Also update in workingSchema if the FK already exists
+          if (!newFKs[index].isNew && workingSchema && workingSchema.tables[tableName]) {
+            const column = workingSchema.tables[tableName].columns[fkColumnName];
+            if (column) {
+              // Toggle unique constraint to match cardinality
+              if (column.unique !== shouldBeUnique) {
+                toggleUnique(tableName, fkColumnName);
+              }
+            }
+          }
+        }
+      }
+
       return newFKs;
     });
-  }, [editingFK, tableName]);
+  }, [tableName, workingSchema, toggleUnique]);
 
   const handleSaveFK = (index) => {
     try {
@@ -851,21 +977,18 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         const referencedTable = workingSchema.tables[fk.toTable];
         const referencedColumn = referencedTable?.columns[fk.toColumn];
         
-        if (referencedColumn && workingSchemaColumn.type !== referencedColumn.type) {
-          // Data type mismatch - show conflict modal
-          setConflictModal({
-            isOpen: true,
-            conflicts: [{
-              type: 'DATA_TYPE_MISMATCH',
-              message: `Cannot create foreign key: Data type mismatch`,
-              details: `Column "${tableName}.${workingSchemaColumn.name}" (${workingSchemaColumn.type}) cannot reference "${fk.toTable}.${fk.toColumn}" (${referencedColumn.type})`
-            }],
-            cascadingChanges: [],
-            affectedTables: [tableName, fk.toTable],
-            changeDescription: `Create foreign key ${tableName}.${workingSchemaColumn.name} → ${fk.toTable}.${fk.toColumn}`,
-            pendingChange: null // No pending change, just block the action
-          });
-          return; // Block FK creation
+        if (referencedColumn) {
+          const compatibility = areDataTypesCompatible(workingSchemaColumn.type, referencedColumn.type);
+          
+          if (!compatibility.compatible) {
+            // Data type mismatch - show error
+            showAlert(
+              'Data Type Mismatch', 
+              `Cannot create foreign key: ${compatibility.reason}\n\nChild column: ${tableName}.${workingSchemaColumn.name} (${workingSchemaColumn.type})\nParent column: ${fk.toTable}.${fk.toColumn} (${referencedColumn.type})\n\nThe data types must be compatible for a foreign key relationship.`,
+              'error'
+            );
+            return; // Block FK creation
+          }
         }
       }
 
@@ -936,6 +1059,29 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
     return columns.filter(col => col.name).map(col => col.name);
   };
 
+  // Helper function to detect cardinality based on FK column constraints
+  const detectCardinality = (fkColumnName) => {
+    if (!fkColumnName || fkColumnName === '__CREATE_NEW__') return '1:N'; // Default
+    
+    const column = columns.find(col => col.name === fkColumnName);
+    if (!column) return '1:N';
+    
+    // If FK column has UNIQUE constraint OR is a PK (PKs are implicitly unique), it's 1:1
+    // Otherwise it's 1:N
+    return (column.unique || column.pk) ? '1:1' : '1:N';
+  };
+
+  // Helper function to detect if relationship is identifying
+  const detectIdentifying = (fkColumnName) => {
+    if (!fkColumnName || fkColumnName === '__CREATE_NEW__') return false; // Default
+    
+    const column = columns.find(col => col.name === fkColumnName);
+    if (!column) return false;
+    
+    // If FK column is part of PK, it's identifying
+    return column.pk || false;
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -961,6 +1107,12 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
             onClick={() => setActiveTab('foreignKeys')}
           >
             Foreign Keys
+          </button>
+          <button
+            className={`tab ${activeTab === 'columns' ? 'active' : ''}`}
+            onClick={() => setActiveTab('columns')}
+          >
+            Columns
           </button>
         </div>
 
@@ -992,7 +1144,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                 
                 {columns.map((column, index) => (
                   <div key={`${column.originalName || column.name}-${index}`} className="edit-constraint-row">
-                    <div className="edit-constraint-name">
+                    <div className="edit-constraint-name" title={column.name}>
                       <span className="column-name-readonly">{column.name}</span>
                     </div>
                     <div className="edit-constraint-type">
@@ -1158,9 +1310,11 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
               <div className="fk-table">
                 <div className="edit-fk-header">
                   <div className="edit-fk-name">FK Name</div>
-                  <div className="edit-fk-column">Column</div>
-                  <div className="edit-fk-ref-table">Referenced Table</div>
-                  <div className="edit-fk-ref-column">Referenced Column</div>
+                  <div className="edit-fk-column">Child Column (FK)</div>
+                  <div className="edit-fk-ref-table">Parent Table</div>
+                  <div className="edit-fk-ref-column">Parent Column (PK)</div>
+                  <div className="edit-fk-cardinality">Cardinality</div>
+                  <div className="edit-fk-type">Type</div>
                   <div className="edit-fk-on-update">On Update</div>
                   <div className="edit-fk-on-delete">On Delete</div>
                   <div className="edit-fk-actions">Actions</div>
@@ -1169,64 +1323,76 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                 {foreignKeys.map((fk, index) => (
                   <div key={index} className={`edit-fk-row ${editingFK === index ? 'editing' : ''} ${!fk.isVirtual ? 'read-only' : ''}`}>
                     <div className="edit-fk-name">
-                      <input
-                        type="text"
-                        value={fk.name}
-                        onChange={(e) => handleFKChange(index, 'name', e.target.value)}
-                        disabled={editingFK !== index || !fk.isVirtual}
-                        readOnly={!fk.isVirtual}
-                      />
+                      {editingFK === index && fk.isVirtual ? (
+                        // In edit mode - allow typing new column name or show selected column name
+                        <input
+                          type="text"
+                          value={fk.fromColumn && fk.fromColumn !== '__CREATE_NEW__' ? fk.fromColumn : fk.newColumnName || ''}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (!fk.fromColumn || fk.fromColumn === '__CREATE_NEW__') {
+                              // Creating new column - update newColumnName
+                              handleFKChange(index, 'newColumnName', value);
+                              handleFKChange(index, 'fromColumn', '__CREATE_NEW__');
+                            }
+                            // If existing column selected, don't allow editing
+                          }}
+                          placeholder="Enter new FK name"
+                          disabled={fk.fromColumn && fk.fromColumn !== '__CREATE_NEW__'}
+                          readOnly={fk.fromColumn && fk.fromColumn !== '__CREATE_NEW__'}
+                          title={fk.fromColumn && fk.fromColumn !== '__CREATE_NEW__' ? fk.fromColumn : fk.newColumnName || ''}
+                          className="fk-column-name-input"
+                          style={{
+                            background: fk.fromColumn && fk.fromColumn !== '__CREATE_NEW__' ? 'var(--bg-secondary)' : 'var(--bg-primary)'
+                          }}
+                        />
+                      ) : (
+                        // View mode - show column name with ellipsis and tooltip
+                        <span 
+                          className="fk-column-name-display"
+                          title={fk.fromColumn && fk.fromColumn !== '__CREATE_NEW__' ? fk.fromColumn : fk.newColumnName || fk.name}
+                        >
+                          {fk.fromColumn && fk.fromColumn !== '__CREATE_NEW__' ? fk.fromColumn : fk.newColumnName || fk.name}
+                        </span>
+                      )}
                     </div>
                     <div className="edit-fk-column">
                       <select
-                        value={fk.fromColumn}
-                        onChange={(e) => handleFKChange(index, 'fromColumn', e.target.value)}
+                        value={fk.fromColumn && fk.fromColumn !== '__CREATE_NEW__' ? fk.fromColumn : ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value) {
+                            // Existing column selected - update fromColumn
+                            handleFKChange(index, 'fromColumn', value);
+                            handleFKChange(index, 'newColumnName', ''); // Clear new column name
+                          } else {
+                            // "Create New" selected - clear fromColumn
+                            handleFKChange(index, 'fromColumn', '__CREATE_NEW__');
+                          }
+                        }}
                         disabled={editingFK !== index || !fk.isVirtual}
+                        title={fk.fromColumn && fk.fromColumn !== '__CREATE_NEW__' ? fk.fromColumn : '+ Create New Column'}
+                        className="fk-column-select"
                       >
-                        <option value="">Select or Create Column</option>
+                        <option value="">Create New Column</option>
                         <optgroup label="Existing Columns">
                           {getCurrentTableColumns().map(col => (
-                            <option key={col} value={col}>{col}</option>
+                            <option key={col} value={col} title={col}>{col}</option>
                           ))}
                         </optgroup>
-                        {fk.isVirtual && (
-                          <optgroup label="Create New Column">
-                            <option value="__CREATE_NEW__">+ Create New FK Column</option>
-                          </optgroup>
-                        )}
                       </select>
-                      {fk.fromColumn === '__CREATE_NEW__' && editingFK === index && fk.isVirtual && (
-                        <input
-                          type="text"
-                          placeholder="New column name (e.g., dept_id)"
-                          value={fk.newColumnName}
-                          onChange={(e) => {
-                            e.stopPropagation();
-                            handleFKChange(index, 'newColumnName', e.target.value);
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          onFocus={(e) => e.stopPropagation()}
-                          onBlur={(e) => e.stopPropagation()}
-                          autoFocus
-                          style={{ 
-                            marginTop: '4px', 
-                            width: '100%',
-                            padding: '4px',
-                            border: '1px solid var(--primary-color)',
-                            borderRadius: '3px'
-                          }}
-                        />
-                      )}
                     </div>
                     <div className="edit-fk-ref-table">
                       <select
                         value={fk.toTable}
                         onChange={(e) => handleFKChange(index, 'toTable', e.target.value)}
                         disabled={editingFK !== index || !fk.isVirtual}
+                        title={fk.toTable || 'Select Parent Table'}
+                        className="fk-select-with-ellipsis"
                       >
                         <option value="">Select Table</option>
                         {getAvailableTables().map(table => (
-                          <option key={table} value={table}>{table}</option>
+                          <option key={table} value={table} title={table}>{table}</option>
                         ))}
                       </select>
                     </div>
@@ -1235,27 +1401,64 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                         value={fk.toColumn}
                         onChange={(e) => handleFKChange(index, 'toColumn', e.target.value)}
                         disabled={editingFK !== index || !fk.isVirtual}
+                        title={fk.toColumn || 'Select Parent Column'}
+                        className="fk-select-with-ellipsis"
                       >
                         <option value="">Select Column</option>
                         {getAvailableColumns(fk.toTable).length === 0 && fk.toTable ? (
                           <option value="" disabled>No PK/UNIQUE columns available</option>
                         ) : (
                           getAvailableColumns(fk.toTable).map(col => (
-                            <option key={col} value={col}>{col}</option>
+                            <option key={col} value={col} title={col}>{col}</option>
                           ))
                         )}
                       </select>
+                    </div>
+                    <div className="edit-fk-cardinality">
+                      {editingFK === index && fk.isVirtual ? (
+                        (() => {
+                          const fkColumn = columns.find(col => col.name === fk.fromColumn);
+                          const isPK = fkColumn?.pk || false;
+                          const detectedCardinality = detectCardinality(fk.fromColumn);
+                          
+                          return (
+                            <select
+                              value={fk.cardinality || detectedCardinality}
+                              onChange={(e) => handleFKChange(index, 'cardinality', e.target.value)}
+                              disabled={isPK}
+                              title={isPK ? 'Cardinality is locked to 1:1 because FK column is a Primary Key (always unique)' : 'Auto-detected based on UNIQUE constraint. Change if needed.'}
+                            >
+                              <option value="1:1">1:1 (One-to-One)</option>
+                              <option value="1:N">1:N (One-to-Many)</option>
+                            </select>
+                          );
+                        })()
+                      ) : (
+                        <span className="fk-cardinality-display" title={fk.cardinality === '1:1' ? 'One-to-One: FK has UNIQUE constraint or is PK' : 'One-to-Many: FK does not have UNIQUE constraint'}>
+                          {fk.cardinality || detectCardinality(fk.fromColumn)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="edit-fk-type">
+                      <span 
+                        className={`fk-type-badge ${detectIdentifying(fk.fromColumn) ? 'identifying' : 'non-identifying'}`}
+                        title={detectIdentifying(fk.fromColumn) ? 'Identifying: FK is part of Primary Key' : 'Non-Identifying: FK is not part of Primary Key'}
+                      >
+                        {detectIdentifying(fk.fromColumn) ? 'Identifying' : 'Non-Identifying'}
+                      </span>
                     </div>
                     <div className="edit-fk-on-update">
                       <select
                         value={fk.onUpdate}
                         onChange={(e) => handleFKChange(index, 'onUpdate', e.target.value)}
                         disabled={editingFK !== index || !fk.isVirtual}
+                        title={fk.onUpdate || 'RESTRICT'}
+                        className="fk-select-with-ellipsis"
                       >
-                        <option value="RESTRICT">RESTRICT</option>
-                        <option value="CASCADE">CASCADE</option>
-                        <option value="SET NULL">SET NULL</option>
-                        <option value="NO ACTION">NO ACTION</option>
+                        <option value="RESTRICT" title="RESTRICT">RESTRICT</option>
+                        <option value="CASCADE" title="CASCADE">CASCADE</option>
+                        <option value="SET NULL" title="SET NULL">SET NULL</option>
+                        <option value="NO ACTION" title="NO ACTION">NO ACTION</option>
                       </select>
                     </div>
                     <div className="edit-fk-on-delete">
@@ -1263,11 +1466,13 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                         value={fk.onDelete}
                         onChange={(e) => handleFKChange(index, 'onDelete', e.target.value)}
                         disabled={editingFK !== index || !fk.isVirtual}
+                        title={fk.onDelete || 'RESTRICT'}
+                        className="fk-select-with-ellipsis"
                       >
-                        <option value="RESTRICT">RESTRICT</option>
-                        <option value="CASCADE">CASCADE</option>
-                        <option value="SET NULL">SET NULL</option>
-                        <option value="NO ACTION">NO ACTION</option>
+                        <option value="RESTRICT" title="RESTRICT">RESTRICT</option>
+                        <option value="CASCADE" title="CASCADE">CASCADE</option>
+                        <option value="SET NULL" title="SET NULL">SET NULL</option>
+                        <option value="NO ACTION" title="NO ACTION">NO ACTION</option>
                       </select>
                     </div>
                     <div className="edit-fk-actions">
@@ -1305,6 +1510,59 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'columns' && (
+            <div className="columns-tab">
+              <div className="tab-header">
+                <h3>Column Details</h3>
+                <p className="tab-description">View column information and add notes</p>
+              </div>
+              
+              <div className="columns-table">
+                <div className="columns-header">
+                  <div className="col-name">Column Name</div>
+                  <div className="col-datatype">Data Type</div>
+                  <div className="col-constraints">Constraints</div>
+                  <div className="col-default">Default</div>
+                  <div className="col-notes">Description</div>
+                </div>
+                
+                <div className="columns-rows-container">
+                  {columns.map((column, index) => (
+                    <div key={index} className="columns-row">
+                      <div className="col-name" title={column.name}>
+                        <span className="column-name-text">{column.name}</span>
+                      </div>
+                      <div className="col-datatype">
+                        <span className="datatype-badge">{column.type}</span>
+                      </div>
+                      <div className="col-constraints">
+                        <div className="constraint-badges">
+                          {column.pk && <span className="constraint-badge pk" title="Primary Key">PK</span>}
+                          {column.fk && <span className="constraint-badge fk" title="Foreign Key">FK</span>}
+                          {column.unique && <span className="constraint-badge uq" title="Unique">UQ</span>}
+                          {!column.nullable && <span className="constraint-badge nn" title="Not Null">NN</span>}
+                          {column.autoIncrement && <span className="constraint-badge ai" title="Auto Increment">AI</span>}
+                        </div>
+                      </div>
+                      <div className="col-default">
+                        <span className="default-value">{column.defaultValue || '-'}</span>
+                      </div>
+                      <div className="col-notes">
+                        <input
+                          type="text"
+                          className="notes-input"
+                          placeholder="Add description..."
+                          value={columnNotes[column.name] || ''}
+                          onChange={(e) => setColumnNotes({...columnNotes, [column.name]: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
