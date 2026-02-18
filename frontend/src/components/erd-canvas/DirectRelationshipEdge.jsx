@@ -35,13 +35,15 @@ export const DirectRelationshipEdge = memo(({
     openRelationshipDetailsModal,
     openRelationshipDeleteModal
   } = useApp();
-  const [isClicked, setIsClicked] = useState(false);
   
   // Context menu state
   const [contextMenu, setContextMenu] = useState({ isOpen: false, x: 0, y: 0 });
 
   // Check if this is a self-join relationship (define early)
   const selfJoin = data?.fromTable === data?.toTable;
+
+  // NEW: Check if this is a user-created relationship (permanent blue highlight)
+  const isUserCreated = data?.bundledRelationships?.some(rel => rel.isUserCreated) || data?.isUserCreated;
 
   // Use CSS variables for theme-aware colors (same as orthogonal lines)
   // Instead of computing colors in JS, we'll use CSS variables directly
@@ -114,10 +116,6 @@ export const DirectRelationshipEdge = memo(({
     e.stopPropagation();
     
     if (data) {
-      // Visual feedback - highlight the edge line itself
-      setIsClicked(true);
-      setTimeout(() => setIsClicked(false), 5000);
-      
       // For bundled relationships, highlight the FIRST relationship in the bundle
       // The edge highlighting logic will check ALL bundled relationships
       const relationshipToHighlight = data.bundledRelationships?.[0] || data;
@@ -197,11 +195,12 @@ export const DirectRelationshipEdge = memo(({
             className={`react-flow__edge-path direct-edge-path ${selected ? 'selected' : ''}`}
             d={edgePath}
             stroke={
+              isUserCreated ? '#1e40af' : // Dark blue for user-created (permanent)
               isHighlighted ? '#ff6b35' : // Pearl orange for click-based highlighting
               isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : // Green for PK hover, Blue for FK hover
               lineColor // Default color
             }
-            strokeWidth={isHighlighted || isHoverHighlighted ? 2.5 : 1.5}
+            strokeWidth={isUserCreated ? 2.5 : (isHighlighted || isHoverHighlighted ? 2.5 : 1.5)}
             strokeDasharray={strokeDasharray}
             fill="none"
             markerEnd={markerEnd}
@@ -209,8 +208,9 @@ export const DirectRelationshipEdge = memo(({
             style={{
               cursor: 'pointer',
               pointerEvents: 'all',
-              filter: isClicked || isHighlighted || isHoverHighlighted ? 
+              filter: isUserCreated || isHighlighted || isHoverHighlighted ? 
                 `drop-shadow(0 0 6px ${
+                  isUserCreated ? '#1e40af' : // Dark blue for user-created (permanent)
                   isHighlighted ? '#ff6b35' : 
                   isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : 
                   '#3b82f6'

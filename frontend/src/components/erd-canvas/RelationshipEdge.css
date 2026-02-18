@@ -101,6 +101,41 @@
   filter: drop-shadow(0 0 4px rgba(220, 38, 38, 0.5));
 }
 
+/* User-created relationship highlighting - PERMANENT DARK BLUE HIGHLIGHT */
+.user-created-edge {
+  stroke: #1e40af !important;
+  stroke-width: 3.5px !important;
+  stroke-dasharray: none !important;
+  filter: drop-shadow(0 0 8px #1e40af) drop-shadow(0 0 16px rgba(30, 64, 175, 0.6)) !important;
+  animation: pulse-glow 2s ease-in-out infinite !important;
+}
+
+.user-created-edge-glow {
+  filter: drop-shadow(0 0 10px #1e40af) drop-shadow(0 0 20px rgba(30, 64, 175, 0.7)) drop-shadow(0 0 30px rgba(30, 64, 175, 0.4)) !important;
+}
+
+/* User-created crow's foot markers - dark blue */
+.user-created-marker line {
+  stroke: #1e40af !important;
+  stroke-width: 2px !important;
+}
+
+.user-created-marker circle {
+  stroke: #1e40af !important;
+  fill: var(--bg-primary) !important;
+  stroke-width: 2px !important;
+}
+
+/* Pulse animation for user-created edges */
+@keyframes pulse-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px #1e40af) drop-shadow(0 0 16px rgba(30, 64, 175, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px #1e40af) drop-shadow(0 0 24px rgba(30, 64, 175, 0.8));
+  }
+}
+
 /* Connection line during drag - animated dashed line */
 .react-flow__connection-line {
   stroke: #3b82f6 !important;

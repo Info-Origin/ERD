@@ -627,32 +627,37 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
 
   // Render child hierarchy with indentation
   const renderChildHierarchy = useCallback((children, depth, parentTable = '') => {
-    return children.map((child, index) => (
-      <div key={`${parentTable}-${child.table}-${child.fromColumn}-${child.toColumn}-${index}`} className={`hierarchy-item hierarchy-depth-${Math.min(depth, 3)}`}>
-        <label className="filter-table-item">
-          <input
-            type="checkbox"
-            checked={selectedChildren.has(child.table)}
-            onChange={() => handleChildToggle(child.table)}
-          />
-          <div className="filter-table-info">
-            <span 
-              className="filter-table-name"
-              title={child.table} // Tooltip with full table name
-            >
-              {child.table}
-            </span>
-            <span 
-              className="filter-table-context"
-              title={`${child.fromColumn} → ${child.toColumn}`} // Tooltip with full relationship
-            >
-              {child.fromColumn} → {child.toColumn}
-            </span>
-          </div>
-        </label>
-        {child.children.length > 0 && renderChildHierarchy(child.children, depth + 1, child.table)}
-      </div>
-    ));
+    return children.map((child, index) => {
+      const checkboxId = `hierarchy-${parentTable}-${child.table}-${child.fromColumn}-${child.toColumn}-${index}`;
+      return (
+        <div key={`${parentTable}-${child.table}-${child.fromColumn}-${child.toColumn}-${index}`} className={`hierarchy-item hierarchy-depth-${Math.min(depth, 3)}`}>
+          <label className="filter-table-item">
+            <input
+              type="checkbox"
+              id={checkboxId}
+              name={checkboxId}
+              checked={selectedChildren.has(child.table)}
+              onChange={() => handleChildToggle(child.table)}
+            />
+            <div className="filter-table-info">
+              <span 
+                className="filter-table-name"
+                title={child.table} // Tooltip with full table name
+              >
+                {child.table}
+              </span>
+              <span 
+                className="filter-table-context"
+                title={`${child.fromColumn} → ${child.toColumn}`} // Tooltip with full relationship
+              >
+                {child.fromColumn} → {child.toColumn}
+              </span>
+            </div>
+          </label>
+          {child.children.length > 0 && renderChildHierarchy(child.children, depth + 1, child.table)}
+        </div>
+      );
+    });
   }, [selectedChildren, handleChildToggle]);
 
   // Simplified effect - only handle hierarchy analysis for display purposes
@@ -909,6 +914,8 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
                       <div className="toggle-group">
                         <input
                           type="checkbox"
+                          id="hide-nested-children-toggle"
+                          name="hide-nested-children-toggle"
                           className="hide-nested-checkbox"
                           checked={!hideNestedChildren}
                           disabled={!hasNestedChildren || hideDirectChildren}
@@ -925,6 +932,8 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
                       <div className="toggle-group">
                         <input
                           type="checkbox"
+                          id="hide-direct-children-toggle"
+                          name="hide-direct-children-toggle"
                           className="hide-direct-checkbox"
                           checked={!hideDirectChildren}
                           onChange={(e) => handleHideDirectChildren(!e.target.checked)}

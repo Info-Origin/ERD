@@ -215,13 +215,15 @@ export const RelationshipEdge = memo(
       openRelationshipDeleteModal
     } = useApp();
     const { theme } = useTheme();
-    const [isClicked, setIsClicked] = useState(false);
     
     // Context menu state
     const [contextMenu, setContextMenu] = useState({ isOpen: false, x: 0, y: 0 });
     
     // Theme-aware colors
     const lineColor = theme === 'dark' ? '#bdc3c7' : '#2c3e50';
+    
+    // NEW: Check if this is a user-created relationship (permanent blue highlight)
+    const isUserCreated = data?.bundledRelationships?.some(rel => rel.isUserCreated) || data?.isUserCreated;
     
     // Check if this edge is currently highlighted (with corrected semantics)
     // For bundled relationships, check against ALL relationships in the bundle
@@ -278,10 +280,6 @@ export const RelationshipEdge = memo(
       e.stopPropagation();
       
       if (data) {
-        // Visual feedback - highlight the edge line itself
-        setIsClicked(true);
-        setTimeout(() => setIsClicked(false), 5000);
-        
         // For bundled relationships, highlight the FIRST relationship in the bundle
         // The edge highlighting logic will check ALL bundled relationships
         const relationshipToHighlight = data.bundledRelationships?.[0] || data;
@@ -352,11 +350,12 @@ export const RelationshipEdge = memo(
     // MySQL Workbench style: theme-aware lines, dashed for self-joins
     const edgeStyle = {
       // Remove hardcoded stroke - let CSS handle theme-aware colors
-      strokeWidth: isHighlighted || isHoverHighlighted ? 2.5 : 1,
+      strokeWidth: isUserCreated ? 2.5 : (isHighlighted || isHoverHighlighted ? 2.5 : 1),
       strokeDasharray: selfJoin ? "5,5" : "none", // Dashed only for self-joins
       cursor: "pointer",
-      filter: isClicked || isHighlighted || isHoverHighlighted ? 
+      filter: isUserCreated || isHighlighted || isHoverHighlighted ? 
         `drop-shadow(0 0 6px ${
+          isUserCreated ? '#1e40af' : // Dark blue for user-created (permanent)
           isHighlighted ? '#ff6b35' : 
           isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : 
           '#3b82f6'
@@ -371,6 +370,7 @@ export const RelationshipEdge = memo(
         <path
           d={pathToUse}
           stroke={
+            isUserCreated ? '#1e40af' : // Dark blue for user-created (permanent)
             isHighlighted ? '#ff6b35' : // Pearl orange for click-based highlighting
             isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : // Green for PK hover, Blue for FK hover
             lineColor // Default color
