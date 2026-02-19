@@ -1124,9 +1124,12 @@ export const VirtualSchemaProvider = ({ children }) => {
         }
       };
 
-      updateWorkingSchema(newSchema);
+      // Recalculate isIdentifying and cardinality for all relationships
+      const schemaWithUpdatedRelationships = recalculateIsIdentifying(newSchema);
+
+      updateWorkingSchema(schemaWithUpdatedRelationships);
     },
-    [workingSchema, updateWorkingSchema],
+    [workingSchema, updateWorkingSchema, recalculateIsIdentifying],
   );
 
   const toggleNullable = useCallback(
@@ -1189,7 +1192,7 @@ export const VirtualSchemaProvider = ({ children }) => {
       };
 
       // Create deep copy with new relationship
-      const newSchema = {
+      let newSchema = {
         ...workingSchema,
         relationships: [...currentRelationships, newRelationship],
         tables: {
@@ -1207,9 +1210,12 @@ export const VirtualSchemaProvider = ({ children }) => {
         }
       };
 
+      // Recalculate isIdentifying and cardinality for all relationships
+      newSchema = recalculateIsIdentifying(newSchema);
+
       updateWorkingSchema(newSchema);
     },
-    [workingSchema, updateWorkingSchema],
+    [workingSchema, updateWorkingSchema, recalculateIsIdentifying],
   );
 
   // NEW: Atomic FK creation with new column
@@ -1250,7 +1256,7 @@ export const VirtualSchemaProvider = ({ children }) => {
       };
 
       // ATOMIC OPERATION: Create both column and relationship in single schema update
-      const newSchema = {
+      let newSchema = {
         ...workingSchema,
         relationships: [...currentRelationships, newRelationship],
         tables: {
@@ -1267,16 +1273,20 @@ export const VirtualSchemaProvider = ({ children }) => {
                 unique: false,
                 nullable: true, // FK columns can be nullable
                 defaultValue: null,
+                isUserCreated: true, // Mark as user-created so it can be deleted when FK is changed
               }
             }
           }
         }
       };
 
+      // Recalculate isIdentifying and cardinality for all relationships
+      newSchema = recalculateIsIdentifying(newSchema);
+
       updateWorkingSchema(newSchema);
       return newRelationship.id; // Return the relationship ID for tracking
     },
-    [workingSchema, updateWorkingSchema],
+    [workingSchema, updateWorkingSchema, recalculateIsIdentifying],
   );
 
   const deleteRelationship = useCallback(
@@ -1298,11 +1308,30 @@ export const VirtualSchemaProvider = ({ children }) => {
           r.fromColumn === rel.fromColumn,
       );
 
-      // Create deep copy with updated relationships and FK status
-      const newSchema = {
+      // Check if the FK column is user-created and should be deleted
+      const fkColumn = workingSchema.tables[rel.fromTable]?.columns[rel.fromColumn];
+      const shouldDeleteColumn = fkColumn?.isUserCreated && otherRefs.length === 0;
+
+      // Create deep copy with updated relationships
+      let newSchema = {
         ...workingSchema,
-        relationships: newRelationships,
-        tables: {
+        relationships: newRelationships
+      };
+
+      // If column should be deleted, remove it entirely
+      if (shouldDeleteColumn) {
+        const { [rel.fromColumn]: removed, ...remainingColumns } = workingSchema.tables[rel.fromTable].columns;
+        newSchema.tables = {
+          ...workingSchema.tables,
+          [rel.fromTable]: {
+            ...workingSchema.tables[rel.fromTable],
+            columns: remainingColumns
+          }
+        };
+        console.log('🗑️ Deleted user-created FK column:', rel.fromColumn);
+      } else {
+        // Otherwise just update FK status
+        newSchema.tables = {
           ...workingSchema.tables,
           [rel.fromTable]: {
             ...workingSchema.tables[rel.fromTable],
@@ -1314,8 +1343,8 @@ export const VirtualSchemaProvider = ({ children }) => {
               }
             }
           }
-        }
-      };
+        };
+      }
 
       updateWorkingSchema(newSchema);
     },
@@ -1393,6 +1422,183 @@ export const VirtualSchemaProvider = ({ children }) => {
     }
   }, [currentSchemaName, tablePositions]);
 
+  // NEW: Atomic FK column update - handles deleting old relationship, deleting old column, and adding new relationship
+  const updateForeignKeyColumn = useCallback(
+    (tableName, oldColumnName, newColumnName, toTable, toColumn) => {
+      if (!workingSchema) return;
+
+      console.log('🔄 Atomic FK update:', { tableName, oldColumnName, newColumnName, toTable, toColumn });
+
+      // Find the old relationship
+      const oldRelationship = (workingSchema.relationships || []).find(
+        rel => rel.fromTable === tableName && rel.fromColumn === oldColumnName && rel.toTable === toTable
+      );
+
+      if (!oldRelationship) {
+        throw new Error('Old relationship not found');
+      }
+
+      // Check if old column should be deleted (user-created)
+      const oldColumn = workingSchema.tables[tableName]?.columns[oldColumnName];
+      const shouldDeleteOldColumn = oldColumn?.isUserCreated && oldColumnName !== newColumnName;
+
+      // Create new schema with all changes applied atomically
+      let newSchema = { ...workingSchema };
+
+      // 1. Remove old relationship
+      newSchema.relationships = (workingSchema.relationships || []).filter(
+        rel => rel.id !== oldRelationship.id
+      );
+
+      // 2. Delete old column if user-created
+      if (shouldDeleteOldColumn) {
+        const { [oldColumnName]: removed, ...remainingColumns } = newSchema.tables[tableName].columns;
+        newSchema.tables = {
+          ...newSchema.tables,
+          [tableName]: {
+            ...newSchema.tables[tableName],
+            columns: remainingColumns
+          }
+        };
+        console.log('🗑️ Deleted old user-created column:', oldColumnName);
+      }
+
+      // 3. Add new relationship
+      const newRelationship = {
+        id: uuidv4(),
+        fromTable: tableName,
+        fromColumn: newColumnName,
+        toTable,
+        toColumn,
+        type: 'ONE_TO_MANY',
+        isUserCreated: true,
+        createdAt: Date.now(),
+      };
+
+      newSchema.relationships = [...newSchema.relationships, newRelationship];
+
+      // 4. Update FK status on new column
+      newSchema.tables = {
+        ...newSchema.tables,
+        [tableName]: {
+          ...newSchema.tables[tableName],
+          columns: {
+            ...newSchema.tables[tableName].columns,
+            [newColumnName]: {
+              ...newSchema.tables[tableName].columns[newColumnName],
+              fk: true
+            }
+          }
+        }
+      };
+
+      // 5. Recalculate isIdentifying and cardinality for all relationships
+      newSchema = recalculateIsIdentifying(newSchema);
+
+      console.log('✅ Atomic FK update completed');
+      updateWorkingSchema(newSchema);
+      return newRelationship.id;
+    },
+    [workingSchema, updateWorkingSchema, recalculateIsIdentifying],
+  );
+
+  // NEW: Atomic FK update with new column creation - handles deleting old relationship and creating new column + relationship
+  const updateForeignKeyWithNewColumn = useCallback(
+    (tableName, oldColumnName, newColumnName, newColumnType, toTable, toColumn) => {
+      if (!workingSchema) return;
+
+      console.log('🔄 Atomic FK update with new column:', { tableName, oldColumnName, newColumnName, newColumnType, toTable, toColumn });
+
+      // Find the old relationship
+      const oldRelationship = (workingSchema.relationships || []).find(
+        rel => rel.fromTable === tableName && rel.fromColumn === oldColumnName && rel.toTable === toTable
+      );
+
+      if (!oldRelationship) {
+        throw new Error('Old relationship not found');
+      }
+
+      // Check if new column already exists
+      if (workingSchema.tables[tableName]?.columns[newColumnName]) {
+        throw new Error(`Column "${newColumnName}" already exists in table "${tableName}"`);
+      }
+
+      // Create new schema with all changes applied atomically
+      let newSchema = { ...workingSchema };
+
+      // 1. Remove old relationship
+      newSchema.relationships = (workingSchema.relationships || []).filter(
+        rel => rel.id !== oldRelationship.id
+      );
+
+      // 2. Check if old column still has other relationships after removing this one
+      const otherRelationshipsOnOldColumn = newSchema.relationships.filter(
+        rel => rel.fromTable === tableName && rel.fromColumn === oldColumnName
+      );
+
+      // 3. Update old column's FK flag if no other relationships use it
+      if (otherRelationshipsOnOldColumn.length === 0) {
+        newSchema.tables = {
+          ...newSchema.tables,
+          [tableName]: {
+            ...newSchema.tables[tableName],
+            columns: {
+              ...newSchema.tables[tableName].columns,
+              [oldColumnName]: {
+                ...newSchema.tables[tableName].columns[oldColumnName],
+                fk: false // No longer a FK
+              }
+            }
+          }
+        };
+        console.log('✅ Updated old column FK flag to false:', oldColumnName);
+      }
+
+      // 4. Create new column
+      newSchema.tables = {
+        ...newSchema.tables,
+        [tableName]: {
+          ...newSchema.tables[tableName],
+          columns: {
+            ...newSchema.tables[tableName].columns,
+            [newColumnName]: {
+              name: newColumnName,
+              type: newColumnType,
+              pk: false,
+              fk: true,
+              unique: false,
+              nullable: true,
+              defaultValue: null,
+              isUserCreated: true, // Mark as user-created so it can be deleted later
+            }
+          }
+        }
+      };
+
+      // 5. Add new relationship
+      const newRelationship = {
+        id: uuidv4(),
+        fromTable: tableName,
+        fromColumn: newColumnName,
+        toTable,
+        toColumn,
+        type: 'ONE_TO_MANY',
+        isUserCreated: true,
+        createdAt: Date.now(),
+      };
+
+      newSchema.relationships = [...newSchema.relationships, newRelationship];
+
+      // 6. Recalculate isIdentifying and cardinality for all relationships
+      newSchema = recalculateIsIdentifying(newSchema);
+
+      console.log('✅ Atomic FK update with new column completed');
+      updateWorkingSchema(newSchema);
+      return newRelationship.id;
+    },
+    [workingSchema, updateWorkingSchema, recalculateIsIdentifying],
+  );
+
   const value = {
     // State
     originalSchema,
@@ -1434,6 +1640,8 @@ export const VirtualSchemaProvider = ({ children }) => {
     // Relationship operations
     addRelationship,
     addForeignKeyWithNewColumn, // NEW: Atomic FK creation with new column
+    updateForeignKeyColumn, // NEW: Atomic FK column update
+    updateForeignKeyWithNewColumn, // NEW: Atomic FK update with new column creation
     deleteRelationship,
     createVirtualRelationship, // NEW: Advanced relationship creation
 

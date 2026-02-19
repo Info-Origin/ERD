@@ -26,7 +26,10 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
     workingSchema,
     addRelationship,
     addForeignKeyWithNewColumn, // NEW: Atomic FK creation
+    updateForeignKeyColumn, // NEW: Atomic FK column update
+    updateForeignKeyWithNewColumn, // NEW: Atomic FK update with new column creation
     deleteRelationship,
+    deleteColumn, // Add this for deleting user-created FK columns
     togglePrimaryKey,
     toggleUnique,
     toggleNullable,
@@ -45,6 +48,11 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
   const [showAddFK, setShowAddFK] = useState(false);
   const [columnNotes, setColumnNotes] = useState({}); // Store notes for each column
   const [isApplyingConstraints, setIsApplyingConstraints] = useState(false); // Track when we're applying constraints
+  const [isSavingFK, setIsSavingFK] = useState(false); // Track when we're saving FK to prevent reload
+  
+  // Bulk FK deletion state
+  const [isDeleteMode, setIsDeleteMode] = useState(false);
+  const [selectedFKs, setSelectedFKs] = useState(new Set());
   
   // Pending constraint changes state
   const [pendingConstraintChanges, setPendingConstraintChanges] = useState({});
@@ -87,7 +95,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
 
   // Initialize data when modal opens
   useEffect(() => {
-    if (isOpen && workingSchema && tableName) {
+    if (isOpen && workingSchema && tableName && !isSavingFK) { // Don't reload during FK save
       setActiveTab('constraints'); // Always start with Constraints tab
       
       // Reset pending constraint changes
@@ -123,6 +131,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
           id: rel.id,
           name: `FK_${rel.fromTable}_${rel.fromColumn}`,
           fromColumn: rel.fromColumn,
+          originalFromColumn: rel.fromColumn, // Track original for editing
           toTable: rel.toTable,
           toColumn: rel.toColumn,
           onUpdate: rel.onUpdate || 'RESTRICT',
@@ -134,7 +143,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       // Reset editing states
       setEditingFK(null);
     }
-  }, [isOpen, tableName, workingSchema]); // Add workingSchema back to dependencies to ensure updates
+  }, [isOpen, tableName, workingSchema, isSavingFK]); // Add isSavingFK to dependencies
 
   // Refresh columns when switching to Columns or Constraints tab
   useEffect(() => {
@@ -757,6 +766,71 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
     setShowAddFK(false);
   };
 
+  // Bulk FK deletion handlers
+  const handleToggleDeleteMode = () => {
+    setIsDeleteMode(!isDeleteMode);
+    setSelectedFKs(new Set()); // Clear selection when toggling mode
+  };
+
+  const handleToggleFKSelection = (index) => {
+    const fk = foreignKeys[index];
+    
+    // Only allow selecting user-created FKs
+    if (!fk.isVirtual) return;
+    
+    setSelectedFKs(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAllFKs = () => {
+    // Get all user-created FK indices
+    const userCreatedIndices = foreignKeys
+      .map((fk, index) => fk.isVirtual ? index : null)
+      .filter(index => index !== null);
+    
+    if (selectedFKs.size === userCreatedIndices.length) {
+      // All selected, deselect all
+      setSelectedFKs(new Set());
+    } else {
+      // Select all user-created FKs
+      setSelectedFKs(new Set(userCreatedIndices));
+    }
+  };
+
+  const handleDeleteSelectedFKs = () => {
+    if (selectedFKs.size === 0) return;
+    
+    const fksToDelete = Array.from(selectedFKs).map(index => foreignKeys[index]);
+    const fkNames = fksToDelete.map(fk => fk.name).join(', ');
+    
+    showConfirm(
+      'Delete Selected Foreign Keys',
+      `Are you sure you want to delete ${selectedFKs.size} foreign key(s)?\n\n${fkNames}\n\nThis action cannot be undone.`,
+      () => {
+        // Delete each selected FK
+        fksToDelete.forEach(fk => {
+          if (fk.id) {
+            deleteRelationship(fk.id);
+          }
+        });
+        
+        // Clear selection and exit delete mode
+        setSelectedFKs(new Set());
+        setIsDeleteMode(false);
+        
+        showAlert('Success', `Successfully deleted ${selectedFKs.size} foreign key(s).`, 'success');
+      },
+      'danger'
+    );
+  };
+
   const handleDeleteFK = (index) => {
     try {
       const fk = foreignKeys[index];
@@ -821,6 +895,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         const fkColumnName = newFKs[index].fromColumn;
         const shouldBeUnique = value === '1:1';
         
+        console.log('🔄 Cardinality changed:', { fkColumnName, newCardinality: value, shouldBeUnique });
+        
         // Check if the FK column is a PK
         const fkColumn = columns.find(col => col.name === fkColumnName);
         const isPK = fkColumn?.pk || false;
@@ -835,6 +911,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         
         // Update the column's unique constraint in local state (only if not a PK)
         if (!isPK) {
+          console.log('✏️ Updating UNIQUE constraint:', { column: fkColumnName, unique: shouldBeUnique });
+          
           setColumns(prevColumns => {
             const newColumns = [...prevColumns];
             const columnIndex = newColumns.findIndex(col => col.name === fkColumnName);
@@ -844,18 +922,23 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                 ...newColumns[columnIndex],
                 unique: shouldBeUnique
               };
+              console.log('✅ Local columns state updated');
             }
             
             return newColumns;
           });
           
-          // Also update in workingSchema if the FK already exists
-          if (!newFKs[index].isNew && workingSchema && workingSchema.tables[tableName]) {
+          // Update in workingSchema for both new and existing FKs
+          // Use setTimeout to avoid updating state during render
+          if (workingSchema && workingSchema.tables[tableName]) {
             const column = workingSchema.tables[tableName].columns[fkColumnName];
             if (column) {
               // Toggle unique constraint to match cardinality
               if (column.unique !== shouldBeUnique) {
-                toggleUnique(tableName, fkColumnName);
+                console.log('🔧 Toggling UNIQUE in workingSchema (deferred)');
+                setTimeout(() => {
+                  toggleUnique(tableName, fkColumnName);
+                }, 0);
               }
             }
           }
@@ -1029,6 +1112,89 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
           }
         }
         // For new columns, the relationship was already created atomically above
+      } else {
+        // EDITING EXISTING FK - Update the relationship in virtual schema
+        // Only allow editing user-created (virtual) FKs, not database FKs
+        if (!fk.isVirtual) {
+          showAlert('Cannot Edit Database FK', 'Foreign keys from the database cannot be edited. You can only edit user-created foreign keys.', 'warning');
+          return;
+        }
+        
+        // Check if we're switching to CREATE NEW column
+        if (fk.fromColumn === '__CREATE_NEW__') {
+          // SPECIAL CASE: Editing FK and switching to create new column
+          console.log('📝 Editing FK - switching to create new column');
+          
+          if (!fk.newColumnName || !fk.newColumnName.trim()) {
+            showAlert('Validation Error', 'Please enter a name for the new column', 'warning');
+            return;
+          }
+
+          actualColumnName = fk.newColumnName.trim();
+
+          // Check if column name already exists
+          const existingColumn = columns.find(col => col.name === actualColumnName);
+          if (existingColumn) {
+            showAlert('Validation Error', `Column "${actualColumnName}" already exists. Please choose a different name.`, 'warning');
+            return;
+          }
+
+          // Determine appropriate data type based on referenced column
+          const referencedTable = workingSchema.tables[fk.toTable];
+          const referencedColumn = referencedTable?.columns[fk.toColumn];
+          const columnType = referencedColumn?.type || 'INT';
+
+          try {
+            // Use atomic function: delete old relationship + create new column + create new relationship
+            updateForeignKeyWithNewColumn(
+              tableName,
+              fk.originalFromColumn, // old column
+              actualColumnName, // new column name
+              columnType, // new column type
+              fk.toTable,
+              fk.toColumn
+            );
+
+            console.log('✅ FK updated - switched to new column');
+            
+          } catch (error) {
+            if (error.message === "Relationship already exists") {
+              showAlert('Validation Error', `Foreign key relationship already exists: ${tableName}.${actualColumnName} → ${fk.toTable}.${fk.toColumn}`, 'warning');
+            } else {
+              showAlert('Error', `Error updating foreign key: ${error.message}`, 'error');
+              console.error('FK update error:', error);
+            }
+            return;
+          }
+          
+        } else {
+          // Normal case: Editing FK with existing column
+          console.log('📝 Editing existing FK - using atomic update');
+          
+          // Use atomic function to update FK column
+          // This handles: delete old relationship, delete old column (if user-created), add new relationship
+          try {
+            updateForeignKeyColumn(
+              tableName,
+              fk.originalFromColumn, // old column
+              actualColumnName, // new column
+              fk.toTable,
+              fk.toColumn
+            );
+            
+            console.log('✅ Atomic FK update completed');
+            
+          } catch (error) {
+            if (error.message === "Relationship already exists") {
+              showAlert('Validation Error', `Foreign key relationship already exists: ${tableName}.${actualColumnName} → ${fk.toTable}.${fk.toColumn}`, 'warning');
+            } else if (error.message === "Old relationship not found") {
+              showAlert('Error', 'Could not find the original foreign key relationship to update.', 'error');
+            } else {
+              showAlert('Error', `Error updating foreign key: ${error.message}`, 'error');
+              console.error('FK update error:', error);
+            }
+          }
+        }
       }
       
       setEditingFK(null);
@@ -1302,27 +1468,71 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
             <div className="foreign-keys-tab">
               <div className="tab-header">
                 <h3>Foreign Keys</h3>
-                <button className="btn-add" onClick={handleAddFK}>
-                  + Add Foreign Key
-                </button>
+                <div className="fk-header-actions">
+                  {isDeleteMode ? (
+                    <>
+                      <button 
+                        className="btn-delete-selected" 
+                        onClick={handleDeleteSelectedFKs}
+                        disabled={selectedFKs.size === 0}
+                      >
+                        Delete Selected ({selectedFKs.size})
+                      </button>
+                      <button className="btn-cancel" onClick={handleToggleDeleteMode}>
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button className="btn-add" onClick={handleAddFK}>
+                        Add Foreign Key
+                      </button>
+                      {foreignKeys.some(fk => fk.isVirtual) && (
+                        <button className="btn-delete-mode" onClick={handleToggleDeleteMode}>
+                        Delete Foreign Key
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
               
               <div className="fk-table">
                 <div className="edit-fk-header">
+                  {isDeleteMode && (
+                    <div className="edit-fk-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={selectedFKs.size > 0 && selectedFKs.size === foreignKeys.filter(fk => fk.isVirtual).length}
+                        onChange={handleSelectAllFKs}
+                        title="Select all user-created FKs"
+                      />
+                    </div>
+                  )}
                   <div className="edit-fk-name">FK Name</div>
                   <div className="edit-fk-column">Child Column (FK)</div>
                   <div className="edit-fk-ref-table">Parent Table</div>
                   <div className="edit-fk-ref-column">Parent Column (PK)</div>
                   <div className="edit-fk-cardinality">Cardinality</div>
-                  <div className="edit-fk-type">Type</div>
+                  <div className="edit-fk-type">Relation Type</div>
                   <div className="edit-fk-on-update">On Update</div>
                   <div className="edit-fk-on-delete">On Delete</div>
-                  <div className="edit-fk-actions">Actions</div>
+                  {!isDeleteMode && <div className="edit-fk-actions">Actions</div>}
                 </div>
                 
                 {foreignKeys.map((fk, index) => (
                   <div key={index} className={`edit-fk-row ${editingFK === index ? 'editing' : ''} ${!fk.isVirtual ? 'read-only' : ''}`}>
-                    <div className="edit-fk-name">
+                    {isDeleteMode && (
+                      <div className="edit-fk-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={selectedFKs.has(index)}
+                          onChange={() => handleToggleFKSelection(index)}
+                          disabled={!fk.isVirtual}
+                          title={fk.isVirtual ? 'Select for deletion' : 'Database FK cannot be deleted'}
+                        />
+                      </div>
+                    )}                    <div className="edit-fk-name">
                       {editingFK === index && fk.isVirtual ? (
                         // In edit mode - allow typing new column name or show selected column name
                         <input
@@ -1475,39 +1685,41 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                         <option value="NO ACTION" title="NO ACTION">NO ACTION</option>
                       </select>
                     </div>
-                    <div className="edit-fk-actions">
-                      {fk.isVirtual ? (
-                        // Virtual FK - Show edit/delete buttons
-                        editingFK === index ? (
-                          <>
-                            <button className="btn-save" onClick={() => handleSaveFK(index)}>
-                              ✓
-                            </button>
-                            <button className="btn-cancel" onClick={() => handleCancelFK(index)}>
-                              ✕
-                            </button>
-                          </>
+                    {!isDeleteMode && (
+                      <div className="edit-fk-actions">
+                        {fk.isVirtual ? (
+                          // Virtual FK - Show edit/delete buttons
+                          editingFK === index ? (
+                            <>
+                              <button className="btn-save" onClick={() => handleSaveFK(index)}>
+                                ✓
+                              </button>
+                              <button className="btn-cancel" onClick={() => handleCancelFK(index)}>
+                                ✕
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button className="btn-edit" onClick={() => {
+                                setEditingFK(index);
+                              }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" style={{width: '16px', height: '16px'}}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                                </svg>
+                              </button>
+                              <button className="btn-delete" onClick={() => handleDeleteFK(index)}>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" style={{width: '16px', height: '16px'}}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                </svg>
+                              </button>
+                            </>
+                          )
                         ) : (
-                          <>
-                            <button className="btn-edit" onClick={() => {
-                              setEditingFK(index);
-                            }}>
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" style={{width: '16px', height: '16px'}}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-                              </svg>
-                            </button>
-                            <button className="btn-delete" onClick={() => handleDeleteFK(index)}>
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" style={{width: '16px', height: '16px'}}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                              </svg>
-                            </button>
-                          </>
-                        )
-                      ) : (
-                        // Real DB FK - Show read-only indicator
-                        <span className="read-only-indicator">🔒 Read-Only</span>
-                      )}
-                    </div>
+                          // Real DB FK - Show read-only indicator
+                          <span className="read-only-indicator">🔒 Read-Only</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

@@ -117,6 +117,53 @@
   color: var(--text-primary);
 }
 
+.fk-header-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn-delete-mode {
+  padding: 0.5rem 1rem;
+  background: var(--danger-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-delete-mode:hover {
+  background: var(--danger-hover);
+}
+
+.btn-delete-selected {
+  padding: 0.5rem 1rem;
+  background: var(--danger-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s ease;
+  font-weight: 600;
+}
+
+.btn-delete-selected:hover:not(:disabled) {
+  background: var(--danger-hover);
+}
+
+.btn-delete-selected:disabled {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .btn-add {
   padding: 0.5rem 1rem;
   background: var(--primary-color);
@@ -139,6 +186,19 @@
   overflow: auto;
   border: 1px solid var(--border-color);
   border-radius: 4px;
+  min-width: 0; /* Allow shrinking */
+}
+
+/* FK table needs horizontal scroll for many columns */
+.fk-table {
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+/* Prevent FK table from wrapping - force horizontal scroll instead */
+.fk-table .edit-fk-header,
+.fk-table .edit-fk-row {
+  min-width: 1100px; /* Minimum width to prevent wrapping */
 }
 
 /* Edit Table Modal Specific Styles */
@@ -160,6 +220,34 @@
 
 .fk-table .edit-fk-header {
   grid-template-columns: 1.5fr 1.2fr 1.2fr 1.2fr 100px 120px 100px 100px 100px;
+}
+
+/* When in delete mode, add checkbox column */
+.fk-table .edit-fk-header:has(.edit-fk-checkbox) {
+  grid-template-columns: 40px 1.5fr 1.2fr 1.2fr 1.2fr 100px 120px 100px 100px;
+}
+
+.fk-table .edit-fk-row:has(.edit-fk-checkbox) {
+  grid-template-columns: 40px 1.5fr 1.2fr 1.2fr 1.2fr 100px 120px 100px 100px;
+}
+
+.edit-fk-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 0.5rem;
+}
+
+.edit-fk-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--danger-color);
+}
+
+.edit-fk-checkbox input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 .edit-table-header > div,
@@ -375,10 +463,8 @@
     grid-template-columns: 1.8fr 1.8fr 55px 55px 55px 55px 1.8fr 110px;
   }
   
-  .fk-table .edit-fk-header,
-  .fk-table .edit-fk-row {
-    grid-template-columns: 1.8fr 1.2fr 1.2fr 1.2fr 110px 110px 110px;
-  }
+  /* FK table: Keep fixed layout, force horizontal scroll */
+  /* Don't change grid-template-columns for FK table */
 }
 
 @media (max-width: 1024px) {
@@ -392,10 +478,8 @@
     grid-template-columns: 1.5fr 1.5fr 50px 50px 50px 50px 1.5fr 100px;
   }
   
-  .fk-table .edit-fk-header,
-  .fk-table .edit-fk-row {
-    grid-template-columns: 1.5fr 1fr 1fr 1fr 100px 100px 100px;
-  }
+  /* FK table: Keep fixed layout, force horizontal scroll */
+  /* Don't change grid-template-columns for FK table */
 }
 
 @media (max-width: 900px) {
@@ -409,10 +493,8 @@
     grid-template-columns: 1.3fr 1.3fr 45px 45px 45px 45px 1.3fr 90px;
   }
   
-  .fk-table .edit-fk-header,
-  .fk-table .edit-fk-row {
-    grid-template-columns: 1.3fr 0.9fr 0.9fr 0.9fr 90px 90px 90px;
-  }
+  /* FK table: Keep fixed layout, force horizontal scroll */
+  /* Don't change grid-template-columns for FK table */
   
   .edit-table-header > div,
   .edit-fk-header > div,
@@ -457,10 +539,8 @@
     grid-template-columns: 1fr 1fr 40px 40px 40px 40px 1fr 80px;
   }
   
-  .fk-table .edit-fk-header,
-  .fk-table .edit-fk-row {
-    grid-template-columns: 1fr 0.8fr 0.8fr 0.8fr 80px 80px 80px;
-  }
+  /* FK table: Keep fixed layout, force horizontal scroll */
+  /* Don't change grid-template-columns for FK table */
 }
 
 @media (max-width: 600px) {
@@ -482,10 +562,8 @@
     grid-template-columns: 0.8fr 0.8fr 35px 35px 35px 35px 0.8fr 70px;
   }
   
-  .fk-table .edit-fk-header,
-  .fk-table .edit-fk-row {
-    grid-template-columns: 0.8fr 0.7fr 0.7fr 0.7fr 70px 70px 70px;
-  }
+  /* FK table: Keep fixed layout, force horizontal scroll */
+  /* Don't change grid-template-columns for FK table */
   
   .btn-edit,
   .btn-delete,
@@ -524,10 +602,8 @@
     grid-template-columns: 0.7fr 0.7fr 30px 30px 30px 30px 0.7fr 60px;
   }
   
-  .fk-table .edit-fk-header,
-  .fk-table .edit-fk-row {
-    grid-template-columns: 0.7fr 0.6fr 0.6fr 0.6fr 60px 60px 60px;
-  }
+  /* FK table: Keep fixed layout, force horizontal scroll */
+  /* Don't change grid-template-columns for FK table */
   
   .btn-edit,
   .btn-delete,
