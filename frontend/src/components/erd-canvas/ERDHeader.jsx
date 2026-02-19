@@ -975,6 +975,7 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
             Show All Tables
           </button>
           */}
+
           <Legend isInHeader={true} forceExpanded={legendForceExpanded} />
         </div>
       </div>

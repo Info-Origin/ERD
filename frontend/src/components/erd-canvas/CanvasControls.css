@@ -126,3 +126,31 @@
 .reset-layout-button-text {
   white-space: nowrap;
 }
+
+/* Export PDF Button */
+.canvas-control-button.export-button {
+  width: auto;
+  padding: var(--spacing-sm) var(--spacing-md);
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  background-color: var(--bg-primary);
+  border: 1px solid #10b981;
+  cursor: pointer !important;
+}
+
+.canvas-control-button.export-button:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+  border: 1px solid #10b981;
+}
+
+.canvas-control-button.export-button:disabled {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-disabled);
+}
+
+.export-button-text {
+  white-space: nowrap;
+}

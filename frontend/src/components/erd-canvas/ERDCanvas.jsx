@@ -18,11 +18,13 @@ import { RelationshipToolbar } from "./RelationshipToolbar";
 import { Loader } from "../common/Loader";
 import { RelationshipDetailsModal } from "../modals/RelationshipDetailsModal";
 import { DeleteRelationshipModal } from "../modals/DeleteRelationshipModal";
+import { ExportPDFModal } from "../modals/ExportPDFModal";
 import { useApp } from "../../context/AppContext";
 import { useERDLayout } from "../../hooks/useERDLayout";
 import { useVirtualSchema } from "../../context/VirtualSchemaContext";
 import { useRelationshipCreation } from "../../context/RelationshipCreationContext";
 import { createRelationship, validateRelationshipCreation } from "../../services/relationshipCreationService";
+import { exportERDToPDF } from "../../utils/erdExport";
 import "./ERDCanvas.css";
 
 // Move nodeTypes and edgeTypes outside component to prevent React Flow warning
@@ -56,7 +58,10 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
     relationshipDeleteModal,
     closeRelationshipDeleteModal,
     openRelationshipDeleteModal,
-    deleteRelationships
+    deleteRelationships,
+    // Export PDF modal
+    exportPDFModal,
+    closeExportPDFModal
   } = useApp();
   const virtualSchema = useVirtualSchema(); // Get full virtual schema context
   const { 
@@ -65,7 +70,16 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
     completeRelationshipCreation, 
     canCompleteRelationship 
   } = useRelationshipCreation();
-  const { zoomIn, zoomOut, fitView } = useReactFlow();
+  const reactFlowInstance = useReactFlow();
+  const { zoomIn, zoomOut, fitView } = reactFlowInstance;
+  
+  // Store React Flow instance globally for export utility
+  useEffect(() => {
+    window.reactFlowInstance = reactFlowInstance;
+    return () => {
+      delete window.reactFlowInstance;
+    };
+  }, [reactFlowInstance]);
   
   // Table filtering state
   const [filteredTables, setFilteredTables] = useState(null);
@@ -539,6 +553,19 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
           closeRelationshipDeleteModal();
           await deleteRelationships(rels);
         }}
+      />
+
+      {/* Export PDF Modal */}
+      <ExportPDFModal
+        isOpen={exportPDFModal.isOpen}
+        onClose={closeExportPDFModal}
+        onExport={async (options, progressCallback) => {
+          await exportERDToPDF({
+            ...options,
+            schemaName: selectedSchema
+          }, progressCallback);
+        }}
+        schemaName={selectedSchema}
       />
     </div>
   );

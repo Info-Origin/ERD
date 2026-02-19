@@ -1,0 +1,230 @@
+.export-pdf-modal {
+  max-width: 420px;
+  width: 90%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.export-pdf-modal .modal-header {
+  padding: 12px 24px 10px 24px !important;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.export-pdf-modal .modal-header h2 {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.export-pdf-modal .modal-body {
+  overflow-y: auto;
+  max-height: calc(85vh - 140px);
+  padding: 8px 24px 8px 24px;
+}
+
+.export-option-group {
+  margin-bottom: 8px;
+}
+
+.export-option-group:last-of-type {
+  margin-bottom: 0;
+}
+
+.export-label {
+  display: block;
+  font-weight: 500;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+}
+
+.export-select {
+  width: 100%;
+  padding: 7px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.export-select:hover {
+  border-color: var(--primary-color);
+}
+
+.export-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-bg);
+}
+
+.export-radio-group {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.export-radio {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  transition: color 0.2s;
+}
+
+.export-radio:hover {
+  color: var(--primary);
+}
+
+.export-radio input[type="radio"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--primary);
+}
+
+.export-checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.export-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  transition: color 0.2s;
+}
+
+.export-checkbox:hover {
+  color: var(--primary);
+}
+
+.export-checkbox input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--primary);
+}
+
+.export-info {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 7px 12px;
+  margin-top: 8px;
+}
+
+.export-info p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.export-info strong {
+  color: var(--text-primary);
+  font-weight: 500;
+  margin-right: 6px;
+}
+
+.export-progress {
+  padding: 20px 24px;
+  text-align: center;
+}
+
+.export-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 12px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.export-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+}
+
+.export-progress-text {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 6px 0;
+  font-weight: 500;
+}
+
+.export-progress-percent {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin: 4px 0 0 0;
+  letter-spacing: -0.5px;
+}
+
+/* Professional Button Styling - Matching Connection Modal */
+.export-pdf-modal .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 6px 24px 12px 24px !important;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  flex-shrink: 0;
+}
+
+.export-pdf-modal .modal-button {
+  padding: 8px 16px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.export-pdf-modal .modal-button-secondary {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.export-pdf-modal .modal-button-secondary:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+}
+
+.export-pdf-modal .modal-button-primary {
+  background-color: var(--primary);
+  color: white;
+}
+
+.export-pdf-modal .modal-button-primary:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--shadow-color);
+}
+
+.export-pdf-modal .modal-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.export-pdf-modal .modal-button-primary:disabled {
+  background: #94a3b8;
+  box-shadow: none;
+  transform: none;
+}

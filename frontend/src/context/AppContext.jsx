@@ -422,6 +422,11 @@ export const AppProvider = ({ children }) => {
     relationships: []
   });
 
+  // Export PDF modal
+  const [exportPDFModal, setExportPDFModal] = useState({
+    isOpen: false
+  });
+
   const openRelationshipDetailsModal = (relationships) => {
     setRelationshipDetailsModal({
       isOpen: true,
@@ -450,6 +455,20 @@ export const AppProvider = ({ children }) => {
     setRelationshipDeleteModal({
       isOpen: false,
       relationships: []
+    });
+    setIsAnyModalOpen(false);
+  };
+
+  const openExportPDFModal = () => {
+    setExportPDFModal({
+      isOpen: true
+    });
+    setIsAnyModalOpen(true);
+  };
+
+  const closeExportPDFModal = () => {
+    setExportPDFModal({
+      isOpen: false
     });
     setIsAnyModalOpen(false);
   };
@@ -640,6 +659,11 @@ export const AppProvider = ({ children }) => {
     relationshipDeleteModal,
     openRelationshipDeleteModal,
     closeRelationshipDeleteModal,
+
+    // Export PDF modal
+    exportPDFModal,
+    openExportPDFModal,
+    closeExportPDFModal,
 
     // Global modal state
     isAnyModalOpen,
