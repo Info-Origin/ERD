@@ -101,6 +101,22 @@
   border-bottom-color: rgba(20, 184, 166, 0.3) !important;
 }
 
+/*Circular dependency highlighting - Red border and glow */
+.table-card-circular-dependency {
+  border-color: #ef4444 !important; /* Red border for circular dependencies */
+  box-shadow:
+    0 0 0 3px rgba(239, 68, 68, 0.2),
+    0 4px 16px rgba(239, 68, 68, 0.4) !important;
+  transform: translateY(-2px) !important;
+  background-color: var(--bg-primary) !important;
+  z-index: 30 !important; /* Circular dependency tables on top of everything */
+}
+
+.table-card-circular-dependency .table-card-header {
+  background-color: rgba(239, 68, 68, 0.15) !important; /* Red tinted header */
+  border-bottom-color: rgba(239, 68, 68, 0.3) !important;
+}
+
 /* Basic table handles for user-created relationships */
 .table-handle {
   background-color: transparent;

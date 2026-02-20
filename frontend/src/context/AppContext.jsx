@@ -5,6 +5,7 @@ import { useSelection } from "../hooks/useSelection";
 import { useDebounce } from "../hooks/useDebounce";
 import { useVirtualSchema } from "./VirtualSchemaContext";
 import { revertFKChange } from "../utils/fkComparison";
+import { detectCircularDependencies } from "../utils/circularDependencyDetector";
 
 const AppContext = createContext();
 
@@ -26,6 +27,9 @@ export const AppProvider = ({ children }) => {
   
   // NEW: Timer management for relationship highlighting
   const [highlightTimer, setHighlightTimer] = useState(null);
+  
+  // NEW: Circular dependency detection
+  const [tablesInCircularDependency, setTablesInCircularDependency] = useState([]);
   
   const [routingMode] = useState('direct'); // Fixed to 'direct' stepped lines only
   const [crowsFootMode, setCrowsFootMode] = useState(false); // Toggle for crow's foot notation
@@ -279,6 +283,21 @@ export const AppProvider = ({ children }) => {
       }
     };
   }, [highlightTimer]);
+
+  // Detect circular dependencies whenever relationships change
+  useEffect(() => {
+    const currentSchema = virtualSchema.workingSchema || erdData;
+    
+    if (currentSchema?.relationships) {
+      const circularTables = detectCircularDependencies(currentSchema.relationships);
+      setTablesInCircularDependency(circularTables);
+      
+      if (circularTables.length > 0) {
+      }
+    } else {
+      setTablesInCircularDependency([]);
+    }
+  }, [virtualSchema.workingSchema, erdData]);
 
   // Toggle crow's foot notation mode
   const toggleCrowsFootMode = () => {
@@ -638,6 +657,9 @@ export const AppProvider = ({ children }) => {
     hoverHighlightedRelationships,
     handleTableHover,
     handleTableHoverEnd,
+
+    // NEW: Circular dependency detection
+    tablesInCircularDependency,
 
     // Routing mode (fixed to direct)
     routingMode,

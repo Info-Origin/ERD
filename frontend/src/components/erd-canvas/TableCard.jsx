@@ -29,9 +29,14 @@ export const TableCard = memo(({ data }) => {
     hoverHighlightedRelationships,
     handleTableHover,
     handleTableHoverEnd,
+    // NEW: Circular dependency detection
+    tablesInCircularDependency,
   } = useApp();
 
   const { tableName, columns, isSelected, isHighlighted, isParent, highlightedColumn } = data;
+
+  // Check if this table is part of a circular dependency
+  const isInCircularDependency = tablesInCircularDependency?.includes(tableName);
 
   // State for self-join hover highlighting
   const [selfJoinHover, setSelfJoinHover] = useState(false);
@@ -271,6 +276,7 @@ export const TableCard = memo(({ data }) => {
           "table-card-relationship-highlighted": isTableHighlighted,
           "table-card-search-highlighted": isHighlighted, // Add search highlight class
           "table-card-parent": isParent && !isHighlighted && !isTableHighlighted, // Add parent class only if not already highlighted
+          "table-card-circular-dependency": isInCircularDependency, //Circular dependency highlight
         })}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
