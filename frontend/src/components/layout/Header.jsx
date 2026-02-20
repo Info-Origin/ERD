@@ -7,7 +7,7 @@ export const Header = () => {
     <header className="header">
       <div className="header-left">
         <FiDatabase className="header-logo" />
-        <h1 className="header-title">ReverseERD</h1>
+        <h1 className="header-title">InfoERD</h1>
         <span className="header-subtitle">MySQL Schema Visualizer</span>
       </div>
       <div className="header-right">

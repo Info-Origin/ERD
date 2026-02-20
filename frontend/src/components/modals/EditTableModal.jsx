@@ -21,6 +21,35 @@ import './EditTableModal.css';
 import './AlertModal.css';
 import './ConfirmModal.css';
 
+// Cardinality Icon Component (same size as Legend - 30px)
+const CardinalityIcon = ({ cardinality, isIdentifying }) => {
+  const strokeDasharray = isIdentifying ? 'none' : '2,2';
+  
+  if (cardinality === '1:1') {
+    // One-to-One: Circle on both ends
+    return (
+      <svg width="30" height="12" viewBox="0 0 30 12" style={{ marginRight: '8px', verticalAlign: 'middle' }}>
+        <line x1="2" y1="6" x2="28" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" strokeDasharray={strokeDasharray} />
+        <circle cx="4" cy="6" r="2.5" fill="var(--bg-primary)" stroke="var(--erd-line-color)" strokeWidth="1.5" />
+        <circle cx="26" cy="6" r="2.5" fill="var(--bg-primary)" stroke="var(--erd-line-color)" strokeWidth="1.5" />
+      </svg>
+    );
+  } else {
+    // One-to-Many: Circle on left, Crow's foot on right
+    return (
+      <svg width="30" height="12" viewBox="0 0 30 12" style={{ marginRight: '8px', verticalAlign: 'middle' }}>
+        <line x1="2" y1="6" x2="28" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" strokeDasharray={strokeDasharray} />
+        <circle cx="4" cy="6" r="2.5" fill="var(--bg-primary)" stroke="var(--erd-line-color)" strokeWidth="1.5" />
+        <g>
+          <line x1="26" y1="6" x2="21" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" />
+          <line x1="26" y1="2.5" x2="21" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" />
+          <line x1="26" y1="9.5" x2="21" y2="6" stroke="var(--erd-line-color)" strokeWidth="1.5" />
+        </g>
+      </svg>
+    );
+  }
+};
+
 const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
   const {
     workingSchema,
@@ -44,7 +73,6 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
   const [columns, setColumns] = useState([]);
   const [foreignKeys, setForeignKeys] = useState([]);
   const [editingFK, setEditingFK] = useState(null);
-  const [editingColumn, setEditingColumn] = useState(null);
   const [showAddFK, setShowAddFK] = useState(false);
   const [columnNotes, setColumnNotes] = useState({}); // Store notes for each column
   const [isApplyingConstraints, setIsApplyingConstraints] = useState(false); // Track when we're applying constraints
@@ -100,6 +128,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       
       // Reset pending constraint changes
       setPendingConstraintChanges({});
+      console.log('🔄 Modal opened, reset pendingConstraintChanges to empty');
       
       // Load columns (read-only for constraint editing)
       const tableData = workingSchema.tables[tableName];
@@ -140,10 +169,15 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         }));
       setForeignKeys(tableFKs);
       
-      // Reset editing states
+      // Reset editing state
       setEditingFK(null);
     }
   }, [isOpen, tableName, workingSchema, isSavingFK]); // Add isSavingFK to dependencies
+
+  // Debug: Log pendingConstraintChanges whenever it changes
+  useEffect(() => {
+    console.log('📊 pendingConstraintChanges updated:', pendingConstraintChanges, 'Count:', Object.keys(pendingConstraintChanges).length);
+  }, [pendingConstraintChanges]);
 
   // Refresh columns when switching to Columns or Constraints tab
   useEffect(() => {
@@ -239,7 +273,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
 
   const handleSave = () => {
     try {
-      // REMOVED: Table renaming functionality
+      // Clear pending changes when closing
+      setPendingConstraintChanges({});
       onClose();
     } catch (error) {
       console.error('Error saving constraints:', error);
@@ -471,6 +506,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
   const handleConstraintToggle = (index, constraintType, newValue) => {
     const column = columns[index];
     const columnName = column.name;
+    
+    console.log('🔧 Constraint toggled:', { columnName, constraintType, newValue });
     
     // Update pending changes
     setPendingConstraintChanges(prev => {
@@ -721,31 +758,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
     }
   };
 
-  
-  const handleColumnCancel = () => {
-    // Reset column data to original values
-    if (editingColumn !== null) {
-      const originalColumn = workingSchema.tables[tableName].columns[columns[editingColumn].name];
-      const newColumns = [...columns];
-      newColumns[editingColumn] = {
-        ...newColumns[editingColumn],
-        baseType: getBaseDataType(originalColumn.type),
-        typeLength: getTypeLength(originalColumn.type),
-        defaultValue: originalColumn.defaultValue || ''
-      };
-      setColumns(newColumns);
-    }
-    setEditingColumn(null);
-  };
 
-  const handleColumnChange = (index, field, value) => {
-    const newColumns = [...columns];
-    newColumns[index] = {
-      ...newColumns[index],
-      [field]: value
-    };
-    setColumns(newColumns);
-  };
 
   const handleAddFK = () => {
     const newFK = {
@@ -1305,7 +1318,6 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                   <div className="edit-constraint-pk">PK</div>
                   <div className="edit-constraint-nn">NN</div>
                   <div className="edit-constraint-uq">UQ</div>
-                  <div className="edit-constraint-actions">Actions</div>
                 </div>
                 
                 {columns.map((column, index) => (
@@ -1314,101 +1326,14 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                       <span className="column-name-readonly">{column.name}</span>
                     </div>
                     <div className="edit-constraint-type">
-                      {editingColumn === index ? (
-                        <div className="data-type-editor">
-                          <select
-                            value={column.baseType}
-                            onChange={(e) => handleColumnChange(index, 'baseType', e.target.value)}
-                            className="data-type-select"
-                          >
-                            <optgroup label="Numeric Types">
-                              <option value="TINYINT">TINYINT</option>
-                              <option value="SMALLINT">SMALLINT</option>
-                              <option value="MEDIUMINT">MEDIUMINT</option>
-                              <option value="INT">INT</option>
-                              <option value="BIGINT">BIGINT</option>
-                              <option value="DECIMAL">DECIMAL</option>
-                              <option value="FLOAT">FLOAT</option>
-                              <option value="DOUBLE">DOUBLE</option>
-                              <option value="REAL">REAL</option>
-                            </optgroup>
-                            <optgroup label="String Types">
-                              <option value="CHAR">CHAR</option>
-                              <option value="VARCHAR">VARCHAR</option>
-                              <option value="BINARY">BINARY</option>
-                              <option value="VARBINARY">VARBINARY</option>
-                              <option value="TINYBLOB">TINYBLOB</option>
-                              <option value="BLOB">BLOB</option>
-                              <option value="MEDIUMBLOB">MEDIUMBLOB</option>
-                              <option value="LONGBLOB">LONGBLOB</option>
-                              <option value="TINYTEXT">TINYTEXT</option>
-                              <option value="TEXT">TEXT</option>
-                              <option value="MEDIUMTEXT">MEDIUMTEXT</option>
-                              <option value="LONGTEXT">LONGTEXT</option>
-                            </optgroup>
-                            <optgroup label="Date & Time Types">
-                              <option value="DATE">DATE</option>
-                              <option value="TIME">TIME</option>
-                              <option value="DATETIME">DATETIME</option>
-                              <option value="TIMESTAMP">TIMESTAMP</option>
-                              <option value="YEAR">YEAR</option>
-                            </optgroup>
-                            <optgroup label="Other Types">
-                              <option value="BIT">BIT</option>
-                              <option value="BOOLEAN">BOOLEAN</option>
-                              <option value="ENUM">ENUM</option>
-                              <option value="SET">SET</option>
-                              <option value="JSON">JSON</option>
-                            </optgroup>
-                          </select>
-                          {DATA_TYPES_WITH_LENGTH.includes(column.baseType) && (
-                            <input
-                              type="text"
-                              value={column.typeLength}
-                              onChange={(e) => handleColumnChange(index, 'typeLength', e.target.value)}
-                              placeholder="Length"
-                              className="type-length-input"
-                            />
-                          )}
-                        </div>
-                      ) : (
-                        <span className="column-type-readonly" title={getFullDataType(column.type)}>
-                          {formatDataTypeForDisplay(column.type)}
-                        </span>
-                      )}
+                      <span className="column-type-readonly" title={getFullDataType(column.type)}>
+                        {formatDataTypeForDisplay(column.type)}
+                      </span>
                     </div>
                     <div className="edit-constraint-default">
-                      {editingColumn === index ? (
-                        <div className="default-value-editor">
-                          <input
-                            type="text"
-                            value={column.defaultValue}
-                            onChange={(e) => handleColumnChange(index, 'defaultValue', e.target.value)}
-                            placeholder="NULL"
-                            className="default-value-input"
-                          />
-                          {COMMON_DEFAULTS[column.baseType] && (
-                            <select
-                              value=""
-                              onChange={(e) => {
-                                if (e.target.value) {
-                                  handleColumnChange(index, 'defaultValue', e.target.value);
-                                }
-                              }}
-                              className="common-defaults-select"
-                            >
-                              <option value="">Common defaults...</option>
-                              {COMMON_DEFAULTS[column.baseType].map(defaultVal => (
-                                <option key={defaultVal} value={defaultVal}>{defaultVal}</option>
-                              ))}
-                            </select>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="default-value-readonly">
-                          {column.defaultValue || 'NULL'}
-                        </span>
-                      )}
+                      <span className="default-value-readonly">
+                        {column.defaultValue || 'NULL'}
+                      </span>
                     </div>
                     <div className="edit-constraint-pk">
                       <input
@@ -1417,7 +1342,6 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                         onChange={(e) => {
                           handleConstraintToggle(index, 'pk', e.target.checked);
                         }}
-                        disabled={editingColumn === index}
                       />
                     </div>
                     <div className="edit-constraint-nn">
@@ -1427,7 +1351,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                         onChange={(e) => {
                           handleConstraintToggle(index, 'nullable', !e.target.checked);
                         }}
-                        disabled={column.pk || editingColumn === index} // PK columns are always NOT NULL
+                        disabled={column.pk} // PK columns are always NOT NULL
                       />
                     </div>
                     <div className="edit-constraint-uq">
@@ -1437,26 +1361,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                         onChange={(e) => {
                           handleConstraintToggle(index, 'unique', e.target.checked);
                         }}
-                        disabled={editingColumn === index}
                       />
-                    </div>
-                    <div className="edit-constraint-actions">
-                      {editingColumn === index ? (
-                        <>
-                          <button className="btn-save-small" onClick={() => handleColumnSave(index)} title="Save changes" disabled>
-                            ✓
-                          </button>
-                          <button className="btn-cancel-small" onClick={handleColumnCancel} title="Cancel changes" disabled>
-                            ✕
-                          </button>
-                        </>
-                      ) : (
-                        <button className="btn-edit-small" onClick={() => handleColumnEdit(index)} title="Data type editing temporarily disabled" disabled>
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" style={{width: '16px', height: '16px'}}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-                          </svg>
-                        </button>
-                      )}
                     </div>
                   </div>
                 ))}
@@ -1487,7 +1392,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                       <button className="btn-add" onClick={handleAddFK}>
                         Add Foreign Key
                       </button>
-                      {foreignKeys.some(fk => fk.isVirtual) && (
+                      {foreignKeys.some(fk => fk.isVirtual && !fk.isNew) && (
                         <button className="btn-delete-mode" onClick={handleToggleDeleteMode}>
                         Delete Foreign Key
                         </button>
@@ -1509,7 +1414,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                       />
                     </div>
                   )}
-                  <div className="edit-fk-name">FK Name</div>
+                  <div className="edit-fk-name">Foreign Key Name</div>
                   <div className="edit-fk-column">Child Column (FK)</div>
                   <div className="edit-fk-ref-table">Parent Table</div>
                   <div className="edit-fk-ref-column">Parent Column (PK)</div>
@@ -1645,6 +1550,10 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                         })()
                       ) : (
                         <span className="fk-cardinality-display" title={fk.cardinality === '1:1' ? 'One-to-One: FK has UNIQUE constraint or is PK' : 'One-to-Many: FK does not have UNIQUE constraint'}>
+                          <CardinalityIcon 
+                            cardinality={fk.cardinality || detectCardinality(fk.fromColumn)} 
+                            isIdentifying={detectIdentifying(fk.fromColumn)}
+                          />
                           {fk.cardinality || detectCardinality(fk.fromColumn)}
                         </span>
                       )}

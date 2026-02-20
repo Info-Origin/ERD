@@ -451,6 +451,13 @@
   background: var(--primary-hover);
 }
 
+.modal-footer .btn-save:disabled,
+.modal-footer .btn-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
   .edit-table-modal {
@@ -724,7 +731,7 @@
 
 .edit-constraint-header {
   display: grid;
-  grid-template-columns: 1fr 1.5fr 1.2fr 50px 50px 50px 80px;
+  grid-template-columns: 1fr 1.5fr 1.2fr 50px 50px 50px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   font-weight: 600;
@@ -736,7 +743,7 @@
 
 .edit-constraint-row {
   display: grid;
-  grid-template-columns: 1fr 1.5fr 1.2fr 50px 50px 50px 80px;
+  grid-template-columns: 1fr 1.5fr 1.2fr 50px 50px 50px;
   border-bottom: 1px solid var(--border-color);
   transition: background 0.2s ease;
 }
@@ -940,7 +947,7 @@
 @media (max-width: 768px) {
   .edit-constraint-header,
   .edit-constraint-row {
-    grid-template-columns: 1fr 1.2fr 1fr 40px 40px 40px 60px;
+    grid-template-columns: 1fr 1.2fr 1fr 40px 40px 40px;
   }
   
   .edit-constraint-header > div,
@@ -1089,7 +1096,9 @@
   background: var(--bg-secondary);
   border-radius: 4px;
   text-align: center;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* FK Column Name styles with ellipsis */
