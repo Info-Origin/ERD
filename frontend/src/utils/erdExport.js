@@ -1,19 +1,10 @@
-import { jsPDF } from 'jspdf';
-import { toPng, toSvg } from 'html-to-image';
+import { toPng } from 'html-to-image';
 
 /**
- * Export ERD diagram to PDF with comprehensive edge case handling
- * Uses html-to-image library which works better with React Flow
+ * Export ERD diagram to PDF - Server-side only
+ * Uses html-to-image to capture diagram, then sends to backend for PDF generation
  * Supports 200+ tables by capturing the entire transformed viewport
  */
-
-// Page size configurations (in points: 1 point = 1/72 inch)
-const PAGE_SIZES = {
-  a4: { width: 595, height: 842 },
-  a3: { width: 842, height: 1191 },
-  letter: { width: 612, height: 792 },
-  legal: { width: 612, height: 1008 }
-};
 
 // Quality scale factors
 const QUALITY_SCALES = {
@@ -24,16 +15,10 @@ const QUALITY_SCALES = {
 };
 
 /**
- * Main export function - ALL exports use server-side generation
+ * Main export function - Server-side only for consistency and reliability
  */
 export const exportERDToPDF = async (options, progressCallback) => {
   const {
-    pageSize = 'a4',
-    orientation = 'auto',
-    quality = 'high',
-    includeAllTables = true,
-    includeUserCreated = true,
-    format = 'pdf',
     schemaName = 'schema'
   } = options;
 
@@ -41,22 +26,32 @@ export const exportERDToPDF = async (options, progressCallback) => {
     const reactFlowInstance = window.reactFlowInstance;
     
     if (!reactFlowInstance) {
-      throw new Error('React Flow instance not available');
+      throw new Error('React Flow instance not available. Please try again.');
     }
 
-    // Always use server-side export for consistency and reliability
+    // Server-side export only
     return await exportViaServer(options, progressCallback);
 
   } catch (error) {
     console.error('Export error:', error);
     await cleanupAfterExport();
-    throw error;
+    
+    // Provide clear, user-friendly error messages
+    if (error.message.includes('Failed to fetch') || error.message.includes('fetch')) {
+      throw new Error('Cannot connect to server. Please ensure the backend is running on port 4000 and try again.');
+    } else if (error.message.includes('timeout')) {
+      throw new Error('Export timed out. The diagram might be too large. Please try again.');
+    } else if (error.message.includes('React Flow')) {
+      throw new Error('Diagram not ready. Please wait a moment and try again.');
+    } else {
+      throw new Error('Unable to generate PDF at this time. Please try again later.');
+    }
   }
 };
 
 /**
- * Server-side export (for 100+ tables)
- * Captures actual DOM as image, then sends to server for PDF conversion
+ * Server-side export - Captures diagram and sends to backend for PDF generation
+ * Handles large diagrams (100+ tables) without browser limitations
  */
 const exportViaServer = async (options, progressCallback) => {
   const { schemaName = 'schema', format = 'pdf' } = options;
@@ -71,7 +66,7 @@ const exportViaServer = async (options, progressCallback) => {
     const canvas = await captureAsCanvas(options.quality);
 
     if (!canvas) {
-      throw new Error('Failed to capture diagram');
+      throw new Error('Failed to capture diagram. Please try again.');
     }
 
     // Step 3: Convert canvas to base64
@@ -105,7 +100,7 @@ const exportViaServer = async (options, progressCallback) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Server export failed:', response.status, errorText);
-      throw new Error(`Server export failed: ${response.status}`);
+      throw new Error(`Server returned error: ${response.status}. Please try again later.`);
     }
 
     // Step 5: Download (80%)
@@ -136,56 +131,8 @@ const exportViaServer = async (options, progressCallback) => {
   } catch (error) {
     console.error('Server export error:', error);
     await cleanupAfterExport();
-    // Fallback to client-side export
-    progressCallback(50, 'Server export failed, using client-side...');
-    return await exportViaClient(options, progressCallback);
+    throw error; // Re-throw to be handled by main function
   }
-};
-
-/**
- * Client-side export (for <100 tables)
- */
-const exportViaClient = async (options, progressCallback) => {
-  const {
-    pageSize = 'a4',
-    orientation = 'auto',
-    quality = 'high',
-    format = 'pdf',
-    schemaName = 'schema'
-  } = options;
-
-  // Step 1: Prepare the diagram (10%)
-  progressCallback(10, 'Preparing diagram...');
-  await prepareForExport(options.includeAllTables);
-
-  // Step 2: Capture as canvas (40%)
-  progressCallback(40, 'Capturing diagram...');
-  const canvas = await captureAsCanvas(quality);
-
-  if (!canvas) {
-    throw new Error('Failed to capture diagram');
-  }
-
-  // Step 3: Export based on format (70%)
-  progressCallback(70, `Generating ${format.toUpperCase()}...`);
-  
-  if (format === 'svg') {
-    await exportToPNG(canvas, schemaName, progressCallback);
-  } else {
-    await exportToPDF(canvas, {
-      pageSize,
-      orientation,
-      quality,
-      schemaName
-    }, progressCallback);
-  }
-
-  // Step 4: Cleanup (90%)
-  progressCallback(90, 'Cleaning up...');
-  await cleanupAfterExport();
-
-  // Step 5: Complete (100%)
-  progressCallback(100, 'Export complete!');
 };
 
 /**
@@ -315,191 +262,6 @@ const captureAsCanvas = async (quality) => {
     img.onerror = reject;
     img.src = dataUrl;
   });
-};
-
-/**
- * Calculate bounds of all content
- */
-const calculateBounds = (container) => {
-  const nodes = container.querySelectorAll('.react-flow__node');
-  
-  let minX = Infinity, minY = Infinity;
-  let maxX = -Infinity, maxY = -Infinity;
-
-  nodes.forEach(node => {
-    const transform = node.style.transform;
-    const match = transform.match(/translate\(([^,]+),\s*([^)]+)\)/);
-    
-    if (match) {
-      const x = parseFloat(match[1]);
-      const y = parseFloat(match[2]);
-      const width = node.offsetWidth;
-      const height = node.offsetHeight;
-
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x + width);
-      maxY = Math.max(maxY, y + height);
-    }
-  });
-
-  // Add padding
-  const padding = 50;
-  
-  return {
-    x: minX - padding,
-    y: minY - padding,
-    width: (maxX - minX) + (padding * 2),
-    height: (maxY - minY) + (padding * 2)
-  };
-};
-
-/**
- * Process SVG for better quality
- */
-const processSVG = async (svgElement, quality) => {
-  const scale = QUALITY_SCALES[quality] || 2;
-
-  // Apply quality scaling
-  const currentWidth = parseFloat(svgElement.getAttribute('width'));
-  const currentHeight = parseFloat(svgElement.getAttribute('height'));
-
-  svgElement.setAttribute('width', currentWidth * scale);
-  svgElement.setAttribute('height', currentHeight * scale);
-
-  // Inline all styles
-  inlineStyles(svgElement);
-
-  return svgElement;
-};
-
-/**
- * Inline CSS styles into SVG elements
- */
-const inlineStyles = (svgElement) => {
-  const elements = svgElement.querySelectorAll('*');
-  
-  elements.forEach(element => {
-    const computedStyle = window.getComputedStyle(element);
-    const styleString = Array.from(computedStyle).reduce((str, property) => {
-      return `${str}${property}:${computedStyle.getPropertyValue(property)};`;
-    }, '');
-    
-    element.setAttribute('style', styleString);
-  });
-};
-
-/**
- * Export to PDF
- */
-const exportToPDF = async (canvas, options, progressCallback) => {
-  const { pageSize, orientation, quality, schemaName } = options;
-
-  progressCallback(80, 'Creating PDF document...');
-
-  const imgWidth = canvas.width;
-  const imgHeight = canvas.height;
-  const aspectRatio = imgWidth / imgHeight;
-
-  // Determine orientation
-  let finalOrientation = orientation;
-  if (orientation === 'auto') {
-    finalOrientation = aspectRatio > 1 ? 'landscape' : 'portrait';
-  }
-
-  // Get page dimensions in pixels (at 96 DPI)
-  let pdfWidth, pdfHeight;
-  
-  if (pageSize === 'custom') {
-    // Fit to content - use canvas dimensions
-    // Convert pixels to points (1 point = 1/72 inch, 1 pixel = 1/96 inch)
-    pdfWidth = (imgWidth * 72) / 96;
-    pdfHeight = (imgHeight * 72) / 96;
-  } else {
-    const pageDimensions = PAGE_SIZES[pageSize];
-    if (finalOrientation === 'landscape') {
-      pdfWidth = pageDimensions.height;
-      pdfHeight = pageDimensions.width;
-    } else {
-      pdfWidth = pageDimensions.width;
-      pdfHeight = pageDimensions.height;
-    }
-  }
-
-  // Create PDF
-  const pdf = new jsPDF({
-    orientation: finalOrientation,
-    unit: 'pt',
-    format: pageSize === 'custom' ? [pdfWidth, pdfHeight] : pageSize
-  });
-
-  progressCallback(85, 'Adding image to PDF...');
-
-  // Convert canvas to image
-  const imgData = canvas.toDataURL('image/png');
-
-  // Calculate dimensions to fit page
-  let finalWidth, finalHeight;
-  
-  if (pageSize === 'custom') {
-    finalWidth = pdfWidth;
-    finalHeight = pdfHeight;
-  } else {
-    // Scale to fit page while maintaining aspect ratio
-    const pageAspectRatio = pdfWidth / pdfHeight;
-    
-    if (aspectRatio > pageAspectRatio) {
-      // Image is wider - fit to width
-      finalWidth = pdfWidth;
-      finalHeight = pdfWidth / aspectRatio;
-    } else {
-      // Image is taller - fit to height
-      finalHeight = pdfHeight;
-      finalWidth = pdfHeight * aspectRatio;
-    }
-  }
-
-  // Center the image on the page
-  const xOffset = (pdfWidth - finalWidth) / 2;
-  const yOffset = (pdfHeight - finalHeight) / 2;
-
-  // Add image to PDF
-  pdf.addImage(imgData, 'PNG', xOffset, yOffset, finalWidth, finalHeight);
-
-  progressCallback(95, 'Saving file...');
-
-  // Generate filename
-  const timestamp = new Date().toISOString().split('T')[0];
-  const filename = `ERD_${schemaName}_${timestamp}.pdf`;
-
-  // Save PDF
-  pdf.save(filename);
-};
-
-/**
- * Export to PNG file
- */
-const exportToPNG = async (canvas, schemaName, progressCallback) => {
-  progressCallback(80, 'Preparing PNG file...');
-
-  // Convert canvas to blob
-  canvas.toBlob((blob) => {
-    progressCallback(95, 'Saving file...');
-
-    // Generate filename
-    const timestamp = new Date().toISOString().split('T')[0];
-    const filename = `ERD_${schemaName}_${timestamp}.png`;
-
-    // Download
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }, 'image/png');
 };
 
 /**

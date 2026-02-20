@@ -174,11 +174,6 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
     }
   }, [isOpen, tableName, workingSchema, isSavingFK]); // Add isSavingFK to dependencies
 
-  // Debug: Log pendingConstraintChanges whenever it changes
-  useEffect(() => {
-    console.log('📊 pendingConstraintChanges updated:', pendingConstraintChanges, 'Count:', Object.keys(pendingConstraintChanges).length);
-  }, [pendingConstraintChanges]);
-
   // Refresh columns when switching to Columns or Constraints tab
   useEffect(() => {
     if ((activeTab === 'columns' || activeTab === 'constraints') && workingSchema && tableName) {

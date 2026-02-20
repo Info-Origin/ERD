@@ -41,12 +41,8 @@ export const detectCircularDependencies = (relationships) => {
     }
   });
 
-  console.log('🔍 Circular Dependency Detection - Graph:', graph);
-  console.log('📊 Total tables:', allTables.size);
-
   // Set to store all tables involved in cycles of length >= 3
   const tablesInCycles = new Set();
-  const detectedCycles = []; // For logging
 
   // DFS to detect cycles with proper cycle length validation
   const detectCycles = (node, visited, recStack, path) => {
@@ -66,8 +62,6 @@ export const detectCircularDependencies = (relationships) => {
         const cycleNodes = path.slice(cycleStartIndex);
         const cycleLength = cycleNodes.length;
         
-        console.log('🔄 Found cycle:', [...cycleNodes, neighbor], 'Length:', cycleLength);
-        
         // CRITICAL: Only flag cycles with 3 or more UNIQUE tables
         // This excludes:
         // - Self-joins (1 table: A → A)
@@ -77,13 +71,6 @@ export const detectCircularDependencies = (relationships) => {
           cycleNodes.forEach(table => tablesInCycles.add(table));
           // Add the closing node to complete the cycle
           tablesInCycles.add(neighbor);
-          
-          // Log for debugging
-          const completeCycle = [...cycleNodes, neighbor];
-          detectedCycles.push(completeCycle);
-          console.log('✅ Valid cycle detected (3+ tables):', completeCycle);
-        } else {
-          console.log('⚠️ Ignoring cycle (< 3 tables):', [...cycleNodes, neighbor]);
         }
       }
     }
@@ -104,14 +91,5 @@ export const detectCircularDependencies = (relationships) => {
     }
   }
 
-  const result = Array.from(tablesInCycles);
-  
-  if (result.length > 0) {
-    console.log('🔴 Tables in circular dependencies:', result);
-    console.log('📋 Detected cycles:', detectedCycles);
-  } else {
-    console.log('✅ No circular dependencies detected');
-  }
-  
-  return result;
+  return Array.from(tablesInCycles);
 };
