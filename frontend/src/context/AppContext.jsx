@@ -534,12 +534,30 @@ export const AppProvider = ({ children }) => {
           tables: { ...virtualSchema.workingSchema.tables }
         };
 
-        // Remove FK columns from tables
+        // Remove FK columns from tables (only if they were user-created for this FK)
         allRelationshipsToDelete.forEach(rel => {
           if (updatedSchema.tables[rel.fromTable]) {
             const table = updatedSchema.tables[rel.fromTable];
-            if (table.columns[rel.fromColumn]) {
-              delete updatedSchema.tables[rel.fromTable].columns[rel.fromColumn];
+            const column = table.columns[rel.fromColumn];
+            
+            if (column) {
+              // Check if this column should be deleted
+              // Only delete if:
+              // 1. Column is user-created (has isUserCreated flag)
+              // 2. Column did NOT exist in the original database schema
+              const existsInOriginalDB = virtualSchema.originalSchema?.tables?.[rel.fromTable]?.columns?.[rel.fromColumn];
+              const shouldDeleteColumn = column.isUserCreated && !existsInOriginalDB;
+              
+              if (shouldDeleteColumn) {
+                // Delete the column
+                delete updatedSchema.tables[rel.fromTable].columns[rel.fromColumn];
+              } else {
+                // Just remove FK flag
+                updatedSchema.tables[rel.fromTable].columns[rel.fromColumn] = {
+                  ...column,
+                  fk: false
+                };
+              }
             }
           }
         });

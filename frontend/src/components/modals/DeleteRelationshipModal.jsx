@@ -66,7 +66,7 @@ export const DeleteRelationshipModal = ({
               </div>
               <ul className="warning-list">
                 <li>Drop foreign key constraint{isSingle ? '' : 's'}</li>
-                <li>Remove FK column{isSingle ? '' : 's'} from table{isSingle ? '' : 's'}</li>
+                <li>Remove FK flag from column{isSingle ? '' : 's'}</li>
                 {hasJunctionTable && (
                   <li className="critical">
                     Drop junction table{junctionTables.size > 1 ? 's' : ''}: {Array.from(junctionTables).join(', ')} (N:M relationship)

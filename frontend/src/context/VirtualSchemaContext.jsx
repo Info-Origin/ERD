@@ -1308,9 +1308,14 @@ export const VirtualSchemaProvider = ({ children }) => {
           r.fromColumn === rel.fromColumn,
       );
 
-      // Check if the FK column is user-created and should be deleted
+      // Check if the FK column should be deleted
+      // Only delete if:
+      // 1. Column is user-created (has isUserCreated flag)
+      // 2. No other FKs reference this column
+      // 3. Column did NOT exist in the original database schema (not a DB column)
       const fkColumn = workingSchema.tables[rel.fromTable]?.columns[rel.fromColumn];
-      const shouldDeleteColumn = fkColumn?.isUserCreated && otherRefs.length === 0;
+      const existsInOriginalDB = originalSchema?.tables?.[rel.fromTable]?.columns?.[rel.fromColumn];
+      const shouldDeleteColumn = fkColumn?.isUserCreated && otherRefs.length === 0 && !existsInOriginalDB;
 
       // Create deep copy with updated relationships
       let newSchema = {
@@ -1320,7 +1325,7 @@ export const VirtualSchemaProvider = ({ children }) => {
 
       // If column should be deleted, remove it entirely
       if (shouldDeleteColumn) {
-        const { [rel.fromColumn]: removed, ...remainingColumns } = workingSchema.tables[rel.fromTable].columns;
+        const { [rel.fromColumn]: removed, ...remainingColumns} = workingSchema.tables[rel.fromTable].columns;
         newSchema.tables = {
           ...workingSchema.tables,
           [rel.fromTable]: {
