@@ -350,7 +350,12 @@ export const AppProvider = ({ children }) => {
   };
 
   // Auto-refresh mechanism for real-time sync detection
+  // DISABLED: Currently using manual browser refresh instead of auto-polling
+  // To enable: Set ENABLE_AUTO_REFRESH to true
   useEffect(() => {
+    const ENABLE_AUTO_REFRESH = false; // Set to true to enable auto-refresh polling
+    
+    if (!ENABLE_AUTO_REFRESH) return; // Auto-refresh disabled
     if (!selectedSchema || !erdData || erdLoading) return;
 
     const autoRefreshInterval = setInterval(async () => {

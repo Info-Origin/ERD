@@ -315,15 +315,23 @@ export const VirtualSchemaProvider = ({ children }) => {
     
     // Merge relationships from virtual schema (user-added relationships)
     const virtualRelationships = virtualSchema.relationships || [];
+    const realRelationships = realSchema.relationships || [];
     const relationshipMap = new Map();
     
-    // Add valid relationships
+    // Create a map of real database relationships for quick lookup
+    const realRelMap = new Map();
+    realRelationships.forEach(rel => {
+      const key = `${rel.fromTable}.${rel.fromColumn}->${rel.toTable}.${rel.toColumn}`;
+      realRelMap.set(key, rel);
+    });
+    
+    // Add valid relationships from merged schema
     validRelationships.forEach(rel => {
       const key = `${rel.fromTable}.${rel.fromColumn}->${rel.toTable}.${rel.toColumn}`;
       relationshipMap.set(key, rel);
     });
     
-    // Add virtual relationships (will override if same key)
+    // Process virtual relationships
     virtualRelationships.forEach(rel => {
       const fromTableExists = merged.tables[rel.fromTable];
       const toTableExists = merged.tables[rel.toTable];
@@ -332,7 +340,49 @@ export const VirtualSchemaProvider = ({ children }) => {
       
       if (fromTableExists && toTableExists && fromColumnExists && toColumnExists) {
         const key = `${rel.fromTable}.${rel.fromColumn}->${rel.toTable}.${rel.toColumn}`;
-        relationshipMap.set(key, rel);
+        
+        // Check if this relationship now exists in the real database
+        const existsInRealDB = realRelMap.has(key);
+        
+        if (existsInRealDB && rel.isUserCreated) {
+          // User-created relationship now exists in database
+          // Keep isUserCreated flag for FK comparison to detect sync
+          const realRel = realRelMap.get(key);
+          relationshipMap.set(key, {
+            ...realRel,
+            isUserCreated: true, // Keep flag for FK comparison
+            wasSynced: true // Mark as synced for line color change
+          });
+        } else if (existsInRealDB) {
+          // Database relationship that always existed
+          const realRel = realRelMap.get(key);
+          relationshipMap.set(key, realRel);
+        } else if (rel.isUserCreated || rel.wasSynced) {
+          // User-created relationship that doesn't exist in database
+          // OR was synced but now deleted from database - revert to user-created state
+          relationshipMap.set(key, {
+            ...rel,
+            isUserCreated: true, // Mark as user-created again
+            wasSynced: false // Remove synced flag - back to blue color
+          });
+        } else {
+          // Database relationship that was deleted from real DB
+          // Check if it existed in original schema
+          const originalRels = originalSchema?.relationships || [];
+          const existedInOriginal = originalRels.some(origRel => 
+            origRel.fromTable === rel.fromTable &&
+            origRel.fromColumn === rel.fromColumn &&
+            origRel.toTable === rel.toTable &&
+            origRel.toColumn === rel.toColumn
+          );
+          
+          if (existedInOriginal && !existsInRealDB) {
+            // Database relationship was deleted - don't include it
+            // Unless user wants to keep it as virtual
+          } else {
+            relationshipMap.set(key, rel);
+          }
+        }
       }
     });
     

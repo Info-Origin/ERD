@@ -44,8 +44,10 @@ export const CrowsFootEdge = memo(({
   // Check if this is a self-join relationship (define early)
   const selfJoin = data?.fromTable === data?.toTable;
 
-  // NEW: Check if this is a user-created relationship (permanent orange highlight)
-  const isUserCreated = data?.bundledRelationships?.some(rel => rel.isUserCreated) || data?.isUserCreated;
+  // NEW: Check if this is a user-created relationship (permanent blue highlight)
+  // If wasSynced is true, it means it was user-created but now exists in DB (show as database relationship)
+  const isUserCreated = (data?.bundledRelationships?.some(rel => rel.isUserCreated && !rel.wasSynced) || 
+                        (data?.isUserCreated && !data?.wasSynced));
 
   // Use CSS variables for theme-aware colors
   // Instead of computing colors in JS, we'll use CSS variables directly in SVG

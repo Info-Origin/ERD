@@ -222,8 +222,10 @@ export const RelationshipEdge = memo(
     // Theme-aware colors
     const lineColor = theme === 'dark' ? '#bdc3c7' : '#2c3e50';
     
-    // NEW: Check if this is a user-created relationship (permanent orange highlight)
-    const isUserCreated = data?.bundledRelationships?.some(rel => rel.isUserCreated) || data?.isUserCreated;
+    // NEW: Check if this is a user-created relationship (permanent blue highlight)
+    // If wasSynced is true, it means it was user-created but now exists in DB (show as database relationship)
+    const isUserCreated = (data?.bundledRelationships?.some(rel => rel.isUserCreated && !rel.wasSynced) || 
+                          (data?.isUserCreated && !data?.wasSynced));
     
     // Check if this edge is currently highlighted (with corrected semantics)
     // For bundled relationships, check against ALL relationships in the bundle
