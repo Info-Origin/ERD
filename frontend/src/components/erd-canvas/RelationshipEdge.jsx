@@ -222,7 +222,7 @@ export const RelationshipEdge = memo(
     // Theme-aware colors
     const lineColor = theme === 'dark' ? '#bdc3c7' : '#2c3e50';
     
-    // NEW: Check if this is a user-created relationship (permanent blue highlight)
+    // NEW: Check if this is a user-created relationship (permanent orange highlight)
     const isUserCreated = data?.bundledRelationships?.some(rel => rel.isUserCreated) || data?.isUserCreated;
     
     // Check if this edge is currently highlighted (with corrected semantics)
@@ -355,8 +355,8 @@ export const RelationshipEdge = memo(
       cursor: "pointer",
       filter: isUserCreated || isHighlighted || isHoverHighlighted ? 
         `drop-shadow(0 0 6px ${
-          isUserCreated ? '#1e40af' : // Dark blue for user-created (permanent)
-          isHighlighted ? '#ff6b35' : 
+          isUserCreated ? '#ff6b35' : // Orange for user-created (permanent)
+          isHighlighted ? '#1e40af' : 
           isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : 
           '#3b82f6'
         })` : "none",
@@ -370,22 +370,23 @@ export const RelationshipEdge = memo(
         <path
           d={pathToUse}
           stroke={
-            isUserCreated ? '#1e40af' : // Dark blue for user-created (permanent)
-            isHighlighted ? '#ff6b35' : // Pearl orange for click-based highlighting
+            isUserCreated ? '#125da8aa' : // Your custom blue for user-created (always visible)
+            isHighlighted ? '#ff6b35' : // Orange for click-based highlighting
             isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : // Green for PK hover, Blue for FK hover
-            lineColor // Default color
+            lineColor // Default color for database relationships
           }
-          strokeWidth={edgeStyle.strokeWidth}
+          strokeWidth={isUserCreated ? 2.5 : (isHighlighted || isHoverHighlighted ? 2.5 : 1)}
           strokeDasharray={edgeStyle.strokeDasharray}
           fill="none"
           style={{
             cursor: 'pointer',
             pointerEvents: 'all',
-            filter: edgeStyle.filter
+            filter: isUserCreated ? 'drop-shadow(0 0 4px #125da8) drop-shadow(0 0 8px #125da8)' : edgeStyle.filter
           }}
           onClick={handleEdgeClick}
           onContextMenu={handleContextMenu}
           data-relationship-id={id}
+          data-user-created={isUserCreated ? 'true' : 'false'}
         />
         
         {/* Wider invisible clickable area that follows the chosen path */}

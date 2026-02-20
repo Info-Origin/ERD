@@ -42,7 +42,7 @@ export const DirectRelationshipEdge = memo(({
   // Check if this is a self-join relationship (define early)
   const selfJoin = data?.fromTable === data?.toTable;
 
-  // NEW: Check if this is a user-created relationship (permanent blue highlight)
+  // NEW: Check if this is a user-created relationship (permanent orange highlight)
   const isUserCreated = data?.bundledRelationships?.some(rel => rel.isUserCreated) || data?.isUserCreated;
 
   // Use CSS variables for theme-aware colors (same as orthogonal lines)
@@ -195,10 +195,10 @@ export const DirectRelationshipEdge = memo(({
             className={`react-flow__edge-path direct-edge-path ${selected ? 'selected' : ''}`}
             d={edgePath}
             stroke={
-              isUserCreated ? '#1e40af' : // Dark blue for user-created (permanent)
-              isHighlighted ? '#ff6b35' : // Pearl orange for click-based highlighting
+              isUserCreated ? '#125da8aa' : // Your custom blue for user-created (always visible)
+              isHighlighted ? '#ff6b35' : // Orange for click-based highlighting
               isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : // Green for PK hover, Blue for FK hover
-              lineColor // Default color
+              lineColor // Default color for database relationships
             }
             strokeWidth={isUserCreated ? 2.5 : (isHighlighted || isHoverHighlighted ? 2.5 : 1.5)}
             strokeDasharray={strokeDasharray}
@@ -208,18 +208,19 @@ export const DirectRelationshipEdge = memo(({
             style={{
               cursor: 'pointer',
               pointerEvents: 'all',
-              filter: isUserCreated || isHighlighted || isHoverHighlighted ? 
-                `drop-shadow(0 0 6px ${
-                  isUserCreated ? '#1e40af' : // Dark blue for user-created (permanent)
-                  isHighlighted ? '#ff6b35' : 
-                  isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : 
-                  '#3b82f6'
-                })` : "none",
+              filter: isUserCreated ? 'drop-shadow(0 0 4px #125da8) drop-shadow(0 0 8px #125da8)' : 
+                (isHighlighted || isHoverHighlighted ? 
+                  `drop-shadow(0 0 6px ${
+                    isHighlighted ? '#ff6b35' : 
+                    isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : 
+                    '#3b82f6'
+                  })` : "none"),
               transition: 'all 0.2s ease'
             }}
             onClick={handleEdgeClick}
             onContextMenu={handleContextMenu}
             data-relationship-id={id}
+            data-user-created={isUserCreated ? 'true' : 'false'}
           />
           
           {/* Wider invisible clickable area for easier clicking */}

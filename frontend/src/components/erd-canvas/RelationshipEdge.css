@@ -98,42 +98,44 @@
 .react-flow__edge[data-user-created="true"] .react-flow__edge-path:hover {
   stroke: var(--erd-line-selected) !important;
   stroke-width: 1.5px !important;
-  filter: drop-shadow(0 0 4px rgba(220, 38, 38, 0.5));
+  filter: drop-shadow(0 0 4px rgb(220, 38, 38));
 }
 
-/* User-created relationship highlighting - PERMANENT DARK BLUE HIGHLIGHT */
+/* User-created relationship highlighting - PERMANENT CUSTOM BLUE WITH HIGHLIGHT */
 .user-created-edge {
-  stroke: #1e40af !important;
-  stroke-width: 3.5px !important;
+  stroke: #125da8aa !important;
+  stroke-width: 2.5px !important;
   stroke-dasharray: none !important;
-  filter: drop-shadow(0 0 8px #1e40af) drop-shadow(0 0 16px rgba(30, 64, 175, 0.6)) !important;
-  animation: pulse-glow 2s ease-in-out infinite !important;
 }
 
-.user-created-edge-glow {
-  filter: drop-shadow(0 0 10px #1e40af) drop-shadow(0 0 20px rgba(30, 64, 175, 0.7)) drop-shadow(0 0 30px rgba(30, 64, 175, 0.4)) !important;
+/* User-created edge paths - override default colors with maximum specificity */
+.erd-canvas-container .react-flow__edge-path[data-user-created="true"],
+.erd-canvas-container path[data-user-created="true"].react-flow__edge-path,
+path[data-user-created="true"].react-flow__edge-path.crows-foot-edge-path,
+path[data-user-created="true"].react-flow__edge-path.direct-edge-path {
+  stroke: #1d69b5a1 !important;
+  stroke-width: 2px !important;
+  filter: drop-shadow(0 0 3px #125da8) drop-shadow(0 0 18px #125da8) !important;
 }
 
-/* User-created crow's foot markers - dark blue */
+/* Hover state for user-created edges */
+.erd-canvas-container .react-flow__edge-path[data-user-created="true"]:hover,
+path[data-user-created="true"].react-flow__edge-path:hover {
+  stroke: #125da8aa !important;
+  stroke-width: 2.5px !important;
+  filter: drop-shadow(0 0 6px #125da8) drop-shadow(0 0 12px #125da8) !important;
+}
+
+/* User-created crow's foot markers - custom blue */
 .user-created-marker line {
-  stroke: #1e40af !important;
+  stroke: #125da8aa !important;
   stroke-width: 2px !important;
 }
 
 .user-created-marker circle {
-  stroke: #1e40af !important;
+  stroke: #125da8aa !important;
   fill: var(--bg-primary) !important;
   stroke-width: 2px !important;
-}
-
-/* Pulse animation for user-created edges */
-@keyframes pulse-glow {
-  0%, 100% {
-    filter: drop-shadow(0 0 8px #1e40af) drop-shadow(0 0 16px rgba(30, 64, 175, 0.6));
-  }
-  50% {
-    filter: drop-shadow(0 0 12px #1e40af) drop-shadow(0 0 24px rgba(30, 64, 175, 0.8));
-  }
 }
 
 /* Connection line during drag - animated dashed line */
