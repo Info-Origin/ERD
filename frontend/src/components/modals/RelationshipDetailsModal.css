@@ -224,3 +224,70 @@
 .relationship-details-multiple::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
 }
+
+/* Self-join indicators */
+.self-join-indicator {
+  background: rgba(251, 191, 36, 0.1);
+  padding: 8px 12px;
+  border-radius: 6px;
+  border-left: 3px solid #f59e0b;
+}
+
+.self-join-indicator .detail-label {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.self-join-indicator .detail-value {
+  color: #d97706;
+  font-weight: 500;
+}
+
+/* Self-join summary box for multiple relationships */
+.self-join-summary {
+  background: rgba(251, 191, 36, 0.1);
+  border: 2px solid #fbbf24;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 8px;
+}
+
+.self-join-header {
+  font-weight: 600;
+  color: #d97706;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.self-join-info {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.self-join-info strong {
+  color: #d97706;
+  font-weight: 600;
+}
+
+.self-join-list {
+  margin: 8px 0 0 20px;
+  padding: 0;
+  list-style-type: disc;
+}
+
+.self-join-list li {
+  font-family: 'Courier New', monospace;
+  color: var(--text-primary);
+  margin: 4px 0;
+  font-size: 0.85rem;
+}
+
+/* Junction table styling */
+.junction-table {
+  color: #9333ea;
+  font-weight: 600;
+}

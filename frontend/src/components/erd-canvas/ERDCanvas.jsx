@@ -48,6 +48,8 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
     setHighlightedRelationship, 
     highlightedRelationship,
     setHighlightedRelationshipWithTimer, // Add this for relationship creation feedback
+    setHighlightedNMRelationship, // NEW: Clear N:M highlight on canvas click
+    setHighlightedNMRelationshipWithTimer, // NEW: Clear N:M highlight with timer cleanup
     routingMode, 
     crowsFootMode, 
     gridBackground, 
@@ -212,7 +214,10 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
   const onPaneClick = useCallback((event) => {
     // Reset cursor on pane click
     document.body.style.cursor = 'default';
-  }, []);
+    
+    // Clear N:M highlight when clicking anywhere on canvas (with timer cleanup)
+    setHighlightedNMRelationshipWithTimer(null);
+  }, [setHighlightedNMRelationshipWithTimer]);
   useEffect(() => {
     const handleDeleteRelationship = (event) => {
       const { relationshipId } = event.detail;

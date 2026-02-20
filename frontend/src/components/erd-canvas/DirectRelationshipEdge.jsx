@@ -26,6 +26,8 @@ export const DirectRelationshipEdge = memo(({
     setHighlightedRelationship, 
     highlightedRelationship,
     setHighlightedRelationshipWithTimer, // NEW: Improved timer management
+    setHighlightedNMRelationshipWithTimer, // NEW: N:M highlighting
+    highlightedNMRelationship, // NEW: N:M highlight state
     // NEW: Hover-based highlighting
     hoverHighlightedRelationships,
     // Relationship deletion
@@ -73,6 +75,13 @@ export const DirectRelationshipEdge = memo(({
 
   const isHoverHighlighted = !!hoverHighlight;
 
+  // NEW: Check if this is a junction table line that should be highlighted (purple)
+  // This happens when user clicks on N:M virtual line
+  const isNMJunctionLine = highlightedNMRelationship && 
+    data.fromTable === highlightedNMRelationship.junctionTable &&
+    (data.toTable === highlightedNMRelationship.table1 || 
+     data.toTable === highlightedNMRelationship.table2);
+
   // Determine line style based on identifying relationship
   const isIdentifying = data?.isIdentifying === true;
   const strokeDasharray = isIdentifying ? "none" : "6,3"; // Solid for identifying, dashed for non-identifying
@@ -116,6 +125,17 @@ export const DirectRelationshipEdge = memo(({
     e.stopPropagation();
     
     if (data) {
+      // For virtual N:M edges, highlight the 3 tables (2 main + junction)
+      if (data.isVirtualNM) {
+        const nmHighlightData = {
+          table1: data.fromTable,
+          table2: data.toTable,
+          junctionTable: data.junctionTable
+        };
+        setHighlightedNMRelationshipWithTimer(nmHighlightData);
+        return;
+      }
+      
       // For bundled relationships, highlight the FIRST relationship in the bundle
       // The edge highlighting logic will check ALL bundled relationships
       const relationshipToHighlight = data.bundledRelationships?.[0] || data;
@@ -195,12 +215,13 @@ export const DirectRelationshipEdge = memo(({
             className={`react-flow__edge-path direct-edge-path ${selected ? 'selected' : ''}`}
             d={edgePath}
             stroke={
+              isNMJunctionLine ? '#9333ea' : // Purple for N:M junction lines
               isUserCreated ? '#125da8aa' : // Your custom blue for user-created (always visible)
               isHighlighted ? '#ff6b35' : // Orange for click-based highlighting
               isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : // Green for PK hover, Blue for FK hover
               lineColor // Default color for database relationships
             }
-            strokeWidth={isUserCreated ? 2.5 : (isHighlighted || isHoverHighlighted ? 2.5 : 1.5)}
+            strokeWidth={isNMJunctionLine ? 2.5 : (isUserCreated ? 2.5 : (isHighlighted || isHoverHighlighted ? 2.5 : 1.5))}
             strokeDasharray={strokeDasharray}
             fill="none"
             markerEnd={markerEnd}
@@ -208,13 +229,14 @@ export const DirectRelationshipEdge = memo(({
             style={{
               cursor: 'pointer',
               pointerEvents: 'all',
-              filter: isUserCreated ? 'drop-shadow(0 0 4px #125da8) drop-shadow(0 0 8px #125da8)' : 
-                (isHighlighted || isHoverHighlighted ? 
-                  `drop-shadow(0 0 6px ${
-                    isHighlighted ? '#ff6b35' : 
-                    isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : 
-                    '#3b82f6'
-                  })` : "none"),
+              filter: isNMJunctionLine || isUserCreated || isHighlighted || isHoverHighlighted ? 
+                `drop-shadow(0 0 6px ${
+                  isNMJunctionLine ? '#9333ea' : // Purple for N:M junction lines
+                  isUserCreated ? '#125da8aa' : // Blue for user-created
+                  isHighlighted ? '#ff6b35' : 
+                  isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : 
+                  '#3b82f6'
+                })` : "none",
               transition: 'all 0.2s ease'
             }}
             onClick={handleEdgeClick}

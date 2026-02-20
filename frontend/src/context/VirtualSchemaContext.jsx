@@ -366,8 +366,6 @@ export const VirtualSchemaProvider = ({ children }) => {
   const recalculateIsIdentifying = useCallback((schema) => {
     if (!schema || !schema.tables || !schema.relationships) return schema;
 
-    console.log('🔄 recalculateIsIdentifying called, relationships:', schema.relationships.length);
-
     const updatedRelationships = schema.relationships.map(rel => {
       // Check if the FK column is part of the PK in the child table
       const childTable = schema.tables[rel.fromTable];
@@ -383,14 +381,6 @@ export const VirtualSchemaProvider = ({ children }) => {
       const isOneToOne = fkColumn.pk || fkColumn.unique;
       const cardinalityType = isOneToOne ? '1:1' : '1:N';
       const relationType = isOneToOne ? 'ONE_TO_ONE' : 'ONE_TO_MANY';
-      
-      // Log if anything changed
-      if (rel.isIdentifying !== isIdentifying || rel.cardinalityType !== cardinalityType) {
-        console.log(`✏️ Updated relationship ${rel.fromTable}.${rel.fromColumn} → ${rel.toTable}.${rel.toColumn}:`, {
-          isIdentifying: `${rel.isIdentifying} → ${isIdentifying}`,
-          cardinality: `${rel.cardinalityType} → ${cardinalityType}`
-        });
-      }
 
       return {
         ...rel,
@@ -1604,6 +1594,247 @@ export const VirtualSchemaProvider = ({ children }) => {
     [workingSchema, updateWorkingSchema, recalculateIsIdentifying],
   );
 
+  // Helper function to detect if a table is a junction table (even if not marked)
+  const isTableJunctionTable = useCallback((tableName, tableData) => {
+    // Check if explicitly marked as junction table
+    if (tableData.isJunctionTable && tableData.junctionFor) {
+      return { isJunction: true, junctionFor: tableData.junctionFor };
+    }
+
+    // Detect junction table by structure:
+    // 1. Has exactly 2 columns (or 2 PK columns if more columns exist)
+    // 2. Both columns are PK and FK
+    // 3. Both columns reference different tables
+    const columns = Object.entries(tableData.columns || {});
+    const pkColumns = columns.filter(([name, col]) => col.pk);
+    const fkColumns = columns.filter(([name, col]) => col.fk);
+
+    // Must have exactly 2 PK columns that are also FKs
+    if (pkColumns.length !== 2 || fkColumns.length < 2) {
+      return { isJunction: false };
+    }
+
+    // Check if both PK columns are also FKs
+    const pkFkColumns = pkColumns.filter(([name, col]) => col.fk);
+    if (pkFkColumns.length !== 2) {
+      return { isJunction: false };
+    }
+
+    // Find which tables these FKs reference
+    const relationships = workingSchema?.relationships || [];
+    const referencedTables = pkFkColumns.map(([colName]) => {
+      const rel = relationships.find(r => r.fromTable === tableName && r.fromColumn === colName);
+      return rel?.toTable;
+    }).filter(Boolean);
+
+    // Must reference exactly 2 different tables (or same table for self-referencing)
+    if (referencedTables.length === 2) {
+      return { isJunction: true, junctionFor: referencedTables.sort() };
+    }
+
+    return { isJunction: false };
+  }, [workingSchema]);
+
+  // NEW: Create Many-to-Many relationship with junction table
+  const addManyToManyRelationship = useCallback(
+    (table1, table1Column, table2, table2Column, junctionTableName = null) => {
+      if (!workingSchema) return;
+
+      console.log('🔄 Creating N:M relationship:', { table1, table1Column, table2, table2Column, junctionTableName });
+
+      // CRITICAL: Check if N:M relationship already exists between these two tables
+      // Look for any junction table that connects these two tables
+      const sortedTables = [table1, table2].sort();
+      const existingJunctionTable = Object.entries(workingSchema.tables).find(([tblName, tableData]) => {
+        const junctionInfo = isTableJunctionTable(tblName, tableData);
+        if (junctionInfo.isJunction && junctionInfo.junctionFor) {
+          const junctionFor = junctionInfo.junctionFor.sort();
+          return JSON.stringify(junctionFor) === JSON.stringify(sortedTables);
+        }
+        return false;
+      });
+
+      if (existingJunctionTable) {
+        const [existingJunctionName] = existingJunctionTable;
+        throw new Error(
+          `N:M relationship already exists between "${table1}" and "${table2}" via junction table "${existingJunctionName}".\n\n` +
+          `You cannot create multiple N:M relationships between the same two tables.\n\n` +
+          `If you need to modify the relationship, delete the existing junction table first.`
+        );
+      }
+
+      // Generate junction table name if not provided (alphabetically sorted)
+      const autoJunctionName = [table1, table2].sort().join('_');
+      const finalJunctionName = junctionTableName || autoJunctionName;
+
+      // Validate: Check if junction table name already exists (for different tables)
+      if (workingSchema.tables[finalJunctionName]) {
+        const existingTable = workingSchema.tables[finalJunctionName];
+        
+        if (existingTable.isJunctionTable && existingTable.junctionFor) {
+          // It's a junction table for different tables
+          throw new Error(
+            `Junction table "${finalJunctionName}" already exists for tables: ${existingTable.junctionFor.join(' and ')}.\n\n` +
+            `Please choose a different junction table name.`
+          );
+        } else {
+          // It's a regular table with the same name
+          throw new Error(
+            `Table "${finalJunctionName}" already exists in the schema.\n\n` +
+            `Please choose a different junction table name.\n\n` +
+            `Suggestions:\n` +
+            `- ${finalJunctionName}_junction\n` +
+            `- ${finalJunctionName}_link\n` +
+            `- ${finalJunctionName}_map`
+          );
+        }
+      }
+
+      // Validate: Both tables must exist
+      if (!workingSchema.tables[table1] || !workingSchema.tables[table2]) {
+        throw new Error('Both tables must exist in the schema');
+      }
+
+      // Validate: Both columns must exist and be PK or UNIQUE
+      const table1Col = workingSchema.tables[table1].columns[table1Column];
+      const table2Col = workingSchema.tables[table2].columns[table2Column];
+
+      if (!table1Col || !table2Col) {
+        throw new Error('Both columns must exist in their respective tables');
+      }
+
+      if (!table1Col.pk && !table1Col.unique) {
+        throw new Error(`Column "${table1Column}" in table "${table1}" must be PRIMARY KEY or UNIQUE`);
+      }
+
+      if (!table2Col.pk && !table2Col.unique) {
+        throw new Error(`Column "${table2Column}" in table "${table2}" must be PRIMARY KEY or UNIQUE`);
+      }
+
+      // Generate FK column names for junction table
+      const generateFKName = (tableName, columnName) => {
+        const tableNameLower = tableName.toLowerCase();
+        const columnNameLower = columnName.toLowerCase();
+        
+        // If column is just 'id', use table_id format
+        if (columnNameLower === 'id') {
+          return `${tableNameLower}_id`;
+        }
+        
+        // If column already contains table name, use as-is
+        if (columnNameLower.includes(tableNameLower)) {
+          return columnNameLower;
+        }
+        
+        // Otherwise combine table_column format
+        return `${tableNameLower}_${columnNameLower}`;
+      };
+
+      let fk1Name = generateFKName(table1, table1Column);
+      let fk2Name = generateFKName(table2, table2Column);
+
+      // Handle self-referencing N:M (e.g., users -> users)
+      if (table1 === table2 && fk1Name === fk2Name) {
+        // Make FK names distinct for self-referencing
+        fk1Name = `${fk1Name}_1`;
+        fk2Name = `${fk2Name}_2`;
+      }
+
+      // Create junction table with composite PK
+      const junctionTable = {
+        name: finalJunctionName,
+        columns: {
+          [fk1Name]: {
+            name: fk1Name,
+            type: table1Col.type,
+            pk: true, // Part of composite PK
+            fk: true,
+            unique: false,
+            nullable: false,
+            isUserCreated: true,
+            compositeKey: true, // Mark as part of composite key
+          },
+          [fk2Name]: {
+            name: fk2Name,
+            type: table2Col.type,
+            pk: true, // Part of composite PK
+            fk: true,
+            unique: false,
+            nullable: false,
+            isUserCreated: true,
+            compositeKey: true, // Mark as part of composite key
+          }
+        },
+        isUserCreated: true, // Mark entire table as user-created
+        isJunctionTable: true, // Mark as junction table for N:M
+        junctionFor: [table1, table2].sort() // Track which tables this joins
+      };
+
+      // Create two 1:N identifying relationships
+      const relationship1 = {
+        id: uuidv4(),
+        fromTable: finalJunctionName,
+        fromColumn: fk1Name,
+        toTable: table1,
+        toColumn: table1Column,
+        type: 'ONE_TO_MANY',
+        cardinalityType: '1:N',
+        constraintName: `fk_${finalJunctionName}_${fk1Name}`,
+        isUserCreated: true,
+        createdAt: Date.now(),
+        lineStyle: 'solid', // N:M is always identifying
+        isIdentifying: true,
+        isJunctionRelationship: true, // Mark as part of N:M
+        junctionTable: finalJunctionName
+      };
+
+      const relationship2 = {
+        id: uuidv4(),
+        fromTable: finalJunctionName,
+        fromColumn: fk2Name,
+        toTable: table2,
+        toColumn: table2Column,
+        type: 'ONE_TO_MANY',
+        cardinalityType: '1:N',
+        constraintName: `fk_${finalJunctionName}_${fk2Name}`,
+        isUserCreated: true,
+        createdAt: Date.now(),
+        lineStyle: 'solid', // N:M is always identifying
+        isIdentifying: true,
+        isJunctionRelationship: true, // Mark as part of N:M
+        junctionTable: finalJunctionName
+      };
+
+      // Create new schema with all changes applied atomically
+      const newSchema = {
+        ...workingSchema,
+        tables: {
+          ...workingSchema.tables,
+          [finalJunctionName]: junctionTable
+        },
+        relationships: [
+          ...(workingSchema.relationships || []),
+          relationship1,
+          relationship2
+        ]
+      };
+
+      console.log('✅ N:M relationship created:', {
+        junctionTable: finalJunctionName,
+        relationships: [relationship1.id, relationship2.id]
+      });
+
+      updateWorkingSchema(newSchema);
+      
+      return {
+        junctionTableName: finalJunctionName,
+        relationship1Id: relationship1.id,
+        relationship2Id: relationship2.id
+      };
+    },
+    [workingSchema, updateWorkingSchema, isTableJunctionTable],
+  );
+
   const value = {
     // State
     originalSchema,
@@ -1647,6 +1878,8 @@ export const VirtualSchemaProvider = ({ children }) => {
     addForeignKeyWithNewColumn, // NEW: Atomic FK creation with new column
     updateForeignKeyColumn, // NEW: Atomic FK column update
     updateForeignKeyWithNewColumn, // NEW: Atomic FK update with new column creation
+    addManyToManyRelationship, // NEW: N:M relationship creation
+    isTableJunctionTable, // NEW: Helper to detect junction tables
     deleteRelationship,
     createVirtualRelationship, // NEW: Advanced relationship creation
 

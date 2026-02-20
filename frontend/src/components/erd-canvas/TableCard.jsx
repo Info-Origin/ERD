@@ -22,8 +22,10 @@ export const TableCard = memo(({ data }) => {
     toggleUnique,
     toggleNullable,
     highlightedRelationship,
+    highlightedNMRelationship, // NEW: N:M relationship highlighting
     erdData,
     openEditTableModal, // Use shared modal for constraint editing only
+    openRelationshipDetailsModal, // NEW: For self-join details
     // NEW: Hover-based relationship highlighting
     hoveredTable,
     hoverHighlightedRelationships,
@@ -267,15 +269,22 @@ export const TableCard = memo(({ data }) => {
   const isTableHighlighted = highlightedRelationship && 
     (highlightedRelationship.fromTable === tableName || highlightedRelationship.toTable === tableName);
 
+  // NEW: Check if this table is part of N:M highlighted relationship (3 tables: 2 main + junction)
+  const isTableNMHighlighted = highlightedNMRelationship && 
+    (highlightedNMRelationship.table1 === tableName || 
+     highlightedNMRelationship.table2 === tableName || 
+     highlightedNMRelationship.junctionTable === tableName);
+
   return (
     <>
       <div
         className={clsx("table-card", {
           "table-card-selected": isSelected,
           "table-card-hover": !isSelected,
-          "table-card-relationship-highlighted": isTableHighlighted,
+          "table-card-relationship-highlighted": isTableHighlighted && !isTableNMHighlighted, // Regular highlight only if not N:M
+          "table-card-nm-highlighted": isTableNMHighlighted, // NEW: Purple N:M highlight
           "table-card-search-highlighted": isHighlighted, // Add search highlight class
-          "table-card-parent": isParent && !isHighlighted && !isTableHighlighted, // Add parent class only if not already highlighted
+          "table-card-parent": isParent && !isHighlighted && !isTableHighlighted && !isTableNMHighlighted, // Add parent class only if not already highlighted
           "table-card-circular-dependency": isInCircularDependency, //Circular dependency highlight
         })}
         onClick={handleClick}
@@ -325,6 +334,15 @@ export const TableCard = memo(({ data }) => {
             onMouseLeave={(e) => {
               e.stopPropagation();
               setSelfJoinHover(false);
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              // Open relationship details modal with self-join relationships
+              const selfJoinRels = getSelfJoinRelationships();
+              if (selfJoinRels.length > 0) {
+                openRelationshipDetailsModal(selfJoinRels);
+              }
             }}
           >
             Self Joined

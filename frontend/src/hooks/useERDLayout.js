@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useMemo } from "react";
+import { useCallback, useState, useEffect, useMemo, useRef } from "react";
 import { applyNodeChanges, applyEdgeChanges } from "@xyflow/react";
 import { useApp } from "../context/AppContext";
 import { useVirtualSchema } from "../context/VirtualSchemaContext";
@@ -21,6 +21,9 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [layoutError, setLayoutError] = useState(null);
+  
+  // Use ref to track if we're currently calculating layout to prevent cascading updates
+  const isCalculatingRef = useRef(false);
   
   // Debounced position updates to reduce localStorage writes
   const [pendingPositionUpdates, setPendingPositionUpdates] = useState({});
@@ -66,13 +69,67 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
         // Bundle relationships with same type between same tables
         const bundledRelationships = bundleRelationships(schemaFilteredRelationships);
         
+        // CREATE VIRTUAL N:M RELATIONSHIPS BEFORE PORT DISTRIBUTION
+        // Find all junction tables and create virtual N:M relationships between main tables
+        const junctionTables = new Map(); // Map<junctionTableName, [table1, table2]>
+        
+        // Identify junction tables by finding tables that have exactly 2 FK relationships
+        // and both FKs are part of the composite PK
+        Object.entries(erdData.tables || {}).forEach(([tableName, tableData]) => {
+          const columns = Object.values(tableData.columns || {});
+          const pkColumns = columns.filter(col => col.pk);
+          const fkColumns = columns.filter(col => col.fk);
+          
+          // Junction table criteria:
+          // 1. Has exactly 2 FK columns
+          // 2. Both FK columns are part of PK (identifying relationships)
+          // 3. PK is composite (2 columns)
+          if (fkColumns.length === 2 && pkColumns.length === 2) {
+            const fk1IsPK = fkColumns[0].pk;
+            const fk2IsPK = fkColumns[1].pk;
+            
+            if (fk1IsPK && fk2IsPK) {
+              // This is a junction table
+              // Find the two parent tables
+              const rels = schemaFilteredRelationships.filter(rel => rel.fromTable === tableName);
+              if (rels.length === 2) {
+                junctionTables.set(tableName, [rels[0].toTable, rels[1].toTable]);
+              }
+            }
+          }
+        });
+        
+        // Create virtual N:M relationships
+        const virtualNMRelationships = [];
+        junctionTables.forEach(([table1, table2], junctionTable) => {
+          if (visibleTableNames.has(table1) && visibleTableNames.has(table2)) {
+            virtualNMRelationships.push({
+              fromTable: table1,
+              toTable: table2,
+              fromColumn: null,
+              toColumn: null,
+              type: 'MANY_TO_MANY',
+              cardinalityType: 'N:M',
+              isVirtualNM: true,
+              junctionTable: junctionTable
+            });
+          }
+        });
+        
+        // COMBINE regular relationships and virtual N:M relationships for unified port distribution
+        const allRelationshipsForDistribution = [...bundledRelationships, ...virtualNMRelationships];
+        
         // Create edges using current node positions
         const distributedRelationships = distributeRelationshipPorts(
-          bundledRelationships, 
+          allRelationshipsForDistribution, 
           currentNodes
         );
         
-        const newEdges = distributedRelationships.map((rel) => {
+        // Separate regular relationships from virtual N:M relationships after distribution
+        const distributedRegularRels = distributedRelationships.filter(rel => !rel.isVirtualNM);
+        const distributedNMRels = distributedRelationships.filter(rel => rel.isVirtualNM);
+        
+        const newEdges = distributedRegularRels.map((rel) => {
           // For visual display: parent should be source (circle), child should be target (crow's foot)
           // But relationship is stored as: fromTable=child, toTable=parent
           // So we need to SWAP for visual rendering
@@ -143,7 +200,61 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
           }
         });
 
+        // Create virtual N:M edges from already-distributed relationships
+        distributedNMRels.forEach((rel) => {
+          // STABLE ID: Use sorted table names to ensure consistent ID regardless of direction
+          const [table1, table2] = [rel.fromTable, rel.toTable].sort();
+          const nmEdgeId = `virtual-nm-${table1}-${table2}-via-${rel.junctionTable}`;
+          
+          // Generate handles with distributed ports
+          const sourceHandle = generateHandleId(
+            rel.fromTable,
+            rel.sourceSide,
+            rel.sourcePortIndex,
+            'source'
+          );
+          const targetHandle = generateHandleId(
+            rel.toTable,
+            rel.targetSide,
+            rel.targetPortIndex,
+            'target'
+          );
+          
+          const nmEdge = {
+            id: nmEdgeId,
+            source: rel.fromTable,
+            target: rel.toTable,
+            sourceHandle: sourceHandle,
+            targetHandle: targetHandle,
+            type: 'relationship',
+            data: {
+              fromTable: rel.fromTable,
+              fromColumn: null,
+              toTable: rel.toTable,
+              toColumn: null,
+              relationType: 'MANY_TO_MANY',
+              type: 'MANY_TO_MANY',
+              cardinalityType: 'N:M',
+              isUserCreated: false,
+              isIdentifying: false,
+              isVirtualNM: true,
+              junctionTable: rel.junctionTable,
+              sourceSide: rel.sourceSide,
+              targetSide: rel.targetSide,
+              sourcePortIndex: rel.sourcePortIndex,
+              targetPortIndex: rel.targetPortIndex
+            }
+          };
+          
+          // Only add if not already in uniqueEdges (prevent duplicates)
+          if (!seenIds.has(nmEdgeId)) {
+            seenIds.add(nmEdgeId);
+            uniqueEdges.push(nmEdge);
+          }
+        });
+
         setEdges(uniqueEdges);
+        
         return currentNodes; // Return unchanged nodes
       });
     } catch (error) {
@@ -153,12 +264,19 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
 
   // Simple layout calculation - optimized to reduce re-renders
   const calculateLayout = useCallback(() => {
+    // Prevent cascading layout calculations
+    if (isCalculatingRef.current) {
+      console.log('⚠️ Layout calculation already in progress, skipping');
+      return;
+    }
+    
     if (!erdData || !erdData.tables || Object.keys(erdData.tables).length === 0) {
       setNodes([]);
       setEdges([]);
       return;
     }
 
+    isCalculatingRef.current = true;
     setLayoutError(null);
 
     try {
@@ -227,13 +345,68 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
       // Bundle relationships with same type between same tables
       const bundledRelationships = bundleRelationships(schemaFilteredRelationships);
       
+      // CREATE VIRTUAL N:M RELATIONSHIPS BEFORE PORT DISTRIBUTION
+      // Find all junction tables and create virtual N:M relationships between main tables
+      const junctionTables = new Map(); // Map<junctionTableName, [table1, table2]>
+      
+      // Identify junction tables by finding tables that have exactly 2 FK relationships
+      // and both FKs are part of the composite PK
+      Object.entries(erdData.tables || {}).forEach(([tableName, tableData]) => {
+        const columns = Object.values(tableData.columns || {});
+        const pkColumns = columns.filter(col => col.pk);
+        const fkColumns = columns.filter(col => col.fk);
+        
+        // Junction table criteria:
+        // 1. Has exactly 2 FK columns
+        // 2. Both FK columns are part of PK (identifying relationships)
+        // 3. PK is composite (2 columns)
+        if (fkColumns.length === 2 && pkColumns.length === 2) {
+          const fk1IsPK = fkColumns[0].pk;
+          const fk2IsPK = fkColumns[1].pk;
+          
+          if (fk1IsPK && fk2IsPK) {
+            // This is a junction table
+            // Find the two parent tables
+            const rels = schemaFilteredRelationships.filter(rel => rel.fromTable === tableName);
+            if (rels.length === 2) {
+              junctionTables.set(tableName, [rels[0].toTable, rels[1].toTable]);
+            }
+          }
+        }
+      });
+      
+      // Create virtual N:M relationships
+      const virtualNMRelationships = [];
+      junctionTables.forEach(([table1, table2], junctionTable) => {
+        if (visibleTableNames.has(table1) && visibleTableNames.has(table2)) {
+          virtualNMRelationships.push({
+            fromTable: table1,
+            toTable: table2,
+            fromColumn: null,
+            toColumn: null,
+            type: 'MANY_TO_MANY',
+            cardinalityType: 'N:M',
+            isVirtualNM: true,
+            junctionTable: junctionTable
+          });
+        }
+      });
+      
+      // COMBINE regular relationships and virtual N:M relationships for unified port distribution
+      const allRelationshipsForDistribution = [...bundledRelationships, ...virtualNMRelationships];
+      
       // Create edges using smart port distribution with initial node positions
+      // This ensures N:M edges don't overlap with existing 1:N junction table edges
       const distributedRelationships = distributeRelationshipPorts(
-        bundledRelationships, 
+        allRelationshipsForDistribution, 
         simpleNodes
       );
       
-      const simpleEdges = distributedRelationships.map((rel) => {
+      // Separate regular relationships from virtual N:M relationships after distribution
+      const distributedRegularRels = distributedRelationships.filter(rel => !rel.isVirtualNM);
+      const distributedNMRels = distributedRelationships.filter(rel => rel.isVirtualNM);
+      
+      const simpleEdges = distributedRegularRels.map((rel) => {
         // For visual display: parent should be source (circle), child should be target (crow's foot)
         // But relationship is stored as: fromTable=child, toTable=parent
         // So we need to SWAP for visual rendering
@@ -305,6 +478,59 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
         }
       });
 
+      // Create virtual N:M edges from already-distributed relationships
+      distributedNMRels.forEach((rel) => {
+        // STABLE ID: Use sorted table names to ensure consistent ID regardless of direction
+        const [table1, table2] = [rel.fromTable, rel.toTable].sort();
+        const nmEdgeId = `virtual-nm-${table1}-${table2}-via-${rel.junctionTable}`;
+        
+        // Generate handles with distributed ports
+        const sourceHandle = generateHandleId(
+          rel.fromTable,
+          rel.sourceSide,
+          rel.sourcePortIndex,
+          'source'
+        );
+        const targetHandle = generateHandleId(
+          rel.toTable,
+          rel.targetSide,
+          rel.targetPortIndex,
+          'target'
+        );
+        
+        const nmEdge = {
+          id: nmEdgeId,
+          source: rel.fromTable,
+          target: rel.toTable,
+          sourceHandle: sourceHandle,
+          targetHandle: targetHandle,
+          type: 'relationship',
+          data: {
+            fromTable: rel.fromTable,
+            fromColumn: null,
+            toTable: rel.toTable,
+            toColumn: null,
+            relationType: 'MANY_TO_MANY',
+            type: 'MANY_TO_MANY',
+            cardinalityType: 'N:M',
+            isUserCreated: false,
+            isIdentifying: false,
+            isVirtualNM: true,
+            junctionTable: rel.junctionTable,
+            sourceSide: rel.sourceSide,
+            targetSide: rel.targetSide,
+            sourcePortIndex: rel.sourcePortIndex,
+            targetPortIndex: rel.targetPortIndex
+          }
+        };
+        
+        // Only add if not already in uniqueEdges (prevent duplicates)
+        if (!seenIds.has(nmEdgeId)) {
+          seenIds.add(nmEdgeId);
+          uniqueEdges.push(nmEdge);
+        }
+      });
+
       // Always update nodes and edges for initial layout
       setNodes(simpleNodes);
       setEdges(uniqueEdges);
@@ -312,6 +538,8 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
     } catch (error) {
       console.error('❌ Layout failed:', error);
       setLayoutError(error.message);
+    } finally {
+      isCalculatingRef.current = false;
     }
   }, [erdData, selectedTable, filteredTables, highlightedTable, highlightedColumn, tablePositions, layoutResetKey]); // Added layoutResetKey
 
@@ -383,11 +611,12 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
         
         setPendingPositionUpdates(prev => ({ ...prev, ...newUpdates }));
         
-        // Trigger port redistribution after drag stops
+        // Trigger port redistribution after drag stops with longer delay
+        // This prevents edge recreation while user might be clicking
         setTimeout(() => {
           // Recalculate edges with new positions using forceLayout
           forceLayout();
-        }, 100);
+        }, 300); // Increased from 100ms to 300ms to avoid race conditions
       }
       
       return updatedNodes;

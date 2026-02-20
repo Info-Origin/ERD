@@ -25,6 +25,10 @@ export const AppProvider = ({ children }) => {
   const [hoveredTable, setHoveredTable] = useState(null);
   const [hoverHighlightedRelationships, setHoverHighlightedRelationships] = useState([]);
   
+  // NEW: N:M relationship highlighting (separate from regular highlighting)
+  const [highlightedNMRelationship, setHighlightedNMRelationship] = useState(null);
+  const [nmHighlightTimer, setNMHighlightTimer] = useState(null);
+  
   // NEW: Timer management for relationship highlighting
   const [highlightTimer, setHighlightTimer] = useState(null);
   
@@ -275,14 +279,50 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // Cleanup timer on unmount
+  // NEW: N:M relationship highlighting with timer (5 seconds, purple color)
+  const setHighlightedNMRelationshipWithTimer = (nmData) => {
+    // Clear any existing N:M timer
+    if (nmHighlightTimer) {
+      clearTimeout(nmHighlightTimer);
+      setNMHighlightTimer(null);
+    }
+
+    // Set the new highlighted N:M relationship
+    // nmData structure: { table1, table2, junctionTable }
+    setHighlightedNMRelationship(nmData);
+
+    // Set new timer if data is provided
+    if (nmData) {
+      const newTimer = setTimeout(() => {
+        setHighlightedNMRelationship(null);
+        setNMHighlightTimer(null);
+      }, 5000); // 5 seconds for N:M highlights
+      
+      setNMHighlightTimer(newTimer);
+    }
+  };
+
+  // Cleanup timers on unmount
   useEffect(() => {
     return () => {
       if (highlightTimer) {
         clearTimeout(highlightTimer);
       }
+      if (nmHighlightTimer) {
+        clearTimeout(nmHighlightTimer);
+      }
     };
-  }, [highlightTimer]);
+  }, [highlightTimer, nmHighlightTimer]);
+
+  // Clear N:M highlight when schema changes
+  useEffect(() => {
+    // Clear N:M highlight and timer when switching schemas
+    if (nmHighlightTimer) {
+      clearTimeout(nmHighlightTimer);
+      setNMHighlightTimer(null);
+    }
+    setHighlightedNMRelationship(null);
+  }, [selectedSchema]); // Run when schema changes
 
   // Detect circular dependencies whenever relationships change
   useEffect(() => {
@@ -651,6 +691,11 @@ export const AppProvider = ({ children }) => {
     highlightedRelationship,
     setHighlightedRelationship,
     setHighlightedRelationshipWithTimer, // NEW: Improved timer management
+
+    // NEW: N:M relationship highlighting (separate from regular highlighting)
+    highlightedNMRelationship,
+    setHighlightedNMRelationship,
+    setHighlightedNMRelationshipWithTimer,
 
     // NEW: Hover-based relationship highlighting
     hoveredTable,

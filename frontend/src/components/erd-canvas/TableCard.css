@@ -66,6 +66,22 @@
   border-bottom-color: rgba(16, 185, 129, 0.3) !important;
 }
 
+/* N:M relationship highlighting - Purple color for junction table relationships */
+.table-card-nm-highlighted {
+  border-color: #9333ea !important; /* Purple */
+  box-shadow:
+    0 0 0 3px rgba(147, 51, 234, 0.2),
+    0 4px 16px rgba(147, 51, 234, 0.3) !important;
+  transform: translateY(-2px) !important;
+  background-color: var(--bg-primary) !important;
+  z-index: 20 !important;
+}
+
+.table-card-nm-highlighted .table-card-header {
+  background-color: rgba(147, 51, 234, 0.15) !important;
+  border-bottom-color: rgba(147, 51, 234, 0.3) !important;
+}
+
 /* Pulse animation for search highlight */
 @keyframes searchHighlightPulse {
   0% {

@@ -196,9 +196,11 @@ export const getRelationships = async (connectionId, schemaName) => {
     let cardinalityType = "1:N"; // Default display
     
     // Special handling for junction tables
+    // Junction table relationships are ALWAYS 1:N (actual FK structure)
+    // The N:M relationship will be shown as a separate virtual line on the frontend
     if (junctionTables.has(row.from_table)) {
-      relationType = "MANY_TO_MANY";
-      cardinalityType = "N:M";
+      relationType = "ONE_TO_MANY";
+      cardinalityType = "1:N";
     }
     // Check for 1:1 relationships (non-junction tables)
     else if (isIdentifying) {

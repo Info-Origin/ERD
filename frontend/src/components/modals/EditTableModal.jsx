@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { useVirtualSchema } from '../../context/VirtualSchemaContext';
 import { useApp } from '../../context/AppContext';
 import { formatDataTypeForDisplay, getFullDataType } from '../../utils/dataTypeFormatter';
@@ -16,6 +16,7 @@ import { analyzeColumnChange, applyCascadingChanges } from '../../utils/conflict
 import { ConflictWarningModal } from './ConflictWarningModal';
 import AlertModal from './AlertModal';
 import ConfirmModal from './ConfirmModal';
+import { NMPreviewModal } from './NMPreviewModal';
 import './Modal.css';
 import './EditTableModal.css';
 import './AlertModal.css';
@@ -57,6 +58,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
     addForeignKeyWithNewColumn, // NEW: Atomic FK creation
     updateForeignKeyColumn, // NEW: Atomic FK column update
     updateForeignKeyWithNewColumn, // NEW: Atomic FK update with new column creation
+    addManyToManyRelationship, // NEW: N:M relationship creation
+    isTableJunctionTable, // NEW: Helper to detect junction tables
     deleteRelationship,
     deleteColumn, // Add this for deleting user-created FK columns
     togglePrimaryKey,
@@ -88,6 +91,21 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
   // New modal states
   const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', type: 'info' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+  
+  // N:M Preview Modal state
+  const [nmPreviewModal, setNMPreviewModal] = useState({
+    isOpen: false,
+    table1: '',
+    table1Column: '',
+    table2: '',
+    table2Column: '',
+    junctionTableName: '',
+    fk1Name: '',
+    fk2Name: '',
+    table1Type: '',
+    table2Type: '',
+    onConfirm: null
+  });
   
   // Helper functions for modals
   const showAlert = (title, message, type = 'info') => {
@@ -128,7 +146,6 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       
       // Reset pending constraint changes
       setPendingConstraintChanges({});
-      console.log('🔄 Modal opened, reset pendingConstraintChanges to empty');
       
       // Load columns (read-only for constraint editing)
       const tableData = workingSchema.tables[tableName];
@@ -174,6 +191,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
     }
   }, [isOpen, tableName, workingSchema, isSavingFK]); // Add isSavingFK to dependencies
 
+  
   // Refresh columns when switching to Columns or Constraints tab
   useEffect(() => {
     if ((activeTab === 'columns' || activeTab === 'constraints') && workingSchema && tableName) {
@@ -312,19 +330,19 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       // Generate change description
       const changes = [];
       if (fullType !== originalColumn.type) {
-        changes.push(`Data type: ${originalColumn.type} → ${fullType}`);
+        changes.push(`Data type: ${originalColumn.type} ΓåÆ ${fullType}`);
       }
       if (newProperties.nullable !== originalColumn.nullable) {
-        changes.push(`Nullable: ${originalColumn.nullable ? 'YES' : 'NO'} → ${newProperties.nullable ? 'YES' : 'NO'}`);
+        changes.push(`Nullable: ${originalColumn.nullable ? 'YES' : 'NO'} ΓåÆ ${newProperties.nullable ? 'YES' : 'NO'}`);
       }
       if (newProperties.pk !== originalColumn.pk) {
-        changes.push(`Primary Key: ${originalColumn.pk ? 'YES' : 'NO'} → ${newProperties.pk ? 'YES' : 'NO'}`);
+        changes.push(`Primary Key: ${originalColumn.pk ? 'YES' : 'NO'} ΓåÆ ${newProperties.pk ? 'YES' : 'NO'}`);
       }
       if (newProperties.unique !== originalColumn.unique) {
-        changes.push(`Unique: ${originalColumn.unique ? 'YES' : 'NO'} → ${newProperties.unique ? 'YES' : 'NO'}`);
+        changes.push(`Unique: ${originalColumn.unique ? 'YES' : 'NO'} ΓåÆ ${newProperties.unique ? 'YES' : 'NO'}`);
       }
       if ((newProperties.defaultValue || '') !== (originalColumn.defaultValue || '')) {
-        changes.push(`Default: "${originalColumn.defaultValue || ''}" → "${newProperties.defaultValue || ''}"`);
+        changes.push(`Default: "${originalColumn.defaultValue || ''}" ΓåÆ "${newProperties.defaultValue || ''}"`);
       }
       
       const changeDescription = `Modify column ${tableName}.${column.name}:\n${changes.join('\n')}`;
@@ -359,7 +377,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
   // Apply column changes (used both directly and after conflict resolution)
   const applyColumnChanges = async (index, column, fullType, newProperties, cascadingChanges = []) => {
     try {
-      console.log('🔧 Applying column changes:', {
+      console.log('≡ƒöº Applying column changes:', {
         tableName,
         columnName: column.name,
         newProperties,
@@ -371,12 +389,12 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       
       // Apply cascading changes if any
       if (cascadingChanges.length > 0) {
-        console.log('🔄 Applying cascading changes:', cascadingChanges);
+        console.log('≡ƒöä Applying cascading changes:', cascadingChanges);
         
         // Apply each cascading change with proper async handling
         for (const change of cascadingChanges) {
           if (change.type === 'DATA_TYPE_CASCADE') {
-            console.log(`🔄 Cascading ${change.tableName}.${change.columnName}: ${change.oldType} → ${change.newType}`);
+            console.log(`≡ƒöä Cascading ${change.tableName}.${change.columnName}: ${change.oldType} ΓåÆ ${change.newType}`);
             
             // Apply the change
             updateColumn(change.tableName, change.columnName, {
@@ -411,7 +429,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       }
       
     } catch (error) {
-      console.error('❌ Error applying changes:', error);
+      console.error('Γ¥î Error applying changes:', error);
       showAlert('Error', `Error applying changes: ${error.message}`, 'error');
     }
   };
@@ -502,7 +520,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
     const column = columns[index];
     const columnName = column.name;
     
-    console.log('🔧 Constraint toggled:', { columnName, constraintType, newValue });
+    console.log('≡ƒöº Constraint toggled:', { columnName, constraintType, newValue });
     
     // Update pending changes
     setPendingConstraintChanges(prev => {
@@ -764,7 +782,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       toColumn: '',
       onUpdate: 'RESTRICT',
       onDelete: 'RESTRICT',
-      cardinality: '1:N', // Default cardinality
+      cardinality: '1:N', // Default cardinality (can be 1:1, 1:N, or N:M)
+      junctionTableName: '', // For N:M relationships
       isNew: true,
       isVirtual: true // Mark new FKs as virtual (user-created)
     };
@@ -903,7 +922,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         const fkColumnName = newFKs[index].fromColumn;
         const shouldBeUnique = value === '1:1';
         
-        console.log('🔄 Cardinality changed:', { fkColumnName, newCardinality: value, shouldBeUnique });
+        console.log('≡ƒöä Cardinality changed:', { fkColumnName, newCardinality: value, shouldBeUnique });
         
         // Check if the FK column is a PK
         const fkColumn = columns.find(col => col.name === fkColumnName);
@@ -919,7 +938,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         
         // Update the column's unique constraint in local state (only if not a PK)
         if (!isPK) {
-          console.log('✏️ Updating UNIQUE constraint:', { column: fkColumnName, unique: shouldBeUnique });
+          console.log('Γ£Å∩╕Å Updating UNIQUE constraint:', { column: fkColumnName, unique: shouldBeUnique });
           
           setColumns(prevColumns => {
             const newColumns = [...prevColumns];
@@ -930,7 +949,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                 ...newColumns[columnIndex],
                 unique: shouldBeUnique
               };
-              console.log('✅ Local columns state updated');
+              console.log('Γ£à Local columns state updated');
             }
             
             return newColumns;
@@ -943,7 +962,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
             if (column) {
               // Toggle unique constraint to match cardinality
               if (column.unique !== shouldBeUnique) {
-                console.log('🔧 Toggling UNIQUE in workingSchema (deferred)');
+                console.log('≡ƒöº Toggling UNIQUE in workingSchema (deferred)');
                 setTimeout(() => {
                   toggleUnique(tableName, fkColumnName);
                 }, 0);
@@ -961,6 +980,166 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
     try {
       const fk = foreignKeys[index];
       
+      // N:M RELATIONSHIP HANDLING
+      if (fk.cardinality === 'N:M') {
+        // Validate N:M specific requirements
+        if (!fk.toTable) {
+          showAlert('Validation Error', 'Please select the second table for N:M relationship', 'warning');
+          return;
+        }
+
+        if (!fk.toColumn) {
+          showAlert('Validation Error', 'Please select a column from the second table', 'warning');
+          return;
+        }
+
+        // CRITICAL: Check if N:M relationship already exists between these two tables
+        // Look for any junction table that connects these two tables
+        const sortedTables = [tableName, fk.toTable].sort();
+        const existingJunctionTable = Object.entries(workingSchema.tables).find(([tblName, tableData]) => {
+          const junctionInfo = isTableJunctionTable(tblName, tableData);
+          if (junctionInfo.isJunction && junctionInfo.junctionFor) {
+            const junctionFor = junctionInfo.junctionFor.sort();
+            return JSON.stringify(junctionFor) === JSON.stringify(sortedTables);
+          }
+          return false;
+        });
+
+        if (existingJunctionTable) {
+          const [existingJunctionName] = existingJunctionTable;
+          showAlert(
+            'N:M Already Exists',
+            `A Many-to-Many relationship already exists between "${tableName}" and "${fk.toTable}" via junction table "${existingJunctionName}".\n\n` +
+            `You cannot create multiple N:M relationships between the same two tables.\n\n` +
+            `If you need to modify the relationship, delete the existing junction table first.`,
+            'error'
+          );
+          return;
+        }
+
+        // Get current table's PK column
+        const currentTablePKColumn = Object.entries(workingSchema.tables[tableName].columns)
+          .find(([name, col]) => col.pk || col.unique);
+        
+        if (!currentTablePKColumn) {
+          showAlert('Validation Error', `Table "${tableName}" must have a PRIMARY KEY or UNIQUE column for N:M relationship`, 'warning');
+          return;
+        }
+
+        const [table1Column, table1ColData] = currentTablePKColumn;
+
+        // Validate second table has PK/UNIQUE
+        const table2Col = workingSchema.tables[fk.toTable].columns[fk.toColumn];
+        if (!table2Col || (!table2Col.pk && !table2Col.unique)) {
+          showAlert('Validation Error', `Column "${fk.toColumn}" in table "${fk.toTable}" must be PRIMARY KEY or UNIQUE`, 'warning');
+          return;
+        }
+
+        // Generate junction table name and FK names
+        const autoJunctionName = [tableName, fk.toTable].sort().join('_');
+        const finalJunctionName = fk.junctionTableName?.trim() || autoJunctionName;
+
+        // Check if junction table name already exists (for different tables or regular table)
+        if (workingSchema.tables[finalJunctionName]) {
+          const existingTable = workingSchema.tables[finalJunctionName];
+          
+          if (existingTable.isJunctionTable && existingTable.junctionFor) {
+            // It's a junction table for different tables
+            showAlert(
+              'Table Name Conflict',
+              `Junction table "${finalJunctionName}" already exists for tables: ${existingTable.junctionFor.join(' and ')}.\n\n` +
+              `Please choose a different junction table name.`,
+              'warning'
+            );
+          } else {
+            // It's a regular table with the same name
+            showAlert(
+              'Table Name Conflict',
+              `Table "${finalJunctionName}" already exists in the schema.\n\n` +
+              `Please choose a different junction table name.\n\n` +
+              `Suggestions:\n` +
+              `- ${finalJunctionName}_junction\n` +
+              `- ${finalJunctionName}_link\n` +
+              `- ${finalJunctionName}_map`,
+              'warning'
+            );
+          }
+          return;
+        }
+
+        // Generate FK column names
+        const generateFKName = (tblName, colName) => {
+          const tableNameLower = tblName.toLowerCase();
+          const columnNameLower = colName.toLowerCase();
+          
+          if (columnNameLower === 'id') {
+            return `${tableNameLower}_id`;
+          }
+          
+          if (columnNameLower.includes(tableNameLower)) {
+            return columnNameLower;
+          }
+          
+          return `${tableNameLower}_${columnNameLower}`;
+        };
+
+        let fk1Name = generateFKName(tableName, table1Column);
+        let fk2Name = generateFKName(fk.toTable, fk.toColumn);
+
+        // Handle self-referencing N:M
+        if (tableName === fk.toTable && fk1Name === fk2Name) {
+          fk1Name = `${fk1Name}_1`;
+          fk2Name = `${fk2Name}_2`;
+        }
+
+        // Show N:M Preview Modal
+        setNMPreviewModal({
+          isOpen: true,
+          table1: tableName,
+          table1Column: table1Column,
+          table2: fk.toTable,
+          table2Column: fk.toColumn,
+          junctionTableName: finalJunctionName,
+          fk1Name,
+          fk2Name,
+          table1Type: table1ColData.type,
+          table2Type: table2Col.type,
+          onConfirm: () => {
+            try {
+              // Create N:M relationship
+              const result = addManyToManyRelationship(
+                tableName,
+                table1Column,
+                fk.toTable,
+                fk.toColumn,
+                finalJunctionName
+              );
+
+              console.log('Γ£à N:M relationship created:', result);
+
+              // Close preview modal
+              setNMPreviewModal({ ...nmPreviewModal, isOpen: false });
+
+              // Remove the FK from editing state
+              setEditingFK(null);
+
+              // Remove from foreignKeys list (it's now a junction table, not a regular FK)
+              const newFKs = foreignKeys.filter((_, i) => i !== index);
+              setForeignKeys(newFKs);
+
+              showAlert('Success', `N:M relationship created successfully!\n\nJunction table "${result.junctionTableName}" has been created with two 1:N relationships.`, 'success');
+            } catch (error) {
+              setNMPreviewModal({ ...nmPreviewModal, isOpen: false });
+              showAlert('Error', `Error creating N:M relationship: ${error.message}`, 'error');
+              console.error('N:M creation error:', error);
+            }
+          }
+        });
+
+        return; // Exit early for N:M
+      }
+
+      // REGULAR 1:1 or 1:N RELATIONSHIP HANDLING
       // Validation
       if (!fk.name.trim()) {
         showAlert('Validation Error', 'Foreign key name is required', 'warning');
@@ -994,6 +1173,16 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         }
 
         actualColumnName = fk.newColumnName.trim();
+        
+        // SELF-JOIN VALIDATION: Prevent same column self-reference (for new columns)
+        if (fk.toTable === tableName && actualColumnName === fk.toColumn) {
+          showAlert(
+            'Self-Join Error', 
+            `Cannot create self-referencing foreign key: column "${actualColumnName}" cannot reference itself.\n\nFor self-join relationships, the foreign key column must reference a different column in the same table.\n\nExample: employees.manager_id ΓåÆ employees.employee_id`,
+            'error'
+          );
+          return;
+        }
 
         // Check if column name already exists
         const existingColumn = columns.find(col => col.name === actualColumnName);
@@ -1020,7 +1209,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
           );
         } catch (error) {
           if (error.message === "Relationship already exists") {
-            showAlert('Validation Error', `Foreign key relationship already exists: ${tableName}.${actualColumnName} → ${fk.toTable}.${fk.toColumn}`, 'warning');
+            showAlert('Validation Error', `Foreign key relationship already exists: ${tableName}.${actualColumnName} ΓåÆ ${fk.toTable}.${fk.toColumn}`, 'warning');
             return;
           } else {
             throw error; // Re-throw other errors
@@ -1063,6 +1252,16 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
           showAlert('Validation Error', `Column "${fk.fromColumn}" does not exist in table "${tableName}"`, 'warning');
           return;
         }
+        
+        // SELF-JOIN VALIDATION: Prevent same column self-reference (for existing columns)
+        if (fk.toTable === tableName && fk.fromColumn === fk.toColumn) {
+          showAlert(
+            'Self-Join Error', 
+            `Cannot create self-referencing foreign key: column "${fk.fromColumn}" cannot reference itself.\n\nFor self-join relationships, the foreign key column must reference a different column in the same table.\n\nExample: employees.manager_id ΓåÆ employees.employee_id`,
+            'error'
+          );
+          return;
+        }
 
         // DATA TYPE VALIDATION - Check if data types are compatible
         const referencedTable = workingSchema.tables[fk.toTable];
@@ -1090,7 +1289,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
             addRelationship(tableName, actualColumnName, fk.toTable, fk.toColumn, 'ONE_TO_MANY');
           } catch (error) {
             if (error.message === "Relationship already exists") {
-              showAlert('Validation Error', `Foreign key relationship already exists: ${tableName}.${actualColumnName} → ${fk.toTable}.${fk.toColumn}`, 'warning');
+              showAlert('Validation Error', `Foreign key relationship already exists: ${tableName}.${actualColumnName} ΓåÆ ${fk.toTable}.${fk.toColumn}`, 'warning');
               return;
             } else {
               throw error; // Re-throw other errors
@@ -1131,7 +1330,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         // Check if we're switching to CREATE NEW column
         if (fk.fromColumn === '__CREATE_NEW__') {
           // SPECIAL CASE: Editing FK and switching to create new column
-          console.log('📝 Editing FK - switching to create new column');
+          console.log('≡ƒô¥ Editing FK - switching to create new column');
           
           if (!fk.newColumnName || !fk.newColumnName.trim()) {
             showAlert('Validation Error', 'Please enter a name for the new column', 'warning');
@@ -1163,11 +1362,11 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
               fk.toColumn
             );
 
-            console.log('✅ FK updated - switched to new column');
+            console.log('Γ£à FK updated - switched to new column');
             
           } catch (error) {
             if (error.message === "Relationship already exists") {
-              showAlert('Validation Error', `Foreign key relationship already exists: ${tableName}.${actualColumnName} → ${fk.toTable}.${fk.toColumn}`, 'warning');
+              showAlert('Validation Error', `Foreign key relationship already exists: ${tableName}.${actualColumnName} ΓåÆ ${fk.toTable}.${fk.toColumn}`, 'warning');
             } else {
               showAlert('Error', `Error updating foreign key: ${error.message}`, 'error');
               console.error('FK update error:', error);
@@ -1177,7 +1376,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
           
         } else {
           // Normal case: Editing FK with existing column
-          console.log('📝 Editing existing FK - using atomic update');
+          console.log('≡ƒô¥ Editing existing FK - using atomic update');
           
           // Use atomic function to update FK column
           // This handles: delete old relationship, delete old column (if user-created), add new relationship
@@ -1190,11 +1389,11 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
               fk.toColumn
             );
             
-            console.log('✅ Atomic FK update completed');
+            console.log('Γ£à Atomic FK update completed');
             
           } catch (error) {
             if (error.message === "Relationship already exists") {
-              showAlert('Validation Error', `Foreign key relationship already exists: ${tableName}.${actualColumnName} → ${fk.toTable}.${fk.toColumn}`, 'warning');
+              showAlert('Validation Error', `Foreign key relationship already exists: ${tableName}.${actualColumnName} ΓåÆ ${fk.toTable}.${fk.toColumn}`, 'warning');
             } else if (error.message === "Old relationship not found") {
               showAlert('Error', 'Could not find the original foreign key relationship to update.', 'error');
             } else {
@@ -1214,7 +1413,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
 
   const getAvailableTables = () => {
     if (!workingSchema) return [];
-    return Object.keys(workingSchema.tables).filter(name => name !== tableName);
+    // Include current table for self-join support
+    return Object.keys(workingSchema.tables);
   };
 
   const getAvailableColumns = (targetTable) => {
@@ -1266,7 +1466,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
             <span className="table-name-display">{tableName}</span>
             <span className="schema-name">Schema: {schemaName}</span>
           </div>
-          <button className="modal-close" onClick={onClose}>×</button>
+          <button className="modal-close" onClick={onClose}>├ù</button>
         </div>
 
         <div className="modal-tabs">
@@ -1466,32 +1666,54 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                         </span>
                       )}
                     </div>
-                    <div className="edit-fk-column">
-                      <select
-                        value={fk.fromColumn && fk.fromColumn !== '__CREATE_NEW__' ? fk.fromColumn : ''}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          if (value) {
-                            // Existing column selected - update fromColumn
-                            handleFKChange(index, 'fromColumn', value);
-                            handleFKChange(index, 'newColumnName', ''); // Clear new column name
-                          } else {
-                            // "Create New" selected - clear fromColumn
-                            handleFKChange(index, 'fromColumn', '__CREATE_NEW__');
-                          }
-                        }}
-                        disabled={editingFK !== index || !fk.isVirtual}
-                        title={fk.fromColumn && fk.fromColumn !== '__CREATE_NEW__' ? fk.fromColumn : '+ Create New Column'}
-                        className="fk-column-select"
-                      >
-                        <option value="">Create New Column</option>
-                        <optgroup label="Existing Columns">
-                          {getCurrentTableColumns().map(col => (
-                            <option key={col} value={col} title={col}>{col}</option>
-                          ))}
-                        </optgroup>
-                      </select>
-                    </div>
+                    {/* Conditional rendering based on cardinality */}
+                    {fk.cardinality === 'N:M' ? (
+                      // N:M: Show Junction Table Name field instead of Child Column
+                      <div className="edit-fk-column">
+                        {editingFK === index && fk.isVirtual ? (
+                          <input
+                            type="text"
+                            value={fk.junctionTableName || ''}
+                            onChange={(e) => handleFKChange(index, 'junctionTableName', e.target.value)}
+                            placeholder={`${[tableName, fk.toTable || 'table2'].sort().join('_')}`}
+                            title="Junction table name (leave empty for auto-generated)"
+                            className="fk-junction-name-input"
+                          />
+                        ) : (
+                          <span className="fk-junction-name-display" title={fk.junctionTableName || 'Auto-generated'}>
+                            {fk.junctionTableName || `${[tableName, fk.toTable || 'table2'].sort().join('_')}`}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      // 1:1 or 1:N: Show Child Column selector
+                      <div className="edit-fk-column">
+                        <select
+                          value={fk.fromColumn && fk.fromColumn !== '__CREATE_NEW__' ? fk.fromColumn : ''}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value) {
+                              // Existing column selected - update fromColumn
+                              handleFKChange(index, 'fromColumn', value);
+                              handleFKChange(index, 'newColumnName', ''); // Clear new column name
+                            } else {
+                              // "Create New" selected - clear fromColumn
+                              handleFKChange(index, 'fromColumn', '__CREATE_NEW__');
+                            }
+                          }}
+                          disabled={editingFK !== index || !fk.isVirtual}
+                          title={fk.fromColumn && fk.fromColumn !== '__CREATE_NEW__' ? fk.fromColumn : '+ Create New Column'}
+                          className="fk-column-select"
+                        >
+                          <option value="">Create New Column</option>
+                          <optgroup label="Existing Columns">
+                            {getCurrentTableColumns().map(col => (
+                              <option key={col} value={col} title={col}>{col}</option>
+                            ))}
+                          </optgroup>
+                        </select>
+                      </div>
+                    )}
                     <div className="edit-fk-ref-table">
                       <select
                         value={fk.toTable}
@@ -1502,7 +1724,9 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                       >
                         <option value="">Select Table</option>
                         {getAvailableTables().map(table => (
-                          <option key={table} value={table} title={table}>{table}</option>
+                          <option key={table} value={table} title={table}>
+                            {table}{table === tableName ? ' (Self-Join)' : ''}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -1535,20 +1759,27 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                             <select
                               value={fk.cardinality || detectedCardinality}
                               onChange={(e) => handleFKChange(index, 'cardinality', e.target.value)}
-                              disabled={isPK}
-                              title={isPK ? 'Cardinality is locked to 1:1 because FK column is a Primary Key (always unique)' : 'Auto-detected based on UNIQUE constraint. Change if needed.'}
+                              disabled={isPK && fk.cardinality !== 'N:M'}
+                              title={isPK && fk.cardinality !== 'N:M' ? 'Cardinality is locked to 1:1 because FK column is a Primary Key (always unique)' : 'Select relationship cardinality'}
                             >
                               <option value="1:1">1:1 (One-to-One)</option>
                               <option value="1:N">1:N (One-to-Many)</option>
+                              <option value="N:M">N:M (Many-to-Many)</option>
                             </select>
                           );
                         })()
                       ) : (
-                        <span className="fk-cardinality-display" title={fk.cardinality === '1:1' ? 'One-to-One: FK has UNIQUE constraint or is PK' : 'One-to-Many: FK does not have UNIQUE constraint'}>
-                          <CardinalityIcon 
-                            cardinality={fk.cardinality || detectCardinality(fk.fromColumn)} 
-                            isIdentifying={detectIdentifying(fk.fromColumn)}
-                          />
+                        <span className="fk-cardinality-display" title={
+                          fk.cardinality === 'N:M' ? 'Many-to-Many: Creates junction table' :
+                          fk.cardinality === '1:1' ? 'One-to-One: FK has UNIQUE constraint or is PK' : 
+                          'One-to-Many: FK does not have UNIQUE constraint'
+                        }>
+                          {fk.cardinality !== 'N:M' && (
+                            <CardinalityIcon 
+                              cardinality={fk.cardinality || detectCardinality(fk.fromColumn)} 
+                              isIdentifying={detectIdentifying(fk.fromColumn)}
+                            />
+                          )}
                           {fk.cardinality || detectCardinality(fk.fromColumn)}
                         </span>
                       )}
@@ -1596,10 +1827,10 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                           editingFK === index ? (
                             <>
                               <button className="btn-save" onClick={() => handleSaveFK(index)}>
-                                ✓
+                                Γ£ô
                               </button>
                               <button className="btn-cancel" onClick={() => handleCancelFK(index)}>
-                                ✕
+                                Γ£ò
                               </button>
                             </>
                           ) : (
@@ -1620,7 +1851,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                           )
                         ) : (
                           // Real DB FK - Show read-only indicator
-                          <span className="read-only-indicator">🔒 Read-Only</span>
+                          <span className="read-only-indicator">≡ƒöÆ Read-Only</span>
                         )}
                       </div>
                     )}
@@ -1734,6 +1965,22 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         title={confirmModal.title}
         message={confirmModal.message}
         type={confirmModal.type}
+      />
+
+      {/* N:M Preview Modal */}
+      <NMPreviewModal
+        isOpen={nmPreviewModal.isOpen}
+        onClose={() => setNMPreviewModal({ ...nmPreviewModal, isOpen: false })}
+        onConfirm={nmPreviewModal.onConfirm}
+        table1={nmPreviewModal.table1}
+        table1Column={nmPreviewModal.table1Column}
+        table2={nmPreviewModal.table2}
+        table2Column={nmPreviewModal.table2Column}
+        junctionTableName={nmPreviewModal.junctionTableName}
+        fk1Name={nmPreviewModal.fk1Name}
+        fk2Name={nmPreviewModal.fk2Name}
+        table1Type={nmPreviewModal.table1Type}
+        table2Type={nmPreviewModal.table2Type}
       />
     </div>
   );

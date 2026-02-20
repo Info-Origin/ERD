@@ -80,6 +80,12 @@ export const RelationshipDetailsModal = ({
 
   const isSingleRelationship = relationships.length === 1;
   const relationship = relationships[0];
+  
+  // Detect self-join relationships
+  const selfJoinRelationships = relationships.filter(rel => 
+    rel.fromTable === rel.toTable && !rel.isVirtualNM
+  );
+  const isSelfJoin = selfJoinRelationships.length > 0;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -102,44 +108,105 @@ export const RelationshipDetailsModal = ({
           {isSingleRelationship ? (
             // Single relationship view
             <div className="relationship-details-single">
-              <div className="detail-row">
-                <span className="detail-label">From:</span>
-                <span className="detail-value">
-                  {relationship.fromTable}.{relationship.fromColumn}
-                </span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">To:</span>
-                <span className="detail-value">
-                  {relationship.toTable}.{relationship.toColumn}
-                </span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Type:</span>
-                <span className="detail-value">{formatRelationType(relationship)}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Status:</span>
-                <span className={`detail-value ${relationship.isUserCreated ? 'user-created' : 'db-existing'}`}>
-                  {relationship.isUserCreated ? 'User-created ✓' : 'Database-existing'}
-                </span>
-              </div>
-              {relationship.isUserCreated && relationship.createdAt && (
-                <div className="detail-row">
-                  <span className="detail-label">Created:</span>
-                  <span className="detail-value">{formatTimestamp(relationship.createdAt)}</span>
-                </div>
-              )}
-              {relationship.constraintName && (
-                <div className="detail-row">
-                  <span className="detail-label">Constraint:</span>
-                  <span className="detail-value constraint-name">{relationship.constraintName}</span>
-                </div>
+              {relationship.isVirtualNM ? (
+                // Virtual N:M relationship
+                <>
+                  <div className="detail-row">
+                    <span className="detail-label">Type:</span>
+                    <span className="detail-value">Many-to-Many (N:M)</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Between:</span>
+                    <span className="detail-value">
+                      {relationship.fromTable} ↔ {relationship.toTable}
+                    </span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Junction Table:</span>
+                    <span className="detail-value junction-table">{relationship.junctionTable}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Implementation:</span>
+                    <span className="detail-value">
+                      Two 1:N via junction table
+                    </span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Status:</span>
+                    <span className="detail-value db-existing">
+                      Virtual (Conceptual View)
+                    </span>
+                  </div>
+                </>
+              ) : (
+                // Regular relationship
+                <>
+                  {/* Self-join indicator at the very top */}
+                  {relationship.fromTable === relationship.toTable && (
+                    <div className="detail-row self-join-indicator">
+                      <span className="detail-label">⚠️ Self-Join:</span>
+                      <span className="detail-value">
+                        This table references itself
+                      </span>
+                    </div>
+                  )}
+                  <div className="detail-row">
+                    <span className="detail-label">From:</span>
+                    <span className="detail-value">
+                      {relationship.fromTable}.{relationship.fromColumn}
+                    </span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">To:</span>
+                    <span className="detail-value">
+                      {relationship.toTable}.{relationship.toColumn}
+                    </span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Type:</span>
+                    <span className="detail-value">{formatRelationType(relationship)}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Status:</span>
+                    <span className={`detail-value ${relationship.isUserCreated ? 'user-created' : 'db-existing'}`}>
+                      {relationship.isUserCreated ? 'User-created ✓' : 'Database-existing'}
+                    </span>
+                  </div>
+                  {relationship.isUserCreated && relationship.createdAt && (
+                    <div className="detail-row">
+                      <span className="detail-label">Created:</span>
+                      <span className="detail-value">{formatTimestamp(relationship.createdAt)}</span>
+                    </div>
+                  )}
+                  {relationship.constraintName && (
+                    <div className="detail-row">
+                      <span className="detail-label">Constraint:</span>
+                      <span className="detail-value constraint-name">{relationship.constraintName}</span>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           ) : (
             // Multiple relationships view
             <div className="relationship-details-multiple">
+              {isSelfJoin && (
+                <div className="self-join-summary">
+                  <div className="self-join-header">
+                    ⚠️ Self-Join Relationships Detected
+                  </div>
+                  <div className="self-join-info">
+                    <strong>{selfJoinRelationships.length}</strong> self-referencing relationship{selfJoinRelationships.length > 1 ? 's' : ''} found:
+                    <ul className="self-join-list">
+                      {selfJoinRelationships.map((rel, idx) => (
+                        <li key={idx}>
+                          {rel.fromTable}.{rel.fromColumn} → {rel.toTable}.{rel.toColumn}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
               {relationships.map((rel, index) => {
                 const key = `${rel.fromTable}.${rel.fromColumn}-${rel.toTable}.${rel.toColumn}`;
                 const isSelected = selectedRelationships.includes(key);
