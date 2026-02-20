@@ -330,19 +330,19 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       // Generate change description
       const changes = [];
       if (fullType !== originalColumn.type) {
-        changes.push(`Data type: ${originalColumn.type} ΓåÆ ${fullType}`);
+        changes.push(`Data type: ${originalColumn.type} → ${fullType}`);
       }
       if (newProperties.nullable !== originalColumn.nullable) {
-        changes.push(`Nullable: ${originalColumn.nullable ? 'YES' : 'NO'} ΓåÆ ${newProperties.nullable ? 'YES' : 'NO'}`);
+        changes.push(`Nullable: ${originalColumn.nullable ? 'YES' : 'NO'} → ${newProperties.nullable ? 'YES' : 'NO'}`);
       }
       if (newProperties.pk !== originalColumn.pk) {
-        changes.push(`Primary Key: ${originalColumn.pk ? 'YES' : 'NO'} ΓåÆ ${newProperties.pk ? 'YES' : 'NO'}`);
+        changes.push(`Primary Key: ${originalColumn.pk ? 'YES' : 'NO'} → ${newProperties.pk ? 'YES' : 'NO'}`);
       }
       if (newProperties.unique !== originalColumn.unique) {
-        changes.push(`Unique: ${originalColumn.unique ? 'YES' : 'NO'} ΓåÆ ${newProperties.unique ? 'YES' : 'NO'}`);
+        changes.push(`Unique: ${originalColumn.unique ? 'YES' : 'NO'} → ${newProperties.unique ? 'YES' : 'NO'}`);
       }
       if ((newProperties.defaultValue || '') !== (originalColumn.defaultValue || '')) {
-        changes.push(`Default: "${originalColumn.defaultValue || ''}" ΓåÆ "${newProperties.defaultValue || ''}"`);
+        changes.push(`Default: "${originalColumn.defaultValue || ''}" → "${newProperties.defaultValue || ''}"`);
       }
       
       const changeDescription = `Modify column ${tableName}.${column.name}:\n${changes.join('\n')}`;
@@ -377,7 +377,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
   // Apply column changes (used both directly and after conflict resolution)
   const applyColumnChanges = async (index, column, fullType, newProperties, cascadingChanges = []) => {
     try {
-      console.log('≡ƒöº Applying column changes:', {
+      console.log('🔧 Applying column changes:', {
         tableName,
         columnName: column.name,
         newProperties,
@@ -389,12 +389,12 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       
       // Apply cascading changes if any
       if (cascadingChanges.length > 0) {
-        console.log('≡ƒöä Applying cascading changes:', cascadingChanges);
+        console.log('🔄 Applying cascading changes:', cascadingChanges);
         
         // Apply each cascading change with proper async handling
         for (const change of cascadingChanges) {
           if (change.type === 'DATA_TYPE_CASCADE') {
-            console.log(`≡ƒöä Cascading ${change.tableName}.${change.columnName}: ${change.oldType} ΓåÆ ${change.newType}`);
+            console.log(`🔄 Cascading ${change.tableName}.${change.columnName}: ${change.oldType} → ${change.newType}`);
             
             // Apply the change
             updateColumn(change.tableName, change.columnName, {
@@ -429,7 +429,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       }
       
     } catch (error) {
-      console.error('Γ¥î Error applying changes:', error);
+      console.error('❌ Error applying changes:', error);
       showAlert('Error', `Error applying changes: ${error.message}`, 'error');
     }
   };
@@ -520,7 +520,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
     const column = columns[index];
     const columnName = column.name;
     
-    console.log('≡ƒöº Constraint toggled:', { columnName, constraintType, newValue });
+    console.log('🔧 Constraint toggled:', { columnName, constraintType, newValue });
     
     // Update pending changes
     setPendingConstraintChanges(prev => {
@@ -922,7 +922,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         const fkColumnName = newFKs[index].fromColumn;
         const shouldBeUnique = value === '1:1';
         
-        console.log('≡ƒöä Cardinality changed:', { fkColumnName, newCardinality: value, shouldBeUnique });
+        console.log('🔄 Cardinality changed:', { fkColumnName, newCardinality: value, shouldBeUnique });
         
         // Check if the FK column is a PK
         const fkColumn = columns.find(col => col.name === fkColumnName);
@@ -938,7 +938,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         
         // Update the column's unique constraint in local state (only if not a PK)
         if (!isPK) {
-          console.log('Γ£Å∩╕Å Updating UNIQUE constraint:', { column: fkColumnName, unique: shouldBeUnique });
+          console.log('✏️ Updating UNIQUE constraint:', { column: fkColumnName, unique: shouldBeUnique });
           
           setColumns(prevColumns => {
             const newColumns = [...prevColumns];
@@ -949,7 +949,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                 ...newColumns[columnIndex],
                 unique: shouldBeUnique
               };
-              console.log('Γ£à Local columns state updated');
+              console.log('✅ Local columns state updated');
             }
             
             return newColumns;
@@ -962,7 +962,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
             if (column) {
               // Toggle unique constraint to match cardinality
               if (column.unique !== shouldBeUnique) {
-                console.log('≡ƒöº Toggling UNIQUE in workingSchema (deferred)');
+                console.log('🔧 Toggling UNIQUE in workingSchema (deferred)');
                 setTimeout(() => {
                   toggleUnique(tableName, fkColumnName);
                 }, 0);
@@ -1115,7 +1115,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                 finalJunctionName
               );
 
-              console.log('Γ£à N:M relationship created:', result);
+              console.log('✅ N:M relationship created:', result);
 
               // Close preview modal
               setNMPreviewModal({ ...nmPreviewModal, isOpen: false });
@@ -1178,7 +1178,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         if (fk.toTable === tableName && actualColumnName === fk.toColumn) {
           showAlert(
             'Self-Join Error', 
-            `Cannot create self-referencing foreign key: column "${actualColumnName}" cannot reference itself.\n\nFor self-join relationships, the foreign key column must reference a different column in the same table.\n\nExample: employees.manager_id ΓåÆ employees.employee_id`,
+            `Cannot create self-referencing foreign key: column "${actualColumnName}" cannot reference itself.\n\nFor self-join relationships, the foreign key column must reference a different column in the same table.\n\nExample: employees.manager_id → employees.employee_id`,
             'error'
           );
           return;
@@ -1209,7 +1209,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
           );
         } catch (error) {
           if (error.message === "Relationship already exists") {
-            showAlert('Validation Error', `Foreign key relationship already exists: ${tableName}.${actualColumnName} ΓåÆ ${fk.toTable}.${fk.toColumn}`, 'warning');
+            showAlert('Validation Error', `Foreign key relationship already exists: ${tableName}.${actualColumnName} → ${fk.toTable}.${fk.toColumn}`, 'warning');
             return;
           } else {
             throw error; // Re-throw other errors
@@ -1257,7 +1257,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         if (fk.toTable === tableName && fk.fromColumn === fk.toColumn) {
           showAlert(
             'Self-Join Error', 
-            `Cannot create self-referencing foreign key: column "${fk.fromColumn}" cannot reference itself.\n\nFor self-join relationships, the foreign key column must reference a different column in the same table.\n\nExample: employees.manager_id ΓåÆ employees.employee_id`,
+            `Cannot create self-referencing foreign key: column "${fk.fromColumn}" cannot reference itself.\n\nFor self-join relationships, the foreign key column must reference a different column in the same table.\n\nExample: employees.manager_id → employees.employee_id`,
             'error'
           );
           return;
@@ -1289,7 +1289,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
             addRelationship(tableName, actualColumnName, fk.toTable, fk.toColumn, 'ONE_TO_MANY');
           } catch (error) {
             if (error.message === "Relationship already exists") {
-              showAlert('Validation Error', `Foreign key relationship already exists: ${tableName}.${actualColumnName} ΓåÆ ${fk.toTable}.${fk.toColumn}`, 'warning');
+              showAlert('Validation Error', `Foreign key relationship already exists: ${tableName}.${actualColumnName} → ${fk.toTable}.${fk.toColumn}`, 'warning');
               return;
             } else {
               throw error; // Re-throw other errors
@@ -1330,7 +1330,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         // Check if we're switching to CREATE NEW column
         if (fk.fromColumn === '__CREATE_NEW__') {
           // SPECIAL CASE: Editing FK and switching to create new column
-          console.log('≡ƒô¥ Editing FK - switching to create new column');
+          console.log('✏️ Editing FK - switching to create new column');
           
           if (!fk.newColumnName || !fk.newColumnName.trim()) {
             showAlert('Validation Error', 'Please enter a name for the new column', 'warning');
@@ -1362,11 +1362,11 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
               fk.toColumn
             );
 
-            console.log('Γ£à FK updated - switched to new column');
+            console.log('✅ FK updated - switched to new column');
             
           } catch (error) {
             if (error.message === "Relationship already exists") {
-              showAlert('Validation Error', `Foreign key relationship already exists: ${tableName}.${actualColumnName} ΓåÆ ${fk.toTable}.${fk.toColumn}`, 'warning');
+              showAlert('Validation Error', `Foreign key relationship already exists: ${tableName}.${actualColumnName} → ${fk.toTable}.${fk.toColumn}`, 'warning');
             } else {
               showAlert('Error', `Error updating foreign key: ${error.message}`, 'error');
               console.error('FK update error:', error);
@@ -1376,7 +1376,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
           
         } else {
           // Normal case: Editing FK with existing column
-          console.log('≡ƒô¥ Editing existing FK - using atomic update');
+          console.log('✏️ Editing existing FK - using atomic update');
           
           // Use atomic function to update FK column
           // This handles: delete old relationship, delete old column (if user-created), add new relationship
@@ -1389,11 +1389,11 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
               fk.toColumn
             );
             
-            console.log('Γ£à Atomic FK update completed');
+            console.log('✅ Atomic FK update completed');
             
           } catch (error) {
             if (error.message === "Relationship already exists") {
-              showAlert('Validation Error', `Foreign key relationship already exists: ${tableName}.${actualColumnName} ΓåÆ ${fk.toTable}.${fk.toColumn}`, 'warning');
+              showAlert('Validation Error', `Foreign key relationship already exists: ${tableName}.${actualColumnName} → ${fk.toTable}.${fk.toColumn}`, 'warning');
             } else if (error.message === "Old relationship not found") {
               showAlert('Error', 'Could not find the original foreign key relationship to update.', 'error');
             } else {
@@ -1466,7 +1466,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
             <span className="table-name-display">{tableName}</span>
             <span className="schema-name">Schema: {schemaName}</span>
           </div>
-          <button className="modal-close" onClick={onClose}>├ù</button>
+          <button className="modal-close" onClick={onClose}>×</button>
         </div>
 
         <div className="modal-tabs">
@@ -1826,11 +1826,11 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                           // Virtual FK - Show edit/delete buttons
                           editingFK === index ? (
                             <>
-                              <button className="btn-save" onClick={() => handleSaveFK(index)}>
-                                Γ£ô
+                              <button className="btn-save" onClick={() => handleSaveFK(index)} title="Save">
+                                ✓
                               </button>
-                              <button className="btn-cancel" onClick={() => handleCancelFK(index)}>
-                                Γ£ò
+                              <button className="btn-cancel" onClick={() => handleCancelFK(index)} title="Cancel">
+                                ✕
                               </button>
                             </>
                           ) : (
@@ -1851,7 +1851,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                           )
                         ) : (
                           // Real DB FK - Show read-only indicator
-                          <span className="read-only-indicator">≡ƒöÆ Read-Only</span>
+                          <span className="read-only-indicator">🔒 Read-Only</span>
                         )}
                       </div>
                     )}
