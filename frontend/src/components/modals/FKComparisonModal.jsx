@@ -65,8 +65,10 @@ export const FKComparisonModal = ({
 
   if (!isOpen || !currentComparison?.hasChanges) return null;
 
-  const { changes, affectedTables } = currentComparison;
+  const { changes, affectedTables, nmRelationships = [] } = currentComparison;
   const isMultipleTables = affectedTables.length > 1;
+  const hasNMRelationships = nmRelationships.length > 0;
+  const hasRegularChanges = affectedTables.length > 0;
 
   const toggleTableExpansion = (tableName) => {
     const newExpanded = new Set(expandedTables);
@@ -83,14 +85,31 @@ export const FKComparisonModal = ({
       isOpen: true,
       tableName,
       columnName,
-      changeType
+      changeType,
+      isNM: false
+    });
+  };
+
+  const handleUndoNM = (junctionTable, table1, table2) => {
+    setConfirmModal({
+      isOpen: true,
+      junctionTable,
+      table1,
+      table2,
+      isNM: true
     });
   };
 
   const handleConfirmUndo = () => {
-    const { tableName, columnName, changeType } = confirmModal;
-    onRevertChange(tableName, columnName, changeType);
-    setConfirmModal({ isOpen: false, tableName: null, columnName: null, changeType: null });
+    if (confirmModal.isNM) {
+      // Delete entire junction table for N:M relationship
+      onRevertChange(confirmModal.junctionTable, null, 'added');
+    } else {
+      // Regular FK undo
+      const { tableName, columnName, changeType } = confirmModal;
+      onRevertChange(tableName, columnName, changeType);
+    }
+    setConfirmModal({ isOpen: false, tableName: null, columnName: null, changeType: null, isNM: false });
   };
 
   const handleCancelUndo = () => {
@@ -241,12 +260,83 @@ export const FKComparisonModal = ({
           <div className="modal-body">
             <div className="fk-comparison-summary">
               <p className="fk-summary-text">
-                Foreign key changes detected across {affectedTables.length} table(s). 
-                Review the changes below and use the Undo button to revert specific changes.
+                {hasNMRelationships && hasRegularChanges && (
+                  <>Foreign key changes detected: {nmRelationships.length} N:M relationship(s) and {affectedTables.length} table(s) with FK changes.</>
+                )}
+                {hasNMRelationships && !hasRegularChanges && (
+                  <>{nmRelationships.length} N:M relationship(s) detected.</>
+                )}
+                {!hasNMRelationships && hasRegularChanges && (
+                  <>Foreign key changes detected across {affectedTables.length} table(s).</>
+                )}
+                {' '}Review the changes below{hasNMRelationships || hasRegularChanges ? ' and use the Remove/Undo button to revert specific changes' : ''}.
               </p>
             </div>
 
-            {isMultipleTables ? (
+            {/* N:M Relationships Section */}
+            {hasNMRelationships && (
+              <div className="fk-nm-section">
+                <h3 className="fk-section-title">
+                  <span className="nm-icon">🔗</span>
+                  Many-to-Many Relationships ({nmRelationships.length})
+                </h3>
+                
+                {nmRelationships.map(nm => (
+                  <div key={nm.junctionTable} className={`fk-nm-relationship ${nm.type === 'synced' ? 'fk-nm-synced' : ''}`}>
+                    <div className="fk-nm-header">
+                      <span className="fk-nm-display">
+                        {nm.table1} ↔ {nm.table2}
+                      </span>
+                      <span className="fk-nm-junction">via {nm.junctionTable}</span>
+                      {nm.type === 'added' && (
+                        <Badge variant="success" className="fk-nm-badge">NEW</Badge>
+                      )}
+                      {nm.type === 'synced' && (
+                        <Badge variant="info" className="fk-nm-badge">SYNCED</Badge>
+                      )}
+                    </div>
+                    
+                    {/* Show the 2 FK relationships */}
+                    <div className="fk-nm-details">
+                      {nm.tableChanges.added.map((fk, idx) => (
+                        <div key={idx} className="fk-nm-fk-row">
+                          • {fk.columnName} → {fk.relationship?.toTable}.{fk.relationship?.toColumn}
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Info message for synced N:M */}
+                    {nm.type === 'synced' && (
+                      <div className="fk-nm-synced-message">
+                        <FiInfo className="fk-info-icon" />
+                        <span>This N:M relationship has been applied to the database manually.</span>
+                      </div>
+                    )}
+                    
+                    {/* Single Undo button for entire N:M (only for added, not synced) */}
+                    {nm.type === 'added' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleUndoNM(nm.junctionTable, nm.table1, nm.table2)}
+                        className="fk-undo-nm-button"
+                      >
+                        <FiRotateCcw /> Remove N:M Relationship
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Regular FK Changes Section */}
+            {hasRegularChanges && hasNMRelationships && (
+              <h3 className="fk-section-title fk-regular-title">
+                Foreign Key Changes
+              </h3>
+            )}
+
+            {hasRegularChanges && isMultipleTables ? (
               <div className="fk-comparison-multi-table">
                 <div className="fk-tables-list">
                   {affectedTables.map(tableName => {
@@ -311,7 +401,7 @@ export const FKComparisonModal = ({
                   })}
                 </div>
               </div>
-            ) : (
+            ) : hasRegularChanges ? (
               <div className="fk-comparison-single-table">
                 <div className="fk-table-header">
                   <h3 className="fk-table-name">{affectedTables[0]}</h3>
@@ -346,7 +436,7 @@ export const FKComparisonModal = ({
                   </div>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
 
           <div className="modal-footer">
@@ -373,9 +463,13 @@ export const FKComparisonModal = ({
         isOpen={confirmModal.isOpen}
         onClose={handleCancelUndo}
         onConfirm={handleConfirmUndo}
-        title="Confirm Undo"
-        message={`Are you sure you want to undo the ${confirmModal.changeType === 'added' ? 'addition' : 'removal'} of foreign key "${confirmModal.columnName}" in table "${confirmModal.tableName}"?`}
-        confirmText="Yes, Undo"
+        title={confirmModal.isNM ? "Remove N:M Relationship" : "Confirm Undo"}
+        message={
+          confirmModal.isNM 
+            ? `Are you sure you want to remove the entire N:M relationship between "${confirmModal.table1}" and "${confirmModal.table2}"? This will delete the junction table "${confirmModal.junctionTable}" and both foreign key relationships.`
+            : `Are you sure you want to undo the ${confirmModal.changeType === 'added' ? 'addition' : 'removal'} of foreign key "${confirmModal.columnName}" in table "${confirmModal.tableName}"?`
+        }
+        confirmText="Yes, Remove"
         cancelText="Cancel"
         variant="primary"
       />

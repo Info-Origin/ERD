@@ -195,21 +195,36 @@ export const TableCard = memo(({ data }) => {
 
   const handleClick = () => {
     // Check if this table is a junction table for N:M relationship
-    if (erdData?.relationships) {
-      // A junction table has exactly 2 FK relationships going out
+    if (erdData?.relationships && erdData?.tables) {
       const outgoingFKs = erdData.relationships.filter(rel => rel.fromTable === tableName);
       
+      // Junction table criteria:
+      // 1. Exactly 2 outgoing FKs
+      // 2. Both FKs point to DIFFERENT tables (not self-referencing)
+      // 3. Ideally marked as isJunctionTable OR both FKs are PKs
       if (outgoingFKs.length === 2) {
-        // This is a junction table - trigger N:M purple highlight
         const table1 = outgoingFKs[0].toTable;
         const table2 = outgoingFKs[1].toTable;
         
-        setHighlightedNMRelationshipWithTimer({
-          table1,
-          table2,
-          junctionTable: tableName
-        });
-        return; // Don't do normal table selection
+        // CRITICAL: Exclude self-joins - both FKs must point to different tables
+        if (table1 !== table2 && table1 !== tableName && table2 !== tableName) {
+          // Additional check: verify this is actually a junction table
+          const tableData = erdData.tables[tableName];
+          const fkColumns = outgoingFKs.map(fk => fk.fromColumn);
+          const areBothPKs = fkColumns.every(col => tableData?.columns?.[col]?.pk);
+          
+          // Trigger N:M highlight only if:
+          // - Table is explicitly marked as junction table, OR
+          // - Both FK columns are part of the primary key
+          if (data.isJunctionTable || areBothPKs) {
+            setHighlightedNMRelationshipWithTimer({
+              table1,
+              table2,
+              junctionTable: tableName
+            });
+            return; // Don't do normal table selection
+          }
+        }
       }
     }
     

@@ -27,8 +27,88 @@ export const compareForeignKeys = (baselineSchema, virtualSchema) => {
     const baselineTable = baselineSchema.tables?.[tableName];
     const virtualTable = virtualSchema.tables?.[tableName];
 
+    // Handle new tables (exist only in virtual schema)
+    if (!baselineTable && virtualTable) {
+      const tableChanges = {
+        added: [],
+        removed: [],
+        synced: [],
+        baselineFKs: [],
+        virtualFKs: [],
+        tableName,
+        isNewTable: true // Mark as new table
+      };
+
+      // Get all FK columns from the new table
+      Object.entries(virtualTable.columns || {}).forEach(([columnName, columnData]) => {
+        if (columnData.fk) {
+          const relationship = findRelationshipForColumn(virtualSchema, tableName, columnName);
+          
+          tableChanges.added.push({
+            columnName,
+            columnData,
+            relationship,
+            type: 'added'
+          });
+
+          tableChanges.virtualFKs.push({
+            columnName,
+            columnData,
+            relationship,
+            type: 'virtual'
+          });
+        }
+      });
+
+      if (tableChanges.added.length > 0) {
+        changes[tableName] = tableChanges;
+        hasChanges = true;
+      }
+      return;
+    }
+
+    // Handle deleted tables (exist only in baseline schema)
+    if (baselineTable && !virtualTable) {
+      const tableChanges = {
+        added: [],
+        removed: [],
+        synced: [],
+        baselineFKs: [],
+        virtualFKs: [],
+        tableName,
+        isDeletedTable: true // Mark as deleted table
+      };
+
+      // Get all FK columns from the deleted table
+      Object.entries(baselineTable.columns || {}).forEach(([columnName, columnData]) => {
+        if (columnData.fk) {
+          const relationship = findRelationshipForColumn(baselineSchema, tableName, columnName);
+          
+          tableChanges.removed.push({
+            columnName,
+            columnData,
+            relationship,
+            type: 'removed'
+          });
+
+          tableChanges.baselineFKs.push({
+            columnName,
+            columnData,
+            relationship,
+            type: 'baseline'
+          });
+        }
+      });
+
+      if (tableChanges.removed.length > 0) {
+        changes[tableName] = tableChanges;
+        hasChanges = true;
+      }
+      return;
+    }
+
+    // Skip if table doesn't exist in both schemas (shouldn't happen after above checks)
     if (!baselineTable || !virtualTable) {
-      // Skip tables that don't exist in both schemas
       return;
     }
 
@@ -165,10 +245,75 @@ export const compareForeignKeys = (baselineSchema, virtualSchema) => {
     }
   });
 
+  // STEP 2: Detect and group N:M relationships (junction tables)
+  const nmRelationships = [];
+  const regularChanges = {};
+
+  Object.entries(changes).forEach(([tableName, tableChanges]) => {
+    const table = virtualSchema.tables?.[tableName] || baselineSchema.tables?.[tableName];
+    
+    if (!table) {
+      regularChanges[tableName] = tableChanges;
+      return;
+    }
+
+    // Detect junction table: exactly 2 FKs that are both PKs
+    const allColumns = Object.values(table.columns || {});
+    const fkColumns = allColumns.filter(col => col.fk);
+    const pkColumns = allColumns.filter(col => col.pk);
+    
+    const isJunctionTable = table.isJunctionTable || 
+      (fkColumns.length === 2 && pkColumns.length === 2 && 
+       fkColumns.every(fk => fk.pk));
+    
+    if (isJunctionTable && (tableChanges.isNewTable || tableChanges.added.length > 0)) {
+      // Extract the two parent tables from relationships
+      const rels = (virtualSchema.relationships || baselineSchema.relationships || [])
+        .filter(r => r.fromTable === tableName);
+      
+      const table1 = rels[0]?.toTable;
+      const table2 = rels[1]?.toTable;
+      
+      if (table1 && table2) {
+        // Check if this junction table exists in baseline (SYNC detection)
+        const existsInBaseline = baselineSchema.tables?.[tableName];
+        const existsInVirtual = virtualSchema.tables?.[tableName];
+        const wasUserCreated = table?.isUserCreated;
+        
+        // Determine type: added, synced, or existing
+        let nmType = 'existing';
+        if (tableChanges.isNewTable) {
+          nmType = 'added'; // Only in virtual, not in baseline
+        } else if (existsInBaseline && existsInVirtual && wasUserCreated) {
+          // Junction table exists in both schemas AND was originally user-created
+          // This means it was synced to the database
+          nmType = 'synced';
+        }
+        
+        nmRelationships.push({
+          junctionTable: tableName,
+          table1,
+          table2,
+          tableChanges, // Keep original FK data for details
+          displayName: `${table1} ↔ ${table2}`,
+          type: nmType,
+          relationships: rels
+        });
+      } else {
+        // Fallback: treat as regular if we can't determine parent tables
+        regularChanges[tableName] = tableChanges;
+      }
+    } else {
+      regularChanges[tableName] = tableChanges;
+    }
+  });
+
   return {
     hasChanges,
-    changes,
-    affectedTables: Object.keys(changes)
+    changes: regularChanges,
+    nmRelationships, // NEW: Separate N:M relationships
+    affectedTables: Object.keys(regularChanges),
+    affectedNMRelationships: nmRelationships.length
   };
 };
 
@@ -251,7 +396,32 @@ export const revertFKChange = (virtualSchema, tableName, columnName, changeType,
   const updatedSchema = JSON.parse(JSON.stringify(virtualSchema));
 
   if (changeType === 'added') {
-    // Check if this column existed in the baseline schema
+    // CRITICAL: Check if this is a junction table
+    const table = updatedSchema.tables[tableName];
+    const isJunctionTable = table?.isJunctionTable || (
+      table?.isUserCreated &&
+      Object.values(table.columns || {}).filter(col => col.fk).length === 2 &&
+      Object.values(table.columns || {}).filter(col => col.pk).length === 2
+    );
+
+    if (isJunctionTable) {
+      // JUNCTION TABLE LOGIC: Delete entire table + all relationships
+      console.log(`🔴 Reverting junction table: ${tableName}`);
+      
+      // Delete the entire junction table
+      if (updatedSchema.tables[tableName]) {
+        delete updatedSchema.tables[tableName];
+      }
+
+      // Delete ALL relationships from this junction table
+      updatedSchema.relationships = (updatedSchema.relationships || []).filter(rel => 
+        rel.fromTable !== tableName
+      );
+
+      return updatedSchema;
+    }
+
+    // REGULAR FK LOGIC: Check if this column existed in the baseline schema
     const baselineColumn = baselineSchema.tables?.[tableName]?.columns?.[columnName];
     
     if (!baselineColumn) {
