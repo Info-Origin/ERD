@@ -266,6 +266,13 @@ export const AppProvider = ({ children }) => {
       setHighlightTimer(null);
     }
 
+    // MUTUALLY EXCLUSIVE: Clear N:M highlight when setting regular relationship highlight
+    if (relationshipData && nmHighlightTimer) {
+      clearTimeout(nmHighlightTimer);
+      setNMHighlightTimer(null);
+      setHighlightedNMRelationship(null);
+    }
+
     // Set the new highlighted relationship
     setHighlightedRelationship(relationshipData);
 
@@ -286,6 +293,13 @@ export const AppProvider = ({ children }) => {
     if (nmHighlightTimer) {
       clearTimeout(nmHighlightTimer);
       setNMHighlightTimer(null);
+    }
+
+    // MUTUALLY EXCLUSIVE: Clear regular relationship highlight when setting N:M highlight
+    if (nmData && highlightTimer) {
+      clearTimeout(highlightTimer);
+      setHighlightTimer(null);
+      setHighlightedRelationship(null);
     }
 
     // Set the new highlighted N:M relationship
