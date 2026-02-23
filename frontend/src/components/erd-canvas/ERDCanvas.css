@@ -29,6 +29,18 @@
   cursor: inherit !important;
 }
 
+/* Override: Edges should have pointer cursor */
+.erd-canvas-container .react-flow__edge,
+.erd-canvas-container .react-flow__edge *,
+.erd-canvas-container .react-flow__edge-path,
+.erd-canvas-container g[data-relationship-id],
+.erd-canvas-container g[data-relationship-id] *,
+.erd-canvas-container path[data-relationship-id],
+.erd-canvas-container line[data-relationship-id],
+.erd-canvas-container circle[data-relationship-id] {
+  cursor: pointer !important;
+}
+
 .erd-canvas-container .react-flow {
   cursor: default !important;
 }

@@ -551,6 +551,9 @@ export const AppProvider = ({ children }) => {
 
   const deleteRelationships = async (relationships) => {
     try {
+      // VIRTUAL DELETION ONLY - No real database modifications
+      // This function removes relationships from the virtual schema representation only
+      
       // Check if any relationship is part of a junction table
       const junctionTables = new Set();
       relationships.forEach(rel => {
@@ -579,7 +582,7 @@ export const AppProvider = ({ children }) => {
         });
       }
 
-      // Call backend API to delete relationships
+      // Call backend API to validate deletion (no real DB changes)
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:4001/api'}/schemas/${selectedSchema}/relationships`, {
         method: 'DELETE',
         headers: {
@@ -587,7 +590,7 @@ export const AppProvider = ({ children }) => {
         },
         body: JSON.stringify({ 
           relationships: allRelationshipsToDelete,
-          junctionTables: Array.from(junctionTables) // Send junction tables to delete
+          junctionTables: Array.from(junctionTables)
         }),
       });
 
@@ -595,7 +598,7 @@ export const AppProvider = ({ children }) => {
         throw new Error('Failed to delete relationships');
       }
 
-      // Update working schema
+      // VIRTUAL UPDATE: Update working schema in memory only
       if (virtualSchema.workingSchema) {
         const updatedSchema = {
           ...virtualSchema.workingSchema,
@@ -610,25 +613,22 @@ export const AppProvider = ({ children }) => {
           tables: { ...virtualSchema.workingSchema.tables }
         };
 
-        // Remove FK columns from tables (only if they were user-created for this FK)
+        // Handle FK columns: Remove user-created columns, or just remove FK badge from DB columns
         allRelationshipsToDelete.forEach(rel => {
           if (updatedSchema.tables[rel.fromTable]) {
             const table = updatedSchema.tables[rel.fromTable];
             const column = table.columns[rel.fromColumn];
             
             if (column) {
-              // Check if this column should be deleted
-              // Only delete if:
-              // 1. Column is user-created (has isUserCreated flag)
-              // 2. Column did NOT exist in the original database schema
+              // Check if column exists in original DB
               const existsInOriginalDB = virtualSchema.originalSchema?.tables?.[rel.fromTable]?.columns?.[rel.fromColumn];
               const shouldDeleteColumn = column.isUserCreated && !existsInOriginalDB;
               
               if (shouldDeleteColumn) {
-                // Delete the column
+                // Delete user-created column (virtual only)
                 delete updatedSchema.tables[rel.fromTable].columns[rel.fromColumn];
               } else {
-                // Just remove FK flag
+                // Just remove FK badge from DB column (virtual only)
                 updatedSchema.tables[rel.fromTable].columns[rel.fromColumn] = {
                   ...column,
                   fk: false
@@ -638,7 +638,7 @@ export const AppProvider = ({ children }) => {
           }
         });
 
-        // Remove junction tables
+        // Remove junction tables (virtual only)
         junctionTables.forEach(junctionTable => {
           if (updatedSchema.tables[junctionTable]) {
             delete updatedSchema.tables[junctionTable];

@@ -40,6 +40,7 @@
 .react-flow__edge {
   pointer-events: all !important;
   z-index: 10 !important;
+  cursor: pointer !important;
 }
 
 .react-flow__edge-path {
@@ -48,7 +49,7 @@
   fill: none !important;
   pointer-events: all !important;
   transition: stroke-width 0.2s ease, filter 0.2s ease;
-  cursor: pointer;
+  cursor: pointer !important;
   
   /* Smooth, soft lines - like orthogonal reference */
   shape-rendering: geometricPrecision;
@@ -292,17 +293,20 @@ path[data-user-created="true"].react-flow__edge-path:hover {
 /* Ensure edges don't interfere with node dragging */
 .react-flow__edge {
   pointer-events: visibleStroke !important;
+  cursor: pointer !important;
 }
 
 .react-flow__edge-path {
   pointer-events: stroke !important;
   stroke-width: 8px !important; /* Larger hit area */
   stroke: transparent !important; /* Invisible hit area */
+  cursor: pointer !important;
 }
 
 .react-flow__edge-path:hover {
   stroke: var(--erd-line-hover) !important; /* Visible on hover */
   stroke-width: 3px !important;
+  cursor: pointer !important;
 }
 
 /* Actual visible edge line */
@@ -316,6 +320,7 @@ path[data-user-created="true"].react-flow__edge-path:hover {
   stroke: var(--erd-line-color);
   fill: none;
   transition: all 0.2s ease;
+  cursor: pointer !important;
 }
 
 .direct-relationship-edge .react-flow__edge-path.selected {
@@ -338,6 +343,7 @@ path[data-user-created="true"].react-flow__edge-path:hover {
   shape-rendering: geometricPrecision;
   stroke-linecap: round;
   stroke-linejoin: round;
+  cursor: pointer !important;
 }
 
 .crows-foot-edge-path:hover {
@@ -357,12 +363,14 @@ path[data-user-created="true"].react-flow__edge-path:hover {
   stroke: var(--erd-line-color);
   stroke-width: 1.5px;
   stroke-linecap: round;
+  cursor: pointer !important;
 }
 
 .react-flow__edge[data-crows-foot="true"] circle {
   stroke: var(--erd-line-color);
   stroke-width: 1.5px;
   fill: var(--bg-primary);
+  cursor: pointer !important;
 }
 
 .direct-edge-label {

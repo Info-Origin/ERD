@@ -216,8 +216,62 @@ export const DirectRelationshipEdge = ({
 
   const handleDeleteClick = () => {
     closeContextMenu();
+    
+    // For N:M virtual edges, check if the junction table is user-created
+    if (data?.isVirtualNM && data?.junctionTable && workingSchema) {
+      const junctionTable = workingSchema.tables[data.junctionTable];
+      
+      // Only allow deletion if junction table is user-created
+      if (junctionTable?.isUserCreated) {
+        // Get ALL relationships from the junction table (including both FKs)
+        const junctionRels = workingSchema.relationships.filter(rel => 
+          rel.fromTable === data.junctionTable
+        );
+        
+        // Mark them as part of junction table deletion
+        const relsWithJunctionFlag = junctionRels.map(rel => ({
+          ...rel,
+          isJunctionRelationship: true,
+          junctionTable: data.junctionTable
+        }));
+        
+        openRelationshipDeleteModal(relsWithJunctionFlag);
+      }
+      return;
+    }
+    
+    // For regular FK lines from junction table, check if junction table is user-created
+    const junctionTableName = data?.bundledRelationships?.[0]?.fromTable;
+    if (junctionTableName && workingSchema?.tables[junctionTableName]) {
+      const junctionTable = workingSchema.tables[junctionTableName];
+      
+      // Check if this is a junction table by looking at its structure
+      const isJunctionTable = junctionTable.isUserCreated && 
+        Object.values(junctionTable.columns).filter(col => col.fk).length === 2;
+      
+      if (isJunctionTable) {
+        // Get ALL relationships from the junction table
+        const junctionRels = workingSchema.relationships.filter(rel => 
+          rel.fromTable === junctionTableName
+        );
+        
+        // Mark them as part of junction table deletion
+        const relsWithJunctionFlag = junctionRels.map(rel => ({
+          ...rel,
+          isJunctionRelationship: true,
+          junctionTable: junctionTableName
+        }));
+        
+        openRelationshipDeleteModal(relsWithJunctionFlag);
+        return;
+      }
+    }
+    
+    // For regular relationships, only show user-created ones
     const rels = getAllRelationships().filter(rel => rel.isUserCreated);
-    openRelationshipDeleteModal(rels);
+    if (rels.length > 0) {
+      openRelationshipDeleteModal(rels);
+    }
   };
 
   // Get all relationships for this edge (bundled or single)
@@ -240,8 +294,27 @@ export const DirectRelationshipEdge = ({
     return [];
   };
 
-  // Check if any relationship is user-created
+  // Check if any relationship is user-created OR if this is a user-created junction table
   const hasUserCreatedRelationships = () => {
+    // For N:M virtual edges, check if junction table is user-created
+    if (data?.isVirtualNM && data?.junctionTable && workingSchema) {
+      const junctionTable = workingSchema.tables[data.junctionTable];
+      return junctionTable?.isUserCreated === true;
+    }
+    
+    // For FK lines from junction table, check if junction table is user-created
+    const junctionTableName = data?.bundledRelationships?.[0]?.fromTable;
+    if (junctionTableName && workingSchema?.tables[junctionTableName]) {
+      const junctionTable = workingSchema.tables[junctionTableName];
+      const isJunctionTable = junctionTable.isUserCreated && 
+        Object.values(junctionTable.columns).filter(col => col.fk).length === 2;
+      
+      if (isJunctionTable) {
+        return true;
+      }
+    }
+    
+    // For regular relationships, check if any are user-created
     return getAllRelationships().some(rel => rel.isUserCreated);
   };
 
