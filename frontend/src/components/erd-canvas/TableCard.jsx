@@ -23,6 +23,7 @@ export const TableCard = memo(({ data }) => {
     toggleNullable,
     highlightedRelationship,
     highlightedNMRelationship, // NEW: N:M relationship highlighting
+    setHighlightedNMRelationshipWithTimer, // NEW: For triggering N:M highlight
     erdData,
     openEditTableModal, // Use shared modal for constraint editing only
     openRelationshipDetailsModal, // NEW: For self-join details
@@ -35,7 +36,7 @@ export const TableCard = memo(({ data }) => {
     tablesInCircularDependency,
   } = useApp();
 
-  const { tableName, columns, isSelected, isHighlighted, isParent, highlightedColumn } = data;
+  const { tableName, columns, isSelected, isHighlighted, isParent, highlightedColumn, isJunctionTable } = data;
 
   // Check if this table is part of a circular dependency
   const isInCircularDependency = tablesInCircularDependency?.includes(tableName);
@@ -193,6 +194,25 @@ export const TableCard = memo(({ data }) => {
   });
 
   const handleClick = () => {
+    // Check if this table is a junction table for N:M relationship
+    if (erdData?.relationships) {
+      // A junction table has exactly 2 FK relationships going out
+      const outgoingFKs = erdData.relationships.filter(rel => rel.fromTable === tableName);
+      
+      if (outgoingFKs.length === 2) {
+        // This is a junction table - trigger N:M purple highlight
+        const table1 = outgoingFKs[0].toTable;
+        const table2 = outgoingFKs[1].toTable;
+        
+        setHighlightedNMRelationshipWithTimer({
+          table1,
+          table2,
+          junctionTable: tableName
+        });
+        return; // Don't do normal table selection
+      }
+    }
+    
     // Normal table selection
     selectTable(tableName);
   };
@@ -282,10 +302,11 @@ export const TableCard = memo(({ data }) => {
           "table-card-selected": isSelected,
           "table-card-hover": !isSelected,
           "table-card-relationship-highlighted": isTableHighlighted && !isTableNMHighlighted, // Regular highlight only if not N:M
-          "table-card-nm-highlighted": isTableNMHighlighted, // NEW: Purple N:M highlight
+          "table-card-nm-highlighted": isTableNMHighlighted, // NEW: Purple N:M highlight (HIGHEST priority)
+          "table-card-junction": isJunctionTable && !isTableNMHighlighted, // NEW: Permanent purple for junction tables (but not when N:M highlighted to avoid double styling)
           "table-card-search-highlighted": isHighlighted, // Add search highlight class
-          "table-card-parent": isParent && !isHighlighted && !isTableHighlighted && !isTableNMHighlighted, // Add parent class only if not already highlighted
-          "table-card-circular-dependency": isInCircularDependency, //Circular dependency highlight
+          "table-card-parent": isParent && !isHighlighted && !isTableHighlighted && !isTableNMHighlighted && !isJunctionTable, // Add parent class only if not already highlighted or junction
+          "table-card-circular-dependency": isInCircularDependency && !isTableNMHighlighted && !isJunctionTable, // Circular dependency highlight (but not when N:M highlighted or junction)
         })}
         onClick={handleClick}
         onContextMenu={handleContextMenu}

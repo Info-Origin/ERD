@@ -74,12 +74,25 @@
     0 4px 16px rgba(147, 51, 234, 0.3) !important;
   transform: translateY(-2px) !important;
   background-color: var(--bg-primary) !important;
-  z-index: 20 !important;
+  z-index: 35 !important; /* Higher than circular dependency to override */
 }
 
 .table-card-nm-highlighted .table-card-header {
   background-color: rgba(147, 51, 234, 0.15) !important;
   border-bottom-color: rgba(147, 51, 234, 0.3) !important;
+}
+
+/* Junction table - PERMANENT PURPLE (lighter than N:M highlight) */
+.table-card-junction {
+  border-color: #9333ea !important;
+  box-shadow:
+    0 0 0 2px rgba(147, 51, 234, 0.15),
+    0 2px 8px rgba(147, 51, 234, 0.2) !important;
+}
+
+.table-card-junction .table-card-header {
+  background-color: rgba(147, 51, 234, 0.08) !important;
+  border-bottom-color: rgba(147, 51, 234, 0.2) !important;
 }
 
 /* Pulse animation for search highlight */

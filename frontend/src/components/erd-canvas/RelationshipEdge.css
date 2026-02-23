@@ -118,6 +118,17 @@ path[data-user-created="true"].react-flow__edge-path.direct-edge-path {
   filter: drop-shadow(0 0 3px #125da8) drop-shadow(0 0 18px #125da8) !important;
 }
 
+/* N:M highlighted edges - HIGHEST PRIORITY - overrides user-created blue */
+.erd-canvas-container .react-flow__edge-path[data-nm-highlighted="true"],
+.erd-canvas-container path[data-nm-highlighted="true"].react-flow__edge-path,
+path[data-nm-highlighted="true"].react-flow__edge-path.crows-foot-edge-path,
+path[data-nm-highlighted="true"].react-flow__edge-path.direct-edge-path,
+path[data-nm-highlighted="true"][data-user-created="true"].react-flow__edge-path {
+  stroke: #9333ea !important;
+  stroke-width: 2.5px !important;
+  filter: drop-shadow(0 0 6px #9333ea) !important;
+}
+
 /* Hover state for user-created edges */
 .erd-canvas-container .react-flow__edge-path[data-user-created="true"]:hover,
 path[data-user-created="true"].react-flow__edge-path:hover {

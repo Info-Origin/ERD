@@ -1,6 +1,7 @@
-import { memo, useState } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useApp } from "../../context/AppContext";
+import { useVirtualSchema } from "../../context/VirtualSchemaContext";
 import { useTheme } from "../../context/ThemeContext";
 import "./RelationshipEdge.css";
 
@@ -182,8 +183,7 @@ const isSelfJoin = (data) => {
   return data?.fromTable === data?.toTable;
 };
 
-export const RelationshipEdge = memo(
-  ({
+export const RelationshipEdge = ({
     id,
     sourceX,
     sourceY,
@@ -205,6 +205,8 @@ export const RelationshipEdge = memo(
       highlightedRelationship, 
       routingMode,
       setHighlightedRelationshipWithTimer, // NEW: Improved timer management
+      setHighlightedNMRelationshipWithTimer, // NEW: N:M highlighting
+      highlightedNMRelationship, // NEW: N:M highlight state
       // NEW: Hover-based highlighting
       hoverHighlightedRelationships,
       // Relationship deletion
@@ -212,9 +214,13 @@ export const RelationshipEdge = memo(
       showNotification,
       // Relationship modals
       openRelationshipDetailsModal,
-      openRelationshipDeleteModal
+      openRelationshipDeleteModal,
+      // NEW: Circular dependency detection
+      tablesInCircularDependency,
+      relationshipsInCircularDependency,
     } = useApp();
     const { theme } = useTheme();
+    const { workingSchema } = useVirtualSchema();
     
     // Context menu state
     const [contextMenu, setContextMenu] = useState({ isOpen: false, x: 0, y: 0 });
@@ -224,6 +230,22 @@ export const RelationshipEdge = memo(
     
     // NEW: Check if this is a user-created relationship (permanent orange highlight)
     const isUserCreated = data?.bundledRelationships?.some(rel => rel.isUserCreated) || data?.isUserCreated;
+
+    // NEW: Check if this line connects to a circular dependency table (show in red)
+    // Only show red if THIS SPECIFIC RELATIONSHIP is part of the circular dependency cycle
+    const isCircularDependencyLine = data?.bundledRelationships?.some(rel => 
+      relationshipsInCircularDependency?.some(circRel =>
+        circRel.fromTable === rel.fromTable &&
+        circRel.fromColumn === rel.fromColumn &&
+        circRel.toTable === rel.toTable &&
+        circRel.toColumn === rel.toColumn
+      )
+    ) || relationshipsInCircularDependency?.some(circRel =>
+      circRel.fromTable === data?.fromTable &&
+      circRel.fromColumn === data?.fromColumn &&
+      circRel.toTable === data?.toTable &&
+      circRel.toColumn === data?.toColumn
+    );
     
     // Check if this edge is currently highlighted (with corrected semantics)
     // For bundled relationships, check against ALL relationships in the bundle
@@ -247,6 +269,28 @@ export const RelationshipEdge = memo(
     );
 
     const isHoverHighlighted = !!hoverHighlight;
+
+    // NEW: Check if this is a junction table line that should be highlighted (purple)
+    // This happens when user clicks on N:M virtual line
+    // Check both single relationship and bundled relationships
+    const isNMJunctionLine = highlightedNMRelationship && (
+      // Check single relationship
+      (data.fromTable === highlightedNMRelationship.junctionTable &&
+       (data.toTable === highlightedNMRelationship.table1 || 
+        data.toTable === highlightedNMRelationship.table2)) ||
+      // Check bundled relationships
+      (data?.bundledRelationships?.some(rel => 
+        rel.fromTable === highlightedNMRelationship.junctionTable &&
+        (rel.toTable === highlightedNMRelationship.table1 || 
+         rel.toTable === highlightedNMRelationship.table2)
+      ))
+    );
+
+    // NEW: Check if this N:M virtual line itself should be highlighted (purple)
+    const isNMVirtualLineHighlighted = data?.isVirtualNM && highlightedNMRelationship &&
+      data.junctionTable === highlightedNMRelationship.junctionTable &&
+      ((data.fromTable === highlightedNMRelationship.table1 && data.toTable === highlightedNMRelationship.table2) ||
+       (data.fromTable === highlightedNMRelationship.table2 && data.toTable === highlightedNMRelationship.table1));
     
     // Extract MySQL Workbench port lane data
     const portIndex = data?.portIndex || 1;
@@ -280,6 +324,17 @@ export const RelationshipEdge = memo(
       e.stopPropagation();
       
       if (data) {
+        // For virtual N:M edges, highlight the 3 tables (2 main + junction)
+        if (data.isVirtualNM) {
+          const nmHighlightData = {
+            table1: data.fromTable,
+            table2: data.toTable,
+            junctionTable: data.junctionTable
+          };
+          setHighlightedNMRelationshipWithTimer(nmHighlightData);
+          return;
+        }
+        
         // For bundled relationships, highlight the FIRST relationship in the bundle
         // The edge highlighting logic will check ALL bundled relationships
         const relationshipToHighlight = data.bundledRelationships?.[0] || data;
@@ -329,6 +384,14 @@ export const RelationshipEdge = memo(
 
     // Get all relationships for this edge (bundled or single)
     const getAllRelationships = () => {
+      // For N:M virtual edges, get the actual relationships from the junction table
+      if (data?.isVirtualNM && data?.junctionTable && workingSchema) {
+        const junctionRels = workingSchema.relationships.filter(rel => 
+          rel.fromTable === data.junctionTable
+        );
+        return junctionRels;
+      }
+      
       if (data?.bundledRelationships && data.bundledRelationships.length > 0) {
         return data.bundledRelationships;
       }
@@ -370,23 +433,33 @@ export const RelationshipEdge = memo(
         <path
           d={pathToUse}
           stroke={
-            isUserCreated ? '#125da8aa' : // Your custom blue for user-created (always visible)
-            isHighlighted ? '#ff6b35' : // Orange for click-based highlighting
+            isNMJunctionLine || isNMVirtualLineHighlighted ? '#9333ea' : // Purple for N:M (HIGHEST priority)
+            isHighlighted ? '#ff6b35' : // Orange for DB line click
+            isUserCreated ? '#125da8aa' : // Blue for user-created (permanent)
+            isCircularDependencyLine ? '#ef4444' : // Red for circular dependency lines
             isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : // Green for PK hover, Blue for FK hover
             lineColor // Default color for database relationships
           }
-          strokeWidth={isUserCreated ? 2.5 : (isHighlighted || isHoverHighlighted ? 2.5 : 1)}
+          strokeWidth={isNMJunctionLine || isNMVirtualLineHighlighted ? 2.5 : (isUserCreated || isCircularDependencyLine ? 2.5 : (isHighlighted || isHoverHighlighted ? 2.5 : 1))}
           strokeDasharray={edgeStyle.strokeDasharray}
           fill="none"
           style={{
             cursor: 'pointer',
             pointerEvents: 'all',
-            filter: isUserCreated ? 'drop-shadow(0 0 4px #125da8) drop-shadow(0 0 8px #125da8)' : edgeStyle.filter
+            filter: isNMJunctionLine || isNMVirtualLineHighlighted || isHighlighted || isHoverHighlighted ? 
+              `drop-shadow(0 0 6px ${
+                isNMJunctionLine || isNMVirtualLineHighlighted ? '#9333ea' : // Purple for N:M
+                isHighlighted ? '#ff6b35' : // Orange for DB click
+                isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : 
+                '#3b82f6'
+              })` : (isUserCreated ? `drop-shadow(0 0 4px #125da8aa)` : (isCircularDependencyLine ? `drop-shadow(0 0 4px #ef4444)` : "none")), // Subtle glow for user-created and circular dependency
+            transition: 'all 0.2s ease'
           }}
           onClick={handleEdgeClick}
           onContextMenu={handleContextMenu}
           data-relationship-id={id}
           data-user-created={isUserCreated ? 'true' : 'false'}
+          data-nm-highlighted={(isNMJunctionLine || isNMVirtualLineHighlighted) ? 'true' : 'false'}
         />
         
         {/* Wider invisible clickable area that follows the chosen path */}
@@ -500,7 +573,6 @@ export const RelationshipEdge = memo(
         )}
       </g>
     );
-  },
-);
+};
 
 RelationshipEdge.displayName = "RelationshipEdge";

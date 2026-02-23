@@ -229,6 +229,23 @@ export const calculateHybridLayout = (schemaData, savedPositions = {}) => {
       const columns = tableData.columns || {};
       const columnCount = Object.keys(columns).length;
       
+      // Detect if this is a junction table (for both DB and user-created)
+      const columnValues = Object.values(columns);
+      const pkColumns = columnValues.filter(col => col.pk);
+      const fkColumns = columnValues.filter(col => col.fk);
+      
+      // Junction table criteria:
+      // 1. Has exactly 2 FK columns
+      // 2. Both FK columns are part of PK (identifying relationships)
+      // 3. PK is composite (2 columns)
+      const isDetectedJunctionTable = 
+        fkColumns.length === 2 && 
+        pkColumns.length === 2 && 
+        fkColumns.every(fk => fk.pk);
+      
+      // Use explicit flag OR detected structure
+      const isJunctionTable = tableData.isJunctionTable || isDetectedJunctionTable;
+      
       // Calculate table height
       const headerHeight = 40;
       const rowHeight = 28;
@@ -245,9 +262,10 @@ export const calculateHybridLayout = (schemaData, savedPositions = {}) => {
         data: {
           tableName: pos.table,
           columns: tableData.columns,
-        isSelected: false,
-        hierarchyDepth: pos.depth, // Store depth for styling
-      },
+          isSelected: false,
+          hierarchyDepth: pos.depth, // Store depth for styling
+          isJunctionTable: isJunctionTable, // NEW: Pass junction table flag (detected or explicit)
+        },
       width: tableWidth,
       height: tableHeight,
     };

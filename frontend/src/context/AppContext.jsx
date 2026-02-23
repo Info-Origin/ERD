@@ -34,6 +34,7 @@ export const AppProvider = ({ children }) => {
   
   // NEW: Circular dependency detection
   const [tablesInCircularDependency, setTablesInCircularDependency] = useState([]);
+  const [relationshipsInCircularDependency, setRelationshipsInCircularDependency] = useState([]);
   
   const [routingMode] = useState('direct'); // Fixed to 'direct' stepped lines only
   const [crowsFootMode, setCrowsFootMode] = useState(false); // Toggle for crow's foot notation
@@ -329,13 +330,15 @@ export const AppProvider = ({ children }) => {
     const currentSchema = virtualSchema.workingSchema || erdData;
     
     if (currentSchema?.relationships) {
-      const circularTables = detectCircularDependencies(currentSchema.relationships);
-      setTablesInCircularDependency(circularTables);
+      const circularDeps = detectCircularDependencies(currentSchema.relationships);
+      setTablesInCircularDependency(circularDeps.tables);
+      setRelationshipsInCircularDependency(circularDeps.relationships);
       
-      if (circularTables.length > 0) {
+      if (circularDeps.tables.length > 0) {
       }
     } else {
       setTablesInCircularDependency([]);
+      setRelationshipsInCircularDependency([]);
     }
   }, [virtualSchema.workingSchema, erdData]);
 
@@ -705,6 +708,7 @@ export const AppProvider = ({ children }) => {
 
     // NEW: Circular dependency detection
     tablesInCircularDependency,
+    relationshipsInCircularDependency,
 
     // Routing mode (fixed to direct)
     routingMode,

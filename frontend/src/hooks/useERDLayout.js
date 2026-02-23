@@ -103,6 +103,10 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
         const virtualNMRelationships = [];
         junctionTables.forEach(([table1, table2], junctionTable) => {
           if (visibleTableNames.has(table1) && visibleTableNames.has(table2)) {
+            // Check if junction table is user-created by checking if any FK from it is user-created
+            const junctionFKs = schemaFilteredRelationships.filter(rel => rel.fromTable === junctionTable);
+            const isUserCreatedJunction = junctionFKs.some(fk => fk.isUserCreated);
+            
             virtualNMRelationships.push({
               fromTable: table1,
               toTable: table2,
@@ -111,7 +115,8 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
               type: 'MANY_TO_MANY',
               cardinalityType: 'N:M',
               isVirtualNM: true,
-              junctionTable: junctionTable
+              junctionTable: junctionTable,
+              isUserCreated: isUserCreatedJunction // Mark as user-created if junction table is user-created
             });
           }
         });
@@ -235,7 +240,7 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
               relationType: 'MANY_TO_MANY',
               type: 'MANY_TO_MANY',
               cardinalityType: 'N:M',
-              isUserCreated: false,
+              isUserCreated: rel.isUserCreated || false, // Use the isUserCreated flag from relationship
               isIdentifying: false,
               isVirtualNM: true,
               junctionTable: rel.junctionTable,
@@ -379,6 +384,10 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
       const virtualNMRelationships = [];
       junctionTables.forEach(([table1, table2], junctionTable) => {
         if (visibleTableNames.has(table1) && visibleTableNames.has(table2)) {
+          // Check if junction table is user-created by checking if any FK from it is user-created
+          const junctionFKs = schemaFilteredRelationships.filter(rel => rel.fromTable === junctionTable);
+          const isUserCreatedJunction = junctionFKs.some(fk => fk.isUserCreated);
+          
           virtualNMRelationships.push({
             fromTable: table1,
             toTable: table2,
@@ -387,7 +396,8 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
             type: 'MANY_TO_MANY',
             cardinalityType: 'N:M',
             isVirtualNM: true,
-            junctionTable: junctionTable
+            junctionTable: junctionTable,
+            isUserCreated: isUserCreatedJunction // Mark as user-created if junction table is user-created
           });
         }
       });
@@ -513,7 +523,7 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
             relationType: 'MANY_TO_MANY',
             type: 'MANY_TO_MANY',
             cardinalityType: 'N:M',
-            isUserCreated: false,
+            isUserCreated: rel.isUserCreated || false, // Use the isUserCreated flag from relationship
             isIdentifying: false,
             isVirtualNM: true,
             junctionTable: rel.junctionTable,

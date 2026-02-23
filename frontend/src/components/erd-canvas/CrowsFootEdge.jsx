@@ -1,11 +1,11 @@
-import { memo, useState } from 'react';
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getSmoothStepPath } from '@xyflow/react';
 import { useApp } from "../../context/AppContext";
 import { useVirtualSchema } from "../../context/VirtualSchemaContext";
 import './RelationshipEdge.css';
 
-export const CrowsFootEdge = memo(({
+export const CrowsFootEdge = ({
   id,
   sourceX,
   sourceY,
@@ -36,7 +36,10 @@ export const CrowsFootEdge = memo(({
     showNotification,
     // Relationship modals
     openRelationshipDetailsModal,
-    openRelationshipDeleteModal
+    openRelationshipDeleteModal,
+    // NEW: Circular dependency detection
+    tablesInCircularDependency,
+    relationshipsInCircularDependency,
   } = useApp();
   
   const { workingSchema } = useVirtualSchema();
@@ -49,6 +52,22 @@ export const CrowsFootEdge = memo(({
 
   // NEW: Check if this is a user-created relationship (permanent orange highlight)
   const isUserCreated = data?.bundledRelationships?.some(rel => rel.isUserCreated) || data?.isUserCreated;
+
+  // NEW: Check if this line connects to a circular dependency table (show in red)
+  // Only show red if THIS SPECIFIC RELATIONSHIP is part of the circular dependency cycle
+  const isCircularDependencyLine = data?.bundledRelationships?.some(rel => 
+    relationshipsInCircularDependency?.some(circRel =>
+      circRel.fromTable === rel.fromTable &&
+      circRel.fromColumn === rel.fromColumn &&
+      circRel.toTable === rel.toTable &&
+      circRel.toColumn === rel.toColumn
+    )
+  ) || relationshipsInCircularDependency?.some(circRel =>
+    circRel.fromTable === data?.fromTable &&
+    circRel.fromColumn === data?.fromColumn &&
+    circRel.toTable === data?.toTable &&
+    circRel.toColumn === data?.toColumn
+  );
 
   // Use CSS variables for theme-aware colors
   // Instead of computing colors in JS, we'll use CSS variables directly in SVG
@@ -81,10 +100,19 @@ export const CrowsFootEdge = memo(({
 
   // NEW: Check if this is a junction table line that should be highlighted (purple)
   // This happens when user clicks on N:M virtual line
-  const isNMJunctionLine = highlightedNMRelationship && 
-    data.fromTable === highlightedNMRelationship.junctionTable &&
-    (data.toTable === highlightedNMRelationship.table1 || 
-     data.toTable === highlightedNMRelationship.table2);
+  // Check both single relationship and bundled relationships
+  const isNMJunctionLine = highlightedNMRelationship && (
+    // Check single relationship
+    (data.fromTable === highlightedNMRelationship.junctionTable &&
+     (data.toTable === highlightedNMRelationship.table1 || 
+      data.toTable === highlightedNMRelationship.table2)) ||
+    // Check bundled relationships
+    (data?.bundledRelationships?.some(rel => 
+      rel.fromTable === highlightedNMRelationship.junctionTable &&
+      (rel.toTable === highlightedNMRelationship.table1 || 
+       rel.toTable === highlightedNMRelationship.table2)
+    ))
+  );
 
   // NEW: Check if this N:M virtual line itself should be highlighted (purple)
   const isNMVirtualLineHighlighted = data?.isVirtualNM && highlightedNMRelationship &&
@@ -542,32 +570,33 @@ export const CrowsFootEdge = memo(({
             className="react-flow__edge-path crows-foot-edge-path"
             d={edgePath}
             stroke={
-              isNMJunctionLine || isNMVirtualLineHighlighted ? '#9333ea' : // Purple for N:M junction lines and virtual line
-              isUserCreated ? '#125da8aa' : // Your custom blue for user-created (always visible)
-              isHighlighted ? '#ff6b35' : // Orange for click-based highlighting
+              isNMJunctionLine || isNMVirtualLineHighlighted ? '#9333ea' : // Purple for N:M (HIGHEST priority)
+              isHighlighted ? '#ff6b35' : // Orange for DB line click
+              isUserCreated ? '#125da8aa' : // Blue for user-created (permanent)
+              isCircularDependencyLine ? '#ef4444' : // Red for circular dependency lines
               isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : // Green for PK hover, Blue for FK hover
               lineColor // Default color for database relationships
             }
-            strokeWidth={isNMJunctionLine || isNMVirtualLineHighlighted ? 2.5 : (isUserCreated ? 2.5 : (isHighlighted || isHoverHighlighted ? 2.5 : 1.5))}
+            strokeWidth={isNMJunctionLine || isNMVirtualLineHighlighted ? 2.5 : (isUserCreated || isCircularDependencyLine ? 2.5 : (isHighlighted || isHoverHighlighted ? 2.5 : 1.5))}
             strokeDasharray={relationshipStyle.strokeDasharray}
             fill="none"
             style={{
               cursor: 'pointer',
               pointerEvents: 'all',
-              filter: isNMJunctionLine || isNMVirtualLineHighlighted || isUserCreated || isHighlighted || isHoverHighlighted ?
+              filter: isNMJunctionLine || isNMVirtualLineHighlighted || isHighlighted || isHoverHighlighted ?
                 `drop-shadow(0 0 6px ${
-                  isNMJunctionLine || isNMVirtualLineHighlighted ? '#9333ea' : // Purple for N:M junction lines and virtual line
-                  isUserCreated ? '#125da8aa' : // Blue for user-created
-                  isHighlighted ? '#ff6b35' : 
+                  isNMJunctionLine || isNMVirtualLineHighlighted ? '#9333ea' : // Purple for N:M
+                  isHighlighted ? '#ff6b35' : // Orange for DB click
                   isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : 
                   '#3b82f6'
-                })` : "none",
+                })` : (isUserCreated ? `drop-shadow(0 0 4px #125da8aa)` : (isCircularDependencyLine ? `drop-shadow(0 0 4px #ef4444)` : "none")), // Subtle glow for user-created and circular dependency
               transition: 'all 0.2s ease'
             }}
             onClick={handleEdgeClick}
             onContextMenu={handleContextMenu}
             data-relationship-id={id}
             data-user-created={isUserCreated ? 'true' : 'false'}
+            data-nm-highlighted={(isNMJunctionLine || isNMVirtualLineHighlighted) ? 'true' : 'false'}
           />
           
           {/* Crow's foot markers */}
@@ -706,6 +735,6 @@ export const CrowsFootEdge = memo(({
       )}
     </g>
   );
-});
+};
 
 CrowsFootEdge.displayName = 'CrowsFootEdge';

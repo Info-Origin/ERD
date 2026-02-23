@@ -1,6 +1,8 @@
 /**
  * Detect circular dependencies in table relationships
- * Returns an array of table names that are part of circular dependencies (cycles of 3+ tables)
+ * Returns an object with:
+ * - tables: array of table names that are part of circular dependencies (cycles of 3+ tables)
+ * - relationships: array of relationships that are part of circular dependencies
  * 
  * Edge Cases Handled:
  * ✅ Simple 3+ table cycles
@@ -15,12 +17,13 @@
 export const detectCircularDependencies = (relationships) => {
   // Edge Case: Empty, null, or undefined relationships
   if (!relationships || relationships.length === 0) {
-    return [];
+    return { tables: [], relationships: [] };
   }
 
   // Build adjacency list from relationships
   const graph = {};
   const allTables = new Set();
+  const relationshipMap = new Map(); // Map to track relationships by edge
   
   relationships.forEach(rel => {
     const from = rel.fromTable;
@@ -38,11 +41,18 @@ export const detectCircularDependencies = (relationships) => {
     // Avoid duplicate edges
     if (!graph[from].includes(to)) {
       graph[from].push(to);
+      // Store relationship for this edge
+      const edgeKey = `${from}->${to}`;
+      if (!relationshipMap.has(edgeKey)) {
+        relationshipMap.set(edgeKey, []);
+      }
+      relationshipMap.get(edgeKey).push(rel);
     }
   });
 
   // Set to store all tables involved in cycles of length >= 3
   const tablesInCycles = new Set();
+  const relationshipsInCycles = new Set();
 
   // DFS to detect cycles with proper cycle length validation
   const detectCycles = (node, visited, recStack, path) => {
@@ -71,6 +81,23 @@ export const detectCircularDependencies = (relationships) => {
           cycleNodes.forEach(table => tablesInCycles.add(table));
           // Add the closing node to complete the cycle
           tablesInCycles.add(neighbor);
+          
+          // Add all relationships in the cycle
+          for (let i = 0; i < cycleNodes.length; i++) {
+            const from = cycleNodes[i];
+            const to = cycleNodes[(i + 1) % cycleNodes.length];
+            const edgeKey = `${from}->${to}`;
+            const rels = relationshipMap.get(edgeKey);
+            if (rels) {
+              rels.forEach(rel => relationshipsInCycles.add(rel));
+            }
+          }
+          // Add the closing edge
+          const closingEdgeKey = `${cycleNodes[cycleNodes.length - 1]}->${neighbor}`;
+          const closingRels = relationshipMap.get(closingEdgeKey);
+          if (closingRels) {
+            closingRels.forEach(rel => relationshipsInCycles.add(rel));
+          }
         }
       }
     }
@@ -91,5 +118,8 @@ export const detectCircularDependencies = (relationships) => {
     }
   }
 
-  return Array.from(tablesInCycles);
+  return {
+    tables: Array.from(tablesInCycles),
+    relationships: Array.from(relationshipsInCycles)
+  };
 };

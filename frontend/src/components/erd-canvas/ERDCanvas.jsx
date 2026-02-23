@@ -217,7 +217,10 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
     
     // Clear N:M highlight when clicking anywhere on canvas (with timer cleanup)
     setHighlightedNMRelationshipWithTimer(null);
-  }, [setHighlightedNMRelationshipWithTimer]);
+    
+    // Clear regular relationship highlight when clicking anywhere on canvas (with timer cleanup)
+    setHighlightedRelationshipWithTimer(null);
+  }, [setHighlightedNMRelationshipWithTimer, setHighlightedRelationshipWithTimer]);
   useEffect(() => {
     const handleDeleteRelationship = (event) => {
       const { relationshipId } = event.detail;
