@@ -2,6 +2,7 @@ import { memo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getSmoothStepPath } from '@xyflow/react';
 import { useApp } from "../../context/AppContext";
+import { useVirtualSchema } from "../../context/VirtualSchemaContext";
 import './RelationshipEdge.css';
 
 export const CrowsFootEdge = memo(({
@@ -37,6 +38,8 @@ export const CrowsFootEdge = memo(({
     openRelationshipDetailsModal,
     openRelationshipDeleteModal
   } = useApp();
+  
+  const { workingSchema } = useVirtualSchema();
   
   // Context menu state
   const [contextMenu, setContextMenu] = useState({ isOpen: false, x: 0, y: 0 });
@@ -82,6 +85,12 @@ export const CrowsFootEdge = memo(({
     data.fromTable === highlightedNMRelationship.junctionTable &&
     (data.toTable === highlightedNMRelationship.table1 || 
      data.toTable === highlightedNMRelationship.table2);
+
+  // NEW: Check if this N:M virtual line itself should be highlighted (purple)
+  const isNMVirtualLineHighlighted = data?.isVirtualNM && highlightedNMRelationship &&
+    data.junctionTable === highlightedNMRelationship.junctionTable &&
+    ((data.fromTable === highlightedNMRelationship.table1 && data.toTable === highlightedNMRelationship.table2) ||
+     (data.fromTable === highlightedNMRelationship.table2 && data.toTable === highlightedNMRelationship.table1));
 
   // Determine relationship cardinality and line style
   const getRelationshipStyle = () => {
@@ -230,6 +239,14 @@ export const CrowsFootEdge = memo(({
 
   // Get all relationships for this edge (bundled or single)
   const getAllRelationships = () => {
+    // For N:M virtual edges, get the actual relationships from the junction table
+    if (data?.isVirtualNM && data?.junctionTable && workingSchema) {
+      const junctionRels = workingSchema.relationships.filter(rel => 
+        rel.fromTable === data.junctionTable
+      );
+      return junctionRels;
+    }
+    
     if (data?.bundledRelationships && data.bundledRelationships.length > 0) {
       return data.bundledRelationships;
     }
@@ -356,8 +373,8 @@ export const CrowsFootEdge = memo(({
           cx={circleX}
           cy={circleY}
           r={circleRadius}
-          fill={isNMJunctionLine ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : bgColor))}
-          stroke={isNMJunctionLine ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
+          fill={isNMJunctionLine || isNMVirtualLineHighlighted ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : bgColor))}
+          stroke={isNMJunctionLine || isNMVirtualLineHighlighted ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
           strokeWidth="1.5"
         />
       );
@@ -378,7 +395,7 @@ export const CrowsFootEdge = memo(({
             cy={targetBaseY}
             r={circleRadius}
             fill={isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : bgColor)}
-            stroke={isNMJunctionLine ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
+            stroke={isNMJunctionLine || isNMVirtualLineHighlighted ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
             strokeWidth="1.5"
           />
         );
@@ -398,7 +415,7 @@ export const CrowsFootEdge = memo(({
               y1={targetBaseY}
               x2={targetCenterEndX}
               y2={targetCenterEndY}
-              stroke={isNMJunctionLine ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
+              stroke={isNMJunctionLine || isNMVirtualLineHighlighted ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
               strokeWidth="1.5"
               strokeLinecap="round"
             />
@@ -408,7 +425,7 @@ export const CrowsFootEdge = memo(({
               y1={targetBaseY}
               x2={targetCenterEndX + spreadX * crowsFootSpread}
               y2={targetCenterEndY - spreadY * crowsFootSpread}
-              stroke={isNMJunctionLine ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
+              stroke={isNMJunctionLine || isNMVirtualLineHighlighted ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
               strokeWidth="1.5"
               strokeLinecap="round"
             />
@@ -418,7 +435,7 @@ export const CrowsFootEdge = memo(({
               y1={targetBaseY}
               x2={targetCenterEndX - spreadX * crowsFootSpread}
               y2={targetCenterEndY + spreadY * crowsFootSpread}
-              stroke={isNMJunctionLine ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
+              stroke={isNMJunctionLine || isNMVirtualLineHighlighted ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
               strokeWidth="1.5"
               strokeLinecap="round"
             />
@@ -440,7 +457,7 @@ export const CrowsFootEdge = memo(({
               y1={sourceCrowsFootBaseY}
               x2={sourceCenterEndX}
               y2={sourceCenterEndY}
-              stroke={isNMJunctionLine ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
+              stroke={isNMJunctionLine || isNMVirtualLineHighlighted ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
               strokeWidth="1.5"
               strokeLinecap="round"
             />
@@ -450,7 +467,7 @@ export const CrowsFootEdge = memo(({
               y1={sourceCrowsFootBaseY}
               x2={sourceCenterEndX + sourceSpreadX * crowsFootSpread}
               y2={sourceCenterEndY - sourceSpreadY * crowsFootSpread}
-              stroke={isNMJunctionLine ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
+              stroke={isNMJunctionLine || isNMVirtualLineHighlighted ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
               strokeWidth="1.5"
               strokeLinecap="round"
             />
@@ -460,7 +477,7 @@ export const CrowsFootEdge = memo(({
               y1={sourceCrowsFootBaseY}
               x2={sourceCenterEndX - sourceSpreadX * crowsFootSpread}
               y2={sourceCenterEndY + sourceSpreadY * crowsFootSpread}
-              stroke={isNMJunctionLine ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
+              stroke={isNMJunctionLine || isNMVirtualLineHighlighted ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
               strokeWidth="1.5"
               strokeLinecap="round"
             />
@@ -482,7 +499,7 @@ export const CrowsFootEdge = memo(({
               y1={targetBaseY}
               x2={centerEndX}
               y2={centerEndY}
-              stroke={isNMJunctionLine ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
+              stroke={isNMJunctionLine || isNMVirtualLineHighlighted ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
               strokeWidth="1.5"
               strokeLinecap="round"
             />
@@ -492,7 +509,7 @@ export const CrowsFootEdge = memo(({
               y1={targetBaseY}
               x2={centerEndX + spreadX * crowsFootSpread}
               y2={centerEndY - spreadY * crowsFootSpread}
-              stroke={isNMJunctionLine ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
+              stroke={isNMJunctionLine || isNMVirtualLineHighlighted ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
               strokeWidth="1.5"
               strokeLinecap="round"
             />
@@ -502,7 +519,7 @@ export const CrowsFootEdge = memo(({
               y1={targetBaseY}
               x2={centerEndX - spreadX * crowsFootSpread}
               y2={centerEndY + spreadY * crowsFootSpread}
-              stroke={isNMJunctionLine ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
+              stroke={isNMJunctionLine || isNMVirtualLineHighlighted ? '#9333ea' : (isUserCreated ? '#125da8aa' : (isHighlighted ? '#ff6b35' : lineColor))}
               strokeWidth="1.5"
               strokeLinecap="round"
             />
@@ -525,21 +542,21 @@ export const CrowsFootEdge = memo(({
             className="react-flow__edge-path crows-foot-edge-path"
             d={edgePath}
             stroke={
-              isNMJunctionLine ? '#9333ea' : // Purple for N:M junction lines
+              isNMJunctionLine || isNMVirtualLineHighlighted ? '#9333ea' : // Purple for N:M junction lines and virtual line
               isUserCreated ? '#125da8aa' : // Your custom blue for user-created (always visible)
               isHighlighted ? '#ff6b35' : // Orange for click-based highlighting
               isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : // Green for PK hover, Blue for FK hover
               lineColor // Default color for database relationships
             }
-            strokeWidth={isNMJunctionLine ? 2.5 : (isUserCreated ? 2.5 : (isHighlighted || isHoverHighlighted ? 2.5 : 1.5))}
+            strokeWidth={isNMJunctionLine || isNMVirtualLineHighlighted ? 2.5 : (isUserCreated ? 2.5 : (isHighlighted || isHoverHighlighted ? 2.5 : 1.5))}
             strokeDasharray={relationshipStyle.strokeDasharray}
             fill="none"
             style={{
               cursor: 'pointer',
               pointerEvents: 'all',
-              filter: isNMJunctionLine || isUserCreated || isHighlighted || isHoverHighlighted ?
+              filter: isNMJunctionLine || isNMVirtualLineHighlighted || isUserCreated || isHighlighted || isHoverHighlighted ?
                 `drop-shadow(0 0 6px ${
-                  isNMJunctionLine ? '#9333ea' : // Purple for N:M junction lines
+                  isNMJunctionLine || isNMVirtualLineHighlighted ? '#9333ea' : // Purple for N:M junction lines and virtual line
                   isUserCreated ? '#125da8aa' : // Blue for user-created
                   isHighlighted ? '#ff6b35' : 
                   isHoverHighlighted ? (hoverHighlight?.highlightType === 'primary' ? '#34d399' : '#60a5fa') : 
