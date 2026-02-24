@@ -7,6 +7,7 @@ import {
   useRef,
 } from "react";
 import { v4 as uuidv4 } from "uuid";
+import persistenceService from "../services/persistenceService.js";
 import {
   saveBaselineSchema,
   loadBaselineSchema,
@@ -19,6 +20,8 @@ import {
   loadTablePositions,
   clearTablePositions,
   loadFromStorage,
+  loadFromDatabase,
+  loadBaselineFromDatabase,
   clearFromStorage,
   clearAllFromStorage,
   getStorageTimestamp,
@@ -360,6 +363,7 @@ export const VirtualSchemaProvider = ({ children }) => {
       setHistoryIndex(newHistoryIndex);
       historyIndexRef.current = newHistoryIndex;
       setIsModified(newIsModified);
+      setHasUnsavedChanges(false); // Clear unsaved flag when switching schemas
       setIsSwitchingSchema(false); // Clear switching state
       
       return; // Early return for schema switching
@@ -371,7 +375,8 @@ export const VirtualSchemaProvider = ({ children }) => {
     
     // CRITICAL: Save the baseline schema for future comparisons
     // This represents the FIRST real DB state we saw for this schema
-    let baselineSchema = loadBaselineSchema(schemaName);
+    // Load from DATABASE to get latest baseline from other users
+    let baselineSchema = await loadBaselineFromDatabase(schemaName);
     if (!baselineSchema) {
       // First time loading this schema - save it as baseline
       saveBaselineSchema(schemaName, erdData);
@@ -466,17 +471,19 @@ export const VirtualSchemaProvider = ({ children }) => {
       return updatedSchema;
     };
 
-    // Try to load from localStorage first
-    const savedSchema = loadFromStorage(schemaName);
+    // CRITICAL: Load from DATABASE when switching schemas to get latest changes from other users
+    // This ensures User B sees User A's changes when switching back to a schema
+    const savedSchema = await loadFromDatabase(schemaName);
     
     if (savedSchema) {
       // MERGE STRATEGY: Combine real DB schema with virtual schema changes
       // CRITICAL: Use the persistent baseline schema for comparison
       
-      // Get the timestamp of the saved schema
-      const timestamp = getStorageTimestamp(schemaName);
-      if (timestamp) {
-        setLastSavedTimestamp(timestamp);
+      // Get the timestamp from the database (not localStorage)
+      const dbTimestamp = await persistenceService.getVirtualSchemaTimestamp(schemaName);
+      if (dbTimestamp) {
+        setLastSavedTimestamp(dbTimestamp);
+        console.log('📅 Loaded schema with DB timestamp:', new Date(dbTimestamp).toLocaleTimeString());
       }
       
       // DYNAMIC BASELINE UPDATE: If real DB has new tables that aren't in baseline,
@@ -549,6 +556,7 @@ export const VirtualSchemaProvider = ({ children }) => {
       setHistoryIndex(1);
       historyIndexRef.current = 1;
       setIsModified(true);
+      setHasUnsavedChanges(false); // Clear unsaved flag when loading schema
     } else {
       const clonedSchema = JSON.parse(JSON.stringify(erdData));
       setWorkingSchema(clonedSchema);
@@ -558,6 +566,7 @@ export const VirtualSchemaProvider = ({ children }) => {
       setHistoryIndex(0);
       historyIndexRef.current = 0;
       setIsModified(false);
+      setHasUnsavedChanges(false); // Clear unsaved flag when loading schema
     }
   }, [currentSchemaName]); // Add currentSchemaName to dependencies
 
@@ -868,27 +877,56 @@ export const VirtualSchemaProvider = ({ children }) => {
     }
   }, [originalSchema, currentSchemaName]);
 
-  // NEW: Manual save function
-  const saveChangesToPersistence = useCallback(() => {
-    if (workingSchema && currentSchemaName && hasUnsavedChanges) {
+  // NEW: Manual save function with conflict detection
+  const saveChangesToPersistence = useCallback(async () => {
+    if (!workingSchema || !currentSchemaName || !hasUnsavedChanges) {
+      console.log('❌ Save blocked: no changes to save');
+      return { success: false, reason: 'no_changes' };
+    }
+
+    try {
+      console.log('🔍 Checking for conflicts before save...');
+      console.log('   My lastSavedTimestamp:', lastSavedTimestamp ? new Date(lastSavedTimestamp).toLocaleTimeString() : 'null');
+      
+      // Check for conflicts before saving
+      const hasNewer = await checkForNewerChangesFn(currentSchemaName, lastSavedTimestamp);
+      
+      console.log('   Conflict check result:', hasNewer ? 'CONFLICT DETECTED' : 'No conflict');
+      
+      if (hasNewer) {
+        // Another user has saved changes - conflict detected
+        console.warn('⚠️ Conflict detected: Another user has saved changes');
+        return { success: false, reason: 'conflict', hasNewerChanges: true };
+      }
+
+      // No conflict, proceed with save
+      console.log('💾 Saving to persistence...');
       saveToStorage(currentSchemaName, workingSchema);
       const timestamp = Date.now();
       setLastSavedTimestamp(timestamp);
       setHasUnsavedChanges(false);
       console.log('✅ Changes saved to persistence DB at', new Date(timestamp).toLocaleTimeString());
-      return true;
+      console.log('   New timestamp:', timestamp);
+      return { success: true };
+    } catch (error) {
+      console.error('Error saving to persistence:', error);
+      return { success: false, reason: 'error', error };
     }
-    return false;
-  }, [workingSchema, currentSchemaName, hasUnsavedChanges]);
+  }, [workingSchema, currentSchemaName, hasUnsavedChanges, lastSavedTimestamp]);
 
   // NEW: Refresh from persistence DB
   const refreshFromPersistence = useCallback(async () => {
     if (!currentSchemaName || !originalSchema) return false;
 
     try {
-      // Load saved schema from persistence DB
-      const savedSchema = loadFromStorage(currentSchemaName);
-      const baselineSchema = loadBaselineSchema(currentSchemaName);
+      console.log('🔄 Refreshing from persistence database...');
+      
+      // CRITICAL: Load from DATABASE, not localStorage
+      const savedSchema = await loadFromDatabase(currentSchemaName);
+      const baselineSchema = await loadBaselineFromDatabase(currentSchemaName);
+      
+      console.log('   Loaded from DB:', savedSchema ? 'Found saved schema' : 'No saved schema');
+      console.log('   Baseline:', baselineSchema ? 'Found baseline' : 'No baseline');
       
       if (savedSchema) {
         // Merge real DB with saved virtual changes
@@ -900,6 +938,7 @@ export const VirtualSchemaProvider = ({ children }) => {
         setHistoryIndex(1);
         historyIndexRef.current = 1;
         setIsModified(true);
+        console.log('   ✅ Merged schema with', Object.keys(merged.tables || {}).length, 'tables');
       } else {
         // No saved data, use original
         const clonedOriginal = JSON.parse(JSON.stringify(originalSchema));
@@ -910,9 +949,12 @@ export const VirtualSchemaProvider = ({ children }) => {
         setHistoryIndex(0);
         historyIndexRef.current = 0;
         setIsModified(false);
+        console.log('   ✅ Using original schema');
       }
       
-      const timestamp = Date.now();
+      // Get the actual timestamp from the database
+      const dbTimestamp = await checkForNewerChangesFn(currentSchemaName, 0);
+      const timestamp = dbTimestamp || Date.now();
       setLastSavedTimestamp(timestamp);
       setHasUnsavedChanges(false);
       console.log('🔄 Refreshed from persistence DB at', new Date(timestamp).toLocaleTimeString());

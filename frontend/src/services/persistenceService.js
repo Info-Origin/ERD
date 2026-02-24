@@ -43,7 +43,7 @@ class PersistenceService {
       const response = await fetch(`${API_BASE_URL}/persistence/virtual-schema/${schemaName}`);
       
       if (response.status === 404) {
-        return null; // Schema not found
+        return null; // Schema not found (expected for first load)
       }
       
       if (!response.ok) {
@@ -53,7 +53,10 @@ class PersistenceService {
       const data = await response.json();
       return data.schema;
     } catch (error) {
-      console.warn('Error loading virtual schema from API, trying localStorage:', error);
+      // Only log unexpected errors (not 404s)
+      if (error.message !== 'Failed to load virtual schema') {
+        console.warn('Error loading virtual schema from API, trying localStorage:', error);
+      }
       // Fallback to localStorage if API fails
       return this._loadFromLocalStorage('virtualSchemas', schemaName);
     }
@@ -89,7 +92,7 @@ class PersistenceService {
       const response = await fetch(`${API_BASE_URL}/persistence/virtual-schema/${schemaName}/timestamp`);
       
       if (response.status === 404) {
-        return null; // Schema not found
+        return null; // Schema not found (expected for first load)
       }
       
       if (!response.ok) {
@@ -99,7 +102,7 @@ class PersistenceService {
       const data = await response.json();
       return data.timestamp;
     } catch (error) {
-      console.warn('Error getting virtual schema timestamp from API:', error);
+      // Silently handle 404s - they're expected when no data exists yet
       return null;
     }
   }
@@ -214,7 +217,7 @@ class PersistenceService {
       const response = await fetch(`${API_BASE_URL}/persistence/baseline-schema/${schemaName}`);
       
       if (response.status === 404) {
-        return null; // Schema not found
+        return null; // Schema not found (expected for first load)
       }
       
       if (!response.ok) {
@@ -224,7 +227,10 @@ class PersistenceService {
       const data = await response.json();
       return data.schema;
     } catch (error) {
-      console.warn('Error loading baseline schema from API, trying localStorage:', error);
+      // Only log unexpected errors
+      if (error.message !== 'Failed to load baseline schema') {
+        console.warn('Error loading baseline schema from API, trying localStorage:', error);
+      }
       // Fallback to localStorage if API fails
       return this._loadFromLocalStorage('baselineSchemas', schemaName);
     }

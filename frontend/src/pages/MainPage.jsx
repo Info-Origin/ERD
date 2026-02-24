@@ -7,6 +7,7 @@ import EditTableModal from "../components/modals/EditTableModal";
 import { FKComparisonModal } from "../components/modals/FKComparisonModal";
 import { NewChangesAvailableModal } from "../components/modals/NewChangesAvailableModal";
 import { UnsavedChangesModal } from "../components/modals/UnsavedChangesModal";
+import { OutOfSyncModal } from "../components/modals/OutOfSyncModal";
 import { Notification } from "../components/common/Notification";
 import { useApp } from "../context/AppContext";
 import { useVirtualSchema } from "../context/VirtualSchemaContext";
@@ -27,7 +28,10 @@ export const MainPage = () => {
     unsavedChangesModal,
     closeUnsavedChangesModal,
     handleSaveAndSwitch,
-    handleDiscardAndSwitch
+    handleDiscardAndSwitch,
+    outOfSyncModal,
+    closeOutOfSyncModal,
+    handleRefreshFromOutOfSync
   } = useApp();
   const { originalSchema, workingSchema } = useVirtualSchema();
   
@@ -78,6 +82,13 @@ export const MainPage = () => {
         onSave={handleSaveAndSwitch}
         onDiscard={handleDiscardAndSwitch}
         onCancel={closeUnsavedChangesModal}
+      />
+
+      {/* Out of Sync Modal */}
+      <OutOfSyncModal
+        isOpen={outOfSyncModal.isOpen}
+        onRefresh={handleRefreshFromOutOfSync}
+        onCancel={closeOutOfSyncModal}
       />
 
       {/* Notification System */}

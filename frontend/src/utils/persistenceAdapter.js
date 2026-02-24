@@ -86,9 +86,18 @@ export const clearRealDbHistory = (schemaName) => {
 };
 
 export const saveToStorage = (schemaName, virtualSchema) => {
+  const timestamp = Date.now();
+  console.log('💾 saveToStorage called at', new Date(timestamp).toLocaleTimeString());
+  console.log('   Schema:', schemaName);
+  console.log('   Timestamp:', timestamp);
+  
   _saveToLocalStorage('virtualSchemas', schemaName, virtualSchema);
-  persistenceService.saveVirtualSchema(schemaName, virtualSchema).catch(err => {
-    console.warn('Failed to sync virtual schema to database:', err);
+  console.log('   ✅ Saved to localStorage');
+  
+  persistenceService.saveVirtualSchema(schemaName, virtualSchema).then(() => {
+    console.log('   ✅ Synced to database');
+  }).catch(err => {
+    console.warn('   ❌ Failed to sync virtual schema to database:', err);
   });
 };
 
@@ -114,6 +123,38 @@ export const loadFromStorage = (schemaName) => {
   return _loadFromLocalStorage('virtualSchemas', schemaName);
 };
 
+export const loadFromDatabase = async (schemaName) => {
+  try {
+    const schema = await persistenceService.loadVirtualSchema(schemaName);
+    
+    // Also update localStorage with the fresh data
+    if (schema) {
+      _saveToLocalStorage('virtualSchemas', schemaName, schema);
+    }
+    
+    return schema;
+  } catch (error) {
+    console.warn('Failed to load from database, falling back to localStorage:', error);
+    return _loadFromLocalStorage('virtualSchemas', schemaName);
+  }
+};
+
+export const loadBaselineFromDatabase = async (schemaName) => {
+  try {
+    const schema = await persistenceService.loadBaselineSchema(schemaName);
+    
+    // Also update localStorage with the fresh data
+    if (schema) {
+      _saveToLocalStorage('baselineSchemas', schemaName, schema);
+    }
+    
+    return schema;
+  } catch (error) {
+    console.warn('Failed to load baseline from database, falling back to localStorage:', error);
+    return _loadFromLocalStorage('baselineSchemas', schemaName);
+  }
+};
+
 export const getStorageTimestamp = (schemaName) => {
   try {
     const key = 'reverseERD_virtualSchemas';
@@ -127,15 +168,24 @@ export const getStorageTimestamp = (schemaName) => {
 
 export const checkForNewerChanges = async (schemaName, currentTimestamp) => {
   try {
+    console.log('🔍 checkForNewerChanges called:');
+    console.log('   Schema:', schemaName);
+    console.log('   My timestamp:', currentTimestamp ? new Date(currentTimestamp).toLocaleTimeString() : 'null');
+    
     // Check persistence DB for newer changes
     const dbTimestamp = await persistenceService.getVirtualSchemaTimestamp(schemaName);
     
+    console.log('   DB timestamp:', dbTimestamp ? new Date(dbTimestamp).toLocaleTimeString() : 'null');
+    
     if (!dbTimestamp || !currentTimestamp) {
+      console.log('   Result: false (missing timestamp)');
       return false;
     }
     
     // If DB has newer changes than our current timestamp, return true
-    return dbTimestamp > currentTimestamp;
+    const hasNewer = dbTimestamp > currentTimestamp;
+    console.log('   Result:', hasNewer ? 'TRUE (conflict!)' : 'FALSE (no conflict)');
+    return hasNewer;
   } catch (error) {
     console.warn('Failed to check for newer changes:', error);
     return false;

@@ -71,6 +71,11 @@ export const AppProvider = ({ children }) => {
     onConfirm: null
   });
 
+  // NEW: Out of sync modal state
+  const [outOfSyncModal, setOutOfSyncModal] = useState({
+    isOpen: false
+  });
+
   // Notification system (simple state-based notifications)
   const [notifications, setNotifications] = useState([]);
 
@@ -551,6 +556,27 @@ export const AppProvider = ({ children }) => {
     closeUnsavedChangesModal();
   }, [unsavedChangesModal.onConfirm]);
 
+  // NEW: Out of sync modal functions
+  const showOutOfSyncModal = useCallback(() => {
+    setOutOfSyncModal({ isOpen: true });
+    setIsAnyModalOpen(true);
+  }, []);
+
+  const closeOutOfSyncModal = useCallback(() => {
+    setOutOfSyncModal({ isOpen: false });
+    setIsAnyModalOpen(false);
+  }, []);
+
+  const handleRefreshFromOutOfSync = useCallback(async () => {
+    const refreshed = await virtualSchema.refreshFromPersistence?.();
+    if (refreshed) {
+      showNotification("Schema refreshed. Your changes were discarded.", "info");
+    } else {
+      showNotification("Failed to refresh schema", "error");
+    }
+    closeOutOfSyncModal();
+  }, [virtualSchema, showNotification]);
+
   // NEW: Wrapped selectSchema with unsaved changes check
   const selectSchema = useCallback((schemaName) => {
     // If trying to switch to a different schema and there are unsaved changes
@@ -567,16 +593,24 @@ export const AppProvider = ({ children }) => {
   }, [selectedSchema, virtualSchema.hasUnsavedChanges, originalSelectSchema]);
 
   // NEW: Periodic check for new changes from other users (persistence DB)
+  // DISABLED: Only show conflict modal when user tries to save, not during idle time
+  /*
   useEffect(() => {
     if (!selectedSchema || !virtualSchema.lastSavedTimestamp) return;
 
     const checkForNewChanges = setInterval(async () => {
       try {
+        // ONLY show "New Changes Available" modal if user has NO unsaved changes
+        // If they have unsaved changes, they'll get "Out of Sync" modal when they try to save
+        if (virtualSchema.hasUnsavedChanges) {
+          return; // Skip check if user is actively editing
+        }
+
         // Check if persistence DB has newer changes
         const hasNewerChanges = await virtualSchema.checkForNewerChanges?.();
         
         if (hasNewerChanges && !newChangesModal.isOpen) {
-          console.log('🔔 New changes detected from other users');
+          console.log('🔔 New changes detected from other users (user is idle)');
           showNewChangesModal();
         }
       } catch (error) {
@@ -585,7 +619,8 @@ export const AppProvider = ({ children }) => {
     }, 10000); // Check every 10 seconds
 
     return () => clearInterval(checkForNewChanges);
-  }, [selectedSchema, virtualSchema.lastSavedTimestamp, newChangesModal.isOpen, showNewChangesModal, virtualSchema.checkForNewerChanges]);
+  }, [selectedSchema, virtualSchema.lastSavedTimestamp, virtualSchema.hasUnsavedChanges, newChangesModal.isOpen, showNewChangesModal, virtualSchema.checkForNewerChanges]);
+  */
 
   // NEW: Browser beforeunload protection for unsaved changes
   useEffect(() => {
@@ -909,6 +944,12 @@ export const AppProvider = ({ children }) => {
     closeUnsavedChangesModal,
     handleSaveAndSwitch,
     handleDiscardAndSwitch,
+
+    // NEW: Out of sync modal
+    outOfSyncModal,
+    showOutOfSyncModal,
+    closeOutOfSyncModal,
+    handleRefreshFromOutOfSync,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

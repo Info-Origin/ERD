@@ -6,7 +6,7 @@ import { SaveConfirmationModal } from '../modals/SaveConfirmationModal';
 import "./CanvasControls.css";
 
 export const CanvasControls = ({ isCollapsed }) => {
-  const { selectedSchema, showFKComparison, showNotification, openExportPDFModal } = useApp();
+  const { selectedSchema, showFKComparison, showNotification, openExportPDFModal, showOutOfSyncModal } = useApp();
   const { 
     originalSchema, 
     workingSchema, 
@@ -58,12 +58,23 @@ export const CanvasControls = ({ isCollapsed }) => {
     setShowSaveModal(true);
   };
 
-  const handleSaveConfirm = () => {
-    const saved = saveChangesToPersistence?.();
-    if (saved) {
+  const handleSaveConfirm = async () => {
+    const result = await saveChangesToPersistence?.();
+    
+    if (result?.success) {
       showNotification?.("Changes saved successfully!", "success");
+      setShowSaveModal(false);
+    } else if (result?.reason === 'conflict') {
+      // Conflict detected - show out of sync modal
+      setShowSaveModal(false);
+      showOutOfSyncModal?.();
+    } else if (result?.reason === 'no_changes') {
+      showNotification?.("No changes to save", "info");
+      setShowSaveModal(false);
+    } else {
+      showNotification?.("Failed to save changes", "error");
+      setShowSaveModal(false);
     }
-    setShowSaveModal(false);
   };
 
   const handleSaveCancel = () => {
