@@ -5,6 +5,8 @@ import { ERDCanvas } from "../components/erd-canvas/ERDCanvas";
 import { VerticalToolbar } from "../components/layout/VerticalToolbar";
 import EditTableModal from "../components/modals/EditTableModal";
 import { FKComparisonModal } from "../components/modals/FKComparisonModal";
+import { NewChangesAvailableModal } from "../components/modals/NewChangesAvailableModal";
+import { UnsavedChangesModal } from "../components/modals/UnsavedChangesModal";
 import { Notification } from "../components/common/Notification";
 import { useApp } from "../context/AppContext";
 import { useVirtualSchema } from "../context/VirtualSchemaContext";
@@ -18,7 +20,14 @@ export const MainPage = () => {
     closeFKComparison,
     handleRevertFKChange,
     notifications,
-    removeNotification
+    removeNotification,
+    newChangesModal,
+    closeNewChangesModal,
+    handleRefreshFromNewChanges,
+    unsavedChangesModal,
+    closeUnsavedChangesModal,
+    handleSaveAndSwitch,
+    handleDiscardAndSwitch
   } = useApp();
   const { originalSchema, workingSchema } = useVirtualSchema();
   
@@ -54,6 +63,21 @@ export const MainPage = () => {
         baselineSchema={originalSchema}
         virtualSchema={workingSchema}
         onRevertChange={handleRevertFKChange}
+      />
+
+      {/* New Changes Available Modal */}
+      <NewChangesAvailableModal
+        isOpen={newChangesModal.isOpen}
+        onRefresh={handleRefreshFromNewChanges}
+        onCancel={closeNewChangesModal}
+      />
+
+      {/* Unsaved Changes Modal */}
+      <UnsavedChangesModal
+        isOpen={unsavedChangesModal.isOpen}
+        onSave={handleSaveAndSwitch}
+        onDiscard={handleDiscardAndSwitch}
+        onCancel={closeUnsavedChangesModal}
       />
 
       {/* Notification System */}

@@ -1,0 +1,22 @@
+.save-confirmation-modal {
+  max-width: 450px;
+}
+
+.save-confirmation-modal .modal-body {
+  padding: 1.5rem;
+}
+
+.save-confirmation-modal .modal-body p {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.save-confirmation-modal .modal-footer {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border-color);
+}

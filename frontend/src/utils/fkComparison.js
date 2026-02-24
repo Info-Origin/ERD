@@ -245,17 +245,12 @@ export const compareForeignKeys = (baselineSchema, virtualSchema) => {
     }
   });
 
-  // STEP 2: Detect and group N:M relationships (junction tables)
-  const nmRelationships = [];
-  const regularChanges = {};
-
+  // STEP 2: Detect N:M relationships and add metadata to FK changes
+  // Instead of separating N:M relationships, we add N:M metadata to each FK
   Object.entries(changes).forEach(([tableName, tableChanges]) => {
     const table = virtualSchema.tables?.[tableName] || baselineSchema.tables?.[tableName];
     
-    if (!table) {
-      regularChanges[tableName] = tableChanges;
-      return;
-    }
+    if (!table) return;
 
     // Detect junction table: exactly 2 FKs that are both PKs
     const allColumns = Object.values(table.columns || {});
@@ -266,7 +261,7 @@ export const compareForeignKeys = (baselineSchema, virtualSchema) => {
       (fkColumns.length === 2 && pkColumns.length === 2 && 
        fkColumns.every(fk => fk.pk));
     
-    if (isJunctionTable && (tableChanges.isNewTable || tableChanges.added.length > 0)) {
+    if (isJunctionTable) {
       // Extract the two parent tables from relationships
       const rels = (virtualSchema.relationships || baselineSchema.relationships || [])
         .filter(r => r.fromTable === tableName);
@@ -275,45 +270,57 @@ export const compareForeignKeys = (baselineSchema, virtualSchema) => {
       const table2 = rels[1]?.toTable;
       
       if (table1 && table2) {
-        // Check if this junction table exists in baseline (SYNC detection)
-        const existsInBaseline = baselineSchema.tables?.[tableName];
-        const existsInVirtual = virtualSchema.tables?.[tableName];
-        const wasUserCreated = table?.isUserCreated;
-        
-        // Determine type: added, synced, or existing
-        let nmType = 'existing';
-        if (tableChanges.isNewTable) {
-          nmType = 'added'; // Only in virtual, not in baseline
-        } else if (existsInBaseline && existsInVirtual && wasUserCreated) {
-          // Junction table exists in both schemas AND was originally user-created
-          // This means it was synced to the database
-          nmType = 'synced';
-        }
-        
-        nmRelationships.push({
+        // Add N:M metadata to each FK in this junction table
+        const nmMetadata = {
+          isNM: true,
           junctionTable: tableName,
           table1,
           table2,
-          tableChanges, // Keep original FK data for details
           displayName: `${table1} ↔ ${table2}`,
-          type: nmType,
           relationships: rels
-        });
-      } else {
-        // Fallback: treat as regular if we can't determine parent tables
-        regularChanges[tableName] = tableChanges;
+        };
+
+        // Add N:M metadata to added FKs
+        tableChanges.added = tableChanges.added.map(fk => ({
+          ...fk,
+          nmMetadata
+        }));
+
+        // Add N:M metadata to removed FKs
+        tableChanges.removed = tableChanges.removed.map(fk => ({
+          ...fk,
+          nmMetadata
+        }));
+
+        // Add N:M metadata to synced FKs
+        tableChanges.synced = tableChanges.synced.map(fk => ({
+          ...fk,
+          nmMetadata
+        }));
+
+        // Add N:M metadata to baseline FKs
+        tableChanges.baselineFKs = tableChanges.baselineFKs.map(fk => ({
+          ...fk,
+          nmMetadata
+        }));
+
+        // Add N:M metadata to virtual FKs
+        tableChanges.virtualFKs = tableChanges.virtualFKs.map(fk => ({
+          ...fk,
+          nmMetadata
+        }));
+
+        // Mark the table changes as junction table
+        tableChanges.isJunctionTable = true;
+        tableChanges.nmMetadata = nmMetadata;
       }
-    } else {
-      regularChanges[tableName] = tableChanges;
     }
   });
 
   return {
     hasChanges,
-    changes: regularChanges,
-    nmRelationships, // NEW: Separate N:M relationships
-    affectedTables: Object.keys(regularChanges),
-    affectedNMRelationships: nmRelationships.length
+    changes, // All changes including N:M FKs with metadata
+    affectedTables: Object.keys(changes)
   };
 };
 

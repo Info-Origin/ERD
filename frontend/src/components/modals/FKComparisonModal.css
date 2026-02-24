@@ -518,3 +518,57 @@
   flex-shrink: 0;
   color: #3b82f6;
 }
+
+/* N:M Badge and Info Styles */
+.fk-nm-badge {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.fk-nm-info {
+  margin-top: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: rgba(139, 92, 246, 0.08);
+  border-left: 2px solid #8b5cf6;
+  border-radius: var(--radius-sm);
+}
+
+.fk-nm-text {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.fk-nm-text strong {
+  color: #8b5cf6;
+  font-weight: 600;
+}
+
+.fk-nm-text::before {
+  content: '🔗';
+  font-size: 12px;
+}
+
+/* N:M Relationship Row Styling */
+.fk-comparison-column.fk-nm-relationship {
+  border-left: 3px solid #8b5cf6;
+}
+
+.fk-comparison-column.fk-nm-relationship.fk-added {
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.1) 0%, var(--success-bg) 100%);
+}
+
+.fk-comparison-column.fk-nm-relationship.fk-synced {
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.1) 0%, var(--info-bg) 100%);
+}
+
+.fk-comparison-column.fk-nm-relationship.fk-removed {
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.1) 0%, var(--danger-bg) 100%);
+}

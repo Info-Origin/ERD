@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useSchemas } from "../hooks/useSchemas";
 import { useERD } from "../hooks/useERD";
 import { useSelection } from "../hooks/useSelection";
@@ -59,6 +59,18 @@ export const AppProvider = ({ children }) => {
   // Global modal state - tracks if any modal is open
   const [isAnyModalOpen, setIsAnyModalOpen] = useState(false);
 
+  // NEW: New changes detection modal state
+  const [newChangesModal, setNewChangesModal] = useState({
+    isOpen: false
+  });
+
+  // NEW: Unsaved changes modal state
+  const [unsavedChangesModal, setUnsavedChangesModal] = useState({
+    isOpen: false,
+    targetSchema: null,
+    onConfirm: null
+  });
+
   // Notification system (simple state-based notifications)
   const [notifications, setNotifications] = useState([]);
 
@@ -84,7 +96,7 @@ export const AppProvider = ({ children }) => {
   const {
     selectedSchema,
     selectedTable,
-    selectSchema,
+    selectSchema: originalSelectSchema,
     selectTable,
     clearSelection,
   } = useSelection();
@@ -366,7 +378,7 @@ export const AppProvider = ({ children }) => {
     setGridBackground(prev => !prev);
   };
 
-  // Auto-refresh mechanism for real-time sync detection
+  // Auto-refresh mechanism for real-time sync detection (real DB changes)
   useEffect(() => {
     if (!selectedSchema || !erdData || erdLoading) return;
 
@@ -475,6 +487,119 @@ export const AppProvider = ({ children }) => {
     showNotification,
     closeFKComparison
   ]);
+
+  // NEW: New changes modal functions
+  const showNewChangesModal = useCallback(() => {
+    setNewChangesModal({ isOpen: true });
+    setIsAnyModalOpen(true);
+  }, []);
+
+  const closeNewChangesModal = useCallback(() => {
+    setNewChangesModal({ isOpen: false });
+    setIsAnyModalOpen(false);
+  }, []);
+
+  const handleRefreshFromNewChanges = useCallback(async () => {
+    const refreshed = await virtualSchema.refreshFromPersistence?.();
+    if (refreshed) {
+      showNotification("Changes refreshed successfully!", "success");
+    } else {
+      showNotification("Failed to refresh changes", "error");
+    }
+    closeNewChangesModal();
+  }, [virtualSchema, showNotification]);
+
+  // NEW: Unsaved changes modal functions
+  const showUnsavedChangesModal = useCallback((targetSchema, onConfirm) => {
+    setUnsavedChangesModal({
+      isOpen: true,
+      targetSchema,
+      onConfirm
+    });
+    setIsAnyModalOpen(true);
+  }, []);
+
+  const closeUnsavedChangesModal = useCallback(() => {
+    setUnsavedChangesModal({
+      isOpen: false,
+      targetSchema: null,
+      onConfirm: null
+    });
+    setIsAnyModalOpen(false);
+  }, []);
+
+  const handleSaveAndSwitch = useCallback(() => {
+    const saved = virtualSchema.saveChangesToPersistence?.();
+    if (saved) {
+      showNotification("Changes saved successfully!", "success");
+    }
+    
+    // Execute the original action (schema switch)
+    if (unsavedChangesModal.onConfirm) {
+      unsavedChangesModal.onConfirm();
+    }
+    
+    closeUnsavedChangesModal();
+  }, [virtualSchema, showNotification, unsavedChangesModal.onConfirm]);
+
+  const handleDiscardAndSwitch = useCallback(() => {
+    // Just execute the original action without saving
+    if (unsavedChangesModal.onConfirm) {
+      unsavedChangesModal.onConfirm();
+    }
+    
+    closeUnsavedChangesModal();
+  }, [unsavedChangesModal.onConfirm]);
+
+  // NEW: Wrapped selectSchema with unsaved changes check
+  const selectSchema = useCallback((schemaName) => {
+    // If trying to switch to a different schema and there are unsaved changes
+    if (selectedSchema && schemaName !== selectedSchema && virtualSchema.hasUnsavedChanges) {
+      // Show unsaved changes modal
+      showUnsavedChangesModal(schemaName, () => {
+        // This callback will be executed after user chooses to save or discard
+        originalSelectSchema(schemaName);
+      });
+    } else {
+      // No unsaved changes, switch directly
+      originalSelectSchema(schemaName);
+    }
+  }, [selectedSchema, virtualSchema.hasUnsavedChanges, originalSelectSchema]);
+
+  // NEW: Periodic check for new changes from other users (persistence DB)
+  useEffect(() => {
+    if (!selectedSchema || !virtualSchema.lastSavedTimestamp) return;
+
+    const checkForNewChanges = setInterval(async () => {
+      try {
+        // Check if persistence DB has newer changes
+        const hasNewerChanges = await virtualSchema.checkForNewerChanges?.();
+        
+        if (hasNewerChanges && !newChangesModal.isOpen) {
+          console.log('🔔 New changes detected from other users');
+          showNewChangesModal();
+        }
+      } catch (error) {
+        console.warn('Failed to check for new changes:', error);
+      }
+    }, 10000); // Check every 10 seconds
+
+    return () => clearInterval(checkForNewChanges);
+  }, [selectedSchema, virtualSchema.lastSavedTimestamp, newChangesModal.isOpen, showNewChangesModal, virtualSchema.checkForNewerChanges]);
+
+  // NEW: Browser beforeunload protection for unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (virtualSchema.hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [virtualSchema.hasUnsavedChanges]);
 
   // Initialize virtual schema when ERD data loads
   useEffect(() => {
@@ -771,6 +896,19 @@ export const AppProvider = ({ children }) => {
     // Global modal state
     isAnyModalOpen,
     setIsAnyModalOpen,
+
+    // NEW: New changes detection modal
+    newChangesModal,
+    showNewChangesModal,
+    closeNewChangesModal,
+    handleRefreshFromNewChanges,
+
+    // NEW: Unsaved changes modal
+    unsavedChangesModal,
+    showUnsavedChangesModal,
+    closeUnsavedChangesModal,
+    handleSaveAndSwitch,
+    handleDiscardAndSwitch,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

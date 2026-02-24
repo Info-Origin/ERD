@@ -7,152 +7,29 @@ import {
   useRef,
 } from "react";
 import { v4 as uuidv4 } from "uuid";
+import {
+  saveBaselineSchema,
+  loadBaselineSchema,
+  clearBaselineSchema,
+  saveRealDbHistory,
+  loadRealDbHistory,
+  clearRealDbHistory,
+  saveToStorage,
+  saveTablePositions,
+  loadTablePositions,
+  clearTablePositions,
+  loadFromStorage,
+  clearFromStorage,
+  clearAllFromStorage,
+  getStorageTimestamp,
+  checkForNewerChanges as checkForNewerChangesFn,
+} from "../utils/persistenceAdapter.js";
 
-// Persistence utilities
+// Persistence utilities now use database-backed API with localStorage fallback
 const STORAGE_KEY = "reverseERD_virtualSchemas";
 const TABLE_POSITIONS_KEY = "reverseERD_tablePositions";
 const REAL_DB_HISTORY_KEY = "reverseERD_realDbHistory";
-const BASELINE_SCHEMA_KEY = "reverseERD_baselineSchemas"; // NEW: Store baseline schemas
-
-const saveBaselineSchema = (schemaName, baselineSchema) => {
-  try {
-    const stored = JSON.parse(localStorage.getItem(BASELINE_SCHEMA_KEY) || "{}");
-    stored[schemaName] = {
-      schema: baselineSchema,
-      timestamp: Date.now(),
-    };
-    localStorage.setItem(BASELINE_SCHEMA_KEY, JSON.stringify(stored));
-  } catch (error) {
-    console.warn("Failed to save baseline schema to localStorage:", error);
-  }
-};
-
-const loadBaselineSchema = (schemaName) => {
-  try {
-    const stored = JSON.parse(localStorage.getItem(BASELINE_SCHEMA_KEY) || "{}");
-    return stored[schemaName]?.schema || null;
-  } catch (error) {
-    console.warn("Failed to load baseline schema from localStorage:", error);
-    return null;
-  }
-};
-
-const clearBaselineSchema = (schemaName) => {
-  try {
-    const stored = JSON.parse(localStorage.getItem(BASELINE_SCHEMA_KEY) || "{}");
-    delete stored[schemaName];
-    localStorage.setItem(BASELINE_SCHEMA_KEY, JSON.stringify(stored));
-  } catch (error) {
-    console.warn("Failed to clear baseline schema from localStorage:", error);
-  }
-};
-
-const saveRealDbHistory = (schemaName, history) => {
-  try {
-    const stored = JSON.parse(localStorage.getItem(REAL_DB_HISTORY_KEY) || "{}");
-    stored[schemaName] = {
-      history: history,
-      timestamp: Date.now(),
-    };
-    localStorage.setItem(REAL_DB_HISTORY_KEY, JSON.stringify(stored));
-  } catch (error) {
-    console.warn("Failed to save real DB history to localStorage:", error);
-  }
-};
-
-const loadRealDbHistory = (schemaName) => {
-  try {
-    const stored = JSON.parse(localStorage.getItem(REAL_DB_HISTORY_KEY) || "{}");
-    return stored[schemaName]?.history || [];
-  } catch (error) {
-    console.warn("Failed to load real DB history from localStorage:", error);
-    return [];
-  }
-};
-
-const clearRealDbHistory = (schemaName) => {
-  try {
-    const stored = JSON.parse(localStorage.getItem(REAL_DB_HISTORY_KEY) || "{}");
-    delete stored[schemaName];
-    localStorage.setItem(REAL_DB_HISTORY_KEY, JSON.stringify(stored));
-  } catch (error) {
-    console.warn("Failed to clear real DB history from localStorage:", error);
-  }
-};
-
-const saveToStorage = (schemaName, virtualSchema) => {
-  try {
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-    stored[schemaName] = {
-      schema: virtualSchema,
-      timestamp: Date.now(),
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
-  } catch (error) {
-    console.warn("Failed to save virtual schema to localStorage:", error);
-  }
-};
-
-const saveTablePositions = (schemaName, positions) => {
-  try {
-    const stored = JSON.parse(localStorage.getItem(TABLE_POSITIONS_KEY) || "{}");
-    stored[schemaName] = {
-      positions: positions,
-      timestamp: Date.now(),
-    };
-    localStorage.setItem(TABLE_POSITIONS_KEY, JSON.stringify(stored));
-  } catch (error) {
-    console.warn("Failed to save table positions to localStorage:", error);
-  }
-};
-
-const loadTablePositions = (schemaName) => {
-  try {
-    const stored = JSON.parse(localStorage.getItem(TABLE_POSITIONS_KEY) || "{}");
-    return stored[schemaName]?.positions || {};
-  } catch (error) {
-    console.warn("Failed to load table positions from localStorage:", error);
-    return {};
-  }
-};
-
-const clearTablePositions = (schemaName) => {
-  try {
-    const stored = JSON.parse(localStorage.getItem(TABLE_POSITIONS_KEY) || "{}");
-    delete stored[schemaName];
-    localStorage.setItem(TABLE_POSITIONS_KEY, JSON.stringify(stored));
-  } catch (error) {
-    console.warn("Failed to clear table positions from localStorage:", error);
-  }
-};
-
-const loadFromStorage = (schemaName) => {
-  try {
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-    return stored[schemaName]?.schema || null;
-  } catch (error) {
-    console.warn("Failed to load virtual schema from localStorage:", error);
-    return null;
-  }
-};
-
-const clearFromStorage = (schemaName) => {
-  try {
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-    delete stored[schemaName];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
-  } catch (error) {
-    console.warn("Failed to clear virtual schema from localStorage:", error);
-  }
-};
-
-const clearAllFromStorage = () => {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch (error) {
-    console.warn("Failed to clear all virtual schemas from localStorage:", error);
-  }
-};
+const BASELINE_SCHEMA_KEY = "reverseERD_baselineSchemas";
 
 const VirtualSchemaContext = createContext();
 
@@ -170,6 +47,8 @@ export const VirtualSchemaProvider = ({ children }) => {
   const [originalSchema, setOriginalSchema] = useState(null);
   const [workingSchema, setWorkingSchema] = useState(null);
   const [isModified, setIsModified] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false); // NEW: Track unsaved changes
+  const [lastSavedTimestamp, setLastSavedTimestamp] = useState(null); // NEW: Track when changes were last saved
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [currentSchemaName, setCurrentSchemaName] = useState(null);
@@ -188,14 +67,10 @@ export const VirtualSchemaProvider = ({ children }) => {
     historyRef.current = history;
   }, [history]);
 
-  // Auto-save to localStorage when working schema changes
-  useEffect(() => {
-    if (workingSchema && currentSchemaName && isModified) {
-      saveToStorage(currentSchemaName, workingSchema);
-    }
-  }, [workingSchema, currentSchemaName, isModified]);
-
-  // Auto-save table positions
+  // REMOVED: Auto-save to database when working schema changes
+  // Now using manual save button instead
+  
+  // Auto-save table positions (canvas layout only)
   useEffect(() => {
     if (currentSchemaName && Object.keys(tablePositions).length > 0) {
       saveTablePositions(currentSchemaName, tablePositions);
@@ -253,24 +128,27 @@ export const VirtualSchemaProvider = ({ children }) => {
           if (!realTable.columns[columnName]) {
             // Column exists in virtual but not in current real DB
             const virtualColumn = virtualTable.columns[columnName];
-            const existedInOriginal = originalTable?.columns?.[columnName];
             
-            if (existedInOriginal) {
-              // Column existed in original real DB but is now deleted from real DB
-              // PRIORITY: Real DB deletions take precedence - remove it
-              // Don't add to merged schema
+            // CRITICAL FIX: Check if this column has isUserCreated flag
+            // If it does, it's truly user-added and should be kept
+            // If it doesn't, it came from the real DB originally and was deleted
+            const isUserCreated = virtualColumn.isUserCreated === true;
+            
+            if (isUserCreated) {
+              // Column was explicitly created by user in UI - keep it
+              merged.tables[tableName].columns[columnName] = virtualColumn;
             } else {
-              // Column never existed in real DB - it's user-added, keep it
-              // BUT: Double-check by looking at the baseline schema more carefully
-              const baselineSchema = originalSchema;
-              const baselineTable = baselineSchema?.tables?.[tableName];
-              const existedInBaseline = baselineTable?.columns?.[columnName];
+              // Column came from real DB originally but is now deleted
+              // Check baseline to confirm
+              const existedInBaseline = originalSchema?.tables?.[tableName]?.columns?.[columnName];
               
               if (existedInBaseline) {
-                // Column existed in baseline but not in current real DB - it was deleted
-                // Don't add to merged schema
+                // Column existed in baseline but not in current real DB - it was deleted/renamed
+                // Don't add to merged schema (respect real DB changes)
+                console.log(`🗑️ Removing column ${tableName}.${columnName} - deleted from real DB`);
               } else {
-                // Column truly never existed in real DB - it's user-added, keep it
+                // Edge case: column in virtual but not in baseline or real DB
+                // This shouldn't happen, but keep it to be safe
                 merged.tables[tableName].columns[columnName] = virtualColumn;
               }
             }
@@ -396,8 +274,8 @@ export const VirtualSchemaProvider = ({ children }) => {
     };
   }, []);
 
-  // Initialize virtual schema from original or localStorage
-  const initializeSchema = useCallback((erdData) => {
+  // Initialize virtual schema from original or database
+  const initializeSchema = useCallback(async (erdData) => {
     if (!erdData) return;
 
     const schemaName = erdData.schemaName;
@@ -595,6 +473,12 @@ export const VirtualSchemaProvider = ({ children }) => {
       // MERGE STRATEGY: Combine real DB schema with virtual schema changes
       // CRITICAL: Use the persistent baseline schema for comparison
       
+      // Get the timestamp of the saved schema
+      const timestamp = getStorageTimestamp(schemaName);
+      if (timestamp) {
+        setLastSavedTimestamp(timestamp);
+      }
+      
       // DYNAMIC BASELINE UPDATE: If real DB has new tables that aren't in baseline,
       // update the baseline to include them. This ensures that when they're later
       // deleted, they'll be properly detected as deletions.
@@ -602,18 +486,52 @@ export const VirtualSchemaProvider = ({ children }) => {
       const baselineTables = Object.keys(baselineSchema?.tables || {});
       const newTablesInReal = realTables.filter(table => !baselineTables.includes(table));
       
+      // CRITICAL FIX: Also remove columns from baseline that no longer exist in real DB
+      let baselineNeedsUpdate = newTablesInReal.length > 0;
+      const updatedBaseline = JSON.parse(JSON.stringify(baselineSchema || {}));
+      if (!updatedBaseline.tables) updatedBaseline.tables = {};
+      
+      // Add new tables
       if (newTablesInReal.length > 0) {
-        // Create updated baseline that includes new real tables
-        const updatedBaseline = JSON.parse(JSON.stringify(baselineSchema || {}));
-        if (!updatedBaseline.tables) updatedBaseline.tables = {};
-        
         newTablesInReal.forEach(tableName => {
           updatedBaseline.tables[tableName] = erdData.tables[tableName];
         });
+      }
+      
+      // Clean up baseline: remove columns that don't exist in real DB anymore
+      Object.keys(updatedBaseline.tables || {}).forEach(tableName => {
+        const baselineTable = updatedBaseline.tables[tableName];
+        const realTable = erdData.tables[tableName];
         
-        // Save updated baseline
+        if (realTable && baselineTable.columns) {
+          const baselineColumns = Object.keys(baselineTable.columns);
+          const realColumns = Object.keys(realTable.columns);
+          
+          baselineColumns.forEach(columnName => {
+            if (!realColumns.includes(columnName)) {
+              // Column exists in baseline but not in real DB - remove it
+              console.log(`🧹 Cleaning baseline: removing ${tableName}.${columnName}`);
+              delete updatedBaseline.tables[tableName].columns[columnName];
+              baselineNeedsUpdate = true;
+            }
+          });
+          
+          // Also add new columns from real DB to baseline
+          realColumns.forEach(columnName => {
+            if (!baselineColumns.includes(columnName)) {
+              console.log(`➕ Updating baseline: adding ${tableName}.${columnName}`);
+              updatedBaseline.tables[tableName].columns[columnName] = realTable.columns[columnName];
+              baselineNeedsUpdate = true;
+            }
+          });
+        }
+      });
+      
+      // Save updated baseline if changes were made
+      if (baselineNeedsUpdate) {
         saveBaselineSchema(schemaName, updatedBaseline);
         baselineSchema = updatedBaseline;
+        console.log('✅ Baseline schema updated to match real DB');
       }
       
       const mergedSchema = mergeSchemas(erdData, savedSchema, baselineSchema, updatedRealDbHistory);
@@ -667,18 +585,53 @@ export const VirtualSchemaProvider = ({ children }) => {
       const baselineTables = Object.keys(baselineSchema?.tables || {});
       const newTablesInReal = realTables.filter(table => !baselineTables.includes(table));
       
+      // CRITICAL FIX: Also remove columns from baseline that no longer exist in real DB
+      // This prevents the "ghost column" issue when columns are renamed
+      let baselineNeedsUpdate = newTablesInReal.length > 0;
+      const updatedBaseline = JSON.parse(JSON.stringify(baselineSchema || {}));
+      if (!updatedBaseline.tables) updatedBaseline.tables = {};
+      
+      // Add new tables
       if (newTablesInReal.length > 0) {
-        // Create updated baseline that includes new real tables
-        const updatedBaseline = JSON.parse(JSON.stringify(baselineSchema || {}));
-        if (!updatedBaseline.tables) updatedBaseline.tables = {};
-        
         newTablesInReal.forEach(tableName => {
           updatedBaseline.tables[tableName] = newRealSchema.tables[tableName];
         });
+      }
+      
+      // Clean up baseline: remove columns that don't exist in real DB anymore
+      Object.keys(updatedBaseline.tables || {}).forEach(tableName => {
+        const baselineTable = updatedBaseline.tables[tableName];
+        const realTable = newRealSchema.tables[tableName];
         
-        // Save updated baseline
+        if (realTable && baselineTable.columns) {
+          const baselineColumns = Object.keys(baselineTable.columns);
+          const realColumns = Object.keys(realTable.columns);
+          
+          baselineColumns.forEach(columnName => {
+            if (!realColumns.includes(columnName)) {
+              // Column exists in baseline but not in real DB - remove it
+              console.log(`🧹 Cleaning baseline: removing ${tableName}.${columnName}`);
+              delete updatedBaseline.tables[tableName].columns[columnName];
+              baselineNeedsUpdate = true;
+            }
+          });
+          
+          // Also add new columns from real DB to baseline
+          realColumns.forEach(columnName => {
+            if (!baselineColumns.includes(columnName)) {
+              console.log(`➕ Updating baseline: adding ${tableName}.${columnName}`);
+              updatedBaseline.tables[tableName].columns[columnName] = realTable.columns[columnName];
+              baselineNeedsUpdate = true;
+            }
+          });
+        }
+      });
+      
+      // Save updated baseline if changes were made
+      if (baselineNeedsUpdate) {
         saveBaselineSchema(currentSchemaName, updatedBaseline);
         baselineSchema = updatedBaseline;
+        console.log('✅ Baseline schema updated to match real DB');
       }
       
       // Merge the new real schema with current virtual changes
@@ -771,9 +724,88 @@ export const VirtualSchemaProvider = ({ children }) => {
       setWorkingSchema(newSchema);
       addToHistory(newSchema);
       setIsModified(true);
+      setHasUnsavedChanges(true); // Mark as having unsaved changes
     },
     [addToHistory],
   );
+
+  // Helper function to protect synced FKs during undo/redo
+  const protectSyncedFKs = useCallback((targetSchema, currentRealSchema) => {
+    if (!currentRealSchema || !targetSchema) return targetSchema;
+
+    const protectedSchema = JSON.parse(JSON.stringify(targetSchema));
+    
+    // Get all FKs from current real database
+    const realFKs = new Map(); // Key: "tableName.columnName", Value: relationship
+    (currentRealSchema.relationships || []).forEach(rel => {
+      const key = `${rel.fromTable}.${rel.fromColumn}`;
+      realFKs.set(key, rel);
+    });
+
+    console.log('🛡️ Protecting synced FKs during undo/redo:', {
+      realFKCount: realFKs.size,
+      realFKs: Array.from(realFKs.keys())
+    });
+
+    let protectedCount = 0;
+
+    // Ensure all real FKs are present in the target schema
+    realFKs.forEach((realRel, key) => {
+      const [tableName, columnName] = key.split('.');
+      
+      // Check if table exists in target schema
+      if (!protectedSchema.tables[tableName]) {
+        // Table was deleted in history but exists in real DB - restore it
+        if (currentRealSchema.tables[tableName]) {
+          protectedSchema.tables[tableName] = JSON.parse(JSON.stringify(currentRealSchema.tables[tableName]));
+          console.log(`🛡️ Restored table: ${tableName}`);
+          protectedCount++;
+        }
+      }
+      
+      // Check if column exists in target schema
+      if (protectedSchema.tables[tableName]) {
+        if (!protectedSchema.tables[tableName].columns[columnName]) {
+          // Column was deleted in history but exists in real DB - restore it
+          if (currentRealSchema.tables[tableName]?.columns[columnName]) {
+            protectedSchema.tables[tableName].columns[columnName] = 
+              JSON.parse(JSON.stringify(currentRealSchema.tables[tableName].columns[columnName]));
+            console.log(`🛡️ Restored column: ${tableName}.${columnName}`);
+            protectedCount++;
+          }
+        }
+        
+        // Ensure FK flag is set
+        if (protectedSchema.tables[tableName].columns[columnName]) {
+          protectedSchema.tables[tableName].columns[columnName].fk = true;
+        }
+      }
+      
+      // Check if relationship exists in target schema
+      const relationshipExists = (protectedSchema.relationships || []).some(rel =>
+        rel.fromTable === realRel.fromTable &&
+        rel.fromColumn === realRel.fromColumn &&
+        rel.toTable === realRel.toTable &&
+        rel.toColumn === realRel.toColumn
+      );
+      
+      if (!relationshipExists) {
+        // Relationship was deleted in history but exists in real DB - restore it
+        if (!protectedSchema.relationships) {
+          protectedSchema.relationships = [];
+        }
+        protectedSchema.relationships.push(JSON.parse(JSON.stringify(realRel)));
+        console.log(`🛡️ Restored relationship: ${tableName}.${columnName} -> ${realRel.toTable}.${realRel.toColumn}`);
+        protectedCount++;
+      }
+    });
+
+    if (protectedCount > 0) {
+      console.log(`✅ Protected ${protectedCount} synced FK(s) from being removed by undo/redo`);
+    }
+
+    return protectedSchema;
+  }, []);
 
   // Undo
   const undo = useCallback(() => {
@@ -784,11 +816,18 @@ export const VirtualSchemaProvider = ({ children }) => {
       const newIndex = currentIndex - 1;
       setHistoryIndex(newIndex);
       historyIndexRef.current = newIndex; // FIX: Update ref immediately
-      const previousState = currentHistory[newIndex];
-      setWorkingSchema(JSON.parse(JSON.stringify(previousState)));
+      
+      let previousState = JSON.parse(JSON.stringify(currentHistory[newIndex]));
+      
+      // CRITICAL: Protect synced FKs - merge with current real database state
+      // This ensures that FKs added to real DB are never removed by undo
+      previousState = protectSyncedFKs(previousState, originalSchema);
+      
+      setWorkingSchema(previousState);
       setIsModified(newIndex !== 0);
+      setHasUnsavedChanges(true); // Mark as unsaved after undo
     }
-  }, []); // Remove dependencies to avoid stale closures
+  }, [originalSchema, protectSyncedFKs]); // Add dependencies
 
   // Redo
   const redo = useCallback(() => {
@@ -799,11 +838,18 @@ export const VirtualSchemaProvider = ({ children }) => {
       const newIndex = currentIndex + 1;
       setHistoryIndex(newIndex);
       historyIndexRef.current = newIndex; // FIX: Update ref immediately
-      const nextState = currentHistory[newIndex];
-      setWorkingSchema(JSON.parse(JSON.stringify(nextState)));
+      
+      let nextState = JSON.parse(JSON.stringify(currentHistory[newIndex]));
+      
+      // CRITICAL: Protect synced FKs - merge with current real database state
+      // This ensures that FKs added to real DB are never removed by redo
+      nextState = protectSyncedFKs(nextState, originalSchema);
+      
+      setWorkingSchema(nextState);
       setIsModified(true);
+      setHasUnsavedChanges(true); // Mark as unsaved after redo
     }
-  }, []); // Remove dependencies to avoid stale closures
+  }, [originalSchema, protectSyncedFKs]); // Add dependencies
 
   // Reset to original
   const resetToOriginal = useCallback(() => {
@@ -816,10 +862,79 @@ export const VirtualSchemaProvider = ({ children }) => {
       setHistoryIndex(0);
       historyIndexRef.current = 0; // FIX: Update ref immediately
       setIsModified(false);
+      setHasUnsavedChanges(false); // Clear unsaved flag
       clearFromStorage(currentSchemaName);
       clearBaselineSchema(currentSchemaName); // Clear baseline so it gets reset
     }
   }, [originalSchema, currentSchemaName]);
+
+  // NEW: Manual save function
+  const saveChangesToPersistence = useCallback(() => {
+    if (workingSchema && currentSchemaName && hasUnsavedChanges) {
+      saveToStorage(currentSchemaName, workingSchema);
+      const timestamp = Date.now();
+      setLastSavedTimestamp(timestamp);
+      setHasUnsavedChanges(false);
+      console.log('✅ Changes saved to persistence DB at', new Date(timestamp).toLocaleTimeString());
+      return true;
+    }
+    return false;
+  }, [workingSchema, currentSchemaName, hasUnsavedChanges]);
+
+  // NEW: Refresh from persistence DB
+  const refreshFromPersistence = useCallback(async () => {
+    if (!currentSchemaName || !originalSchema) return false;
+
+    try {
+      // Load saved schema from persistence DB
+      const savedSchema = loadFromStorage(currentSchemaName);
+      const baselineSchema = loadBaselineSchema(currentSchemaName);
+      
+      if (savedSchema) {
+        // Merge real DB with saved virtual changes
+        const merged = mergeSchemas(originalSchema, savedSchema, baselineSchema, realDbHistory);
+        setWorkingSchema(merged);
+        const newHistory = [JSON.parse(JSON.stringify(originalSchema)), merged];
+        setHistory(newHistory);
+        historyRef.current = newHistory;
+        setHistoryIndex(1);
+        historyIndexRef.current = 1;
+        setIsModified(true);
+      } else {
+        // No saved data, use original
+        const clonedOriginal = JSON.parse(JSON.stringify(originalSchema));
+        setWorkingSchema(clonedOriginal);
+        const newHistory = [clonedOriginal];
+        setHistory(newHistory);
+        historyRef.current = newHistory;
+        setHistoryIndex(0);
+        historyIndexRef.current = 0;
+        setIsModified(false);
+      }
+      
+      const timestamp = Date.now();
+      setLastSavedTimestamp(timestamp);
+      setHasUnsavedChanges(false);
+      console.log('🔄 Refreshed from persistence DB at', new Date(timestamp).toLocaleTimeString());
+      return true;
+    } catch (error) {
+      console.error('Error refreshing from persistence:', error);
+      return false;
+    }
+  }, [currentSchemaName, originalSchema, realDbHistory, mergeSchemas]);
+
+  // NEW: Check if persistence DB has newer changes than current timestamp
+  const checkForNewerChanges = useCallback(async () => {
+    if (!currentSchemaName || !lastSavedTimestamp) return false;
+
+    try {
+      const hasNewer = await checkForNewerChangesFn(currentSchemaName, lastSavedTimestamp);
+      return hasNewer;
+    } catch (error) {
+      console.warn('Error checking for newer changes:', error);
+      return false;
+    }
+  }, [currentSchemaName, lastSavedTimestamp]);
 
   // Clear virtual schema
   const clearVirtualSchema = useCallback(() => {
@@ -1840,6 +1955,8 @@ export const VirtualSchemaProvider = ({ children }) => {
     originalSchema,
     workingSchema,
     isModified,
+    hasUnsavedChanges, // NEW: Expose unsaved changes state
+    lastSavedTimestamp, // NEW: Expose last saved timestamp
     isSwitchingSchema,
     canUndo: historyIndex > 0,
     canRedo: historyIndex < history.length - 1,
@@ -1850,6 +1967,9 @@ export const VirtualSchemaProvider = ({ children }) => {
     resetToOriginal,
     forceRefreshFromBackend,
     refreshAndMerge,
+    saveChangesToPersistence, // NEW: Manual save function
+    refreshFromPersistence, // NEW: Manual refresh function
+    checkForNewerChanges, // NEW: Check for newer changes from other users
     clearVirtualSchema,
     clearAllVirtualSchemas,
     updateWorkingSchema, // Add this method for FK comparison

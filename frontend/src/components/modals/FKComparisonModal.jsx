@@ -65,10 +65,8 @@ export const FKComparisonModal = ({
 
   if (!isOpen || !currentComparison?.hasChanges) return null;
 
-  const { changes, affectedTables, nmRelationships = [] } = currentComparison;
+  const { changes, affectedTables } = currentComparison;
   const isMultipleTables = affectedTables.length > 1;
-  const hasNMRelationships = nmRelationships.length > 0;
-  const hasRegularChanges = affectedTables.length > 0;
 
   const toggleTableExpansion = (tableName) => {
     const newExpanded = new Set(expandedTables);
@@ -117,11 +115,12 @@ export const FKComparisonModal = ({
   };
 
   const renderColumnRow = (change, tableName, isBaseline = false) => {
-    const { columnName, columnData, relationship, type } = change;
+    const { columnName, columnData, relationship, type, nmMetadata } = change;
     const isAdded = type === 'added';
     const isRemoved = type === 'removed';
     const isSynced = type === 'synced';
     const isUnchanged = type === 'baseline' || type === 'virtual';
+    const isNM = nmMetadata?.isNM;
 
     // Determine the styling class
     let className = 'fk-comparison-column';
@@ -133,6 +132,11 @@ export const FKComparisonModal = ({
       className += ' fk-synced';
     } else {
       className += ' fk-unchanged';
+    }
+
+    // Add N:M class if applicable
+    if (isNM) {
+      className += ' fk-nm-relationship';
     }
 
     return (
@@ -154,6 +158,9 @@ export const FKComparisonModal = ({
               {columnData.pk && (
                 <Badge variant={BADGE_VARIANTS.PK} className="constraint-badge-readonly">PK</Badge>
               )}
+              {isNM && (
+                <Badge variant="info" className="constraint-badge-readonly fk-nm-badge">N:M</Badge>
+              )}
               {columnData.unique && (
                 <Badge variant={BADGE_VARIANTS.UNIQUE} className="constraint-badge-readonly">UQ</Badge>
               )}
@@ -166,6 +173,13 @@ export const FKComparisonModal = ({
             <div className="fk-relationship-info">
               <span className="fk-relationship-text">
                 References: <strong>{relationship.toTable}.{relationship.toColumn}</strong>
+              </span>
+            </div>
+          )}
+          {isNM && nmMetadata && (
+            <div className="fk-nm-info">
+              <span className="fk-nm-text">
+                Part of: <strong>{nmMetadata.displayName}</strong> (via {nmMetadata.junctionTable})
               </span>
             </div>
           )}
@@ -182,12 +196,20 @@ export const FKComparisonModal = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => handleUndoClick(tableName, columnName, type)}
+              onClick={() => {
+                if (isNM) {
+                  // For N:M relationships, delete entire junction table
+                  handleUndoNM(nmMetadata.junctionTable, nmMetadata.table1, nmMetadata.table2);
+                } else {
+                  // Regular FK undo
+                  handleUndoClick(tableName, columnName, type);
+                }
+              }}
               className="fk-undo-button"
-              title={`Undo ${isAdded ? 'addition' : 'removal'} of foreign key`}
+              title={isNM ? `Remove entire N:M relationship (${nmMetadata.displayName})` : `Undo ${isAdded ? 'addition' : 'removal'} of foreign key`}
             >
               <FiRotateCcw />
-              Undo
+              {isNM ? 'Remove N:M' : 'Undo'}
             </Button>
           )}
           {isSynced && (
@@ -260,83 +282,11 @@ export const FKComparisonModal = ({
           <div className="modal-body">
             <div className="fk-comparison-summary">
               <p className="fk-summary-text">
-                {hasNMRelationships && hasRegularChanges && (
-                  <>Foreign key changes detected: {nmRelationships.length} N:M relationship(s) and {affectedTables.length} table(s) with FK changes.</>
-                )}
-                {hasNMRelationships && !hasRegularChanges && (
-                  <>{nmRelationships.length} N:M relationship(s) detected.</>
-                )}
-                {!hasNMRelationships && hasRegularChanges && (
-                  <>Foreign key changes detected across {affectedTables.length} table(s).</>
-                )}
-                {' '}Review the changes below{hasNMRelationships || hasRegularChanges ? ' and use the Remove/Undo button to revert specific changes' : ''}.
+                Foreign key changes detected across {affectedTables.length} table(s). Review the changes below and use the Undo/Remove button to revert specific changes.
               </p>
             </div>
 
-            {/* N:M Relationships Section */}
-            {hasNMRelationships && (
-              <div className="fk-nm-section">
-                <h3 className="fk-section-title">
-                  <span className="nm-icon">🔗</span>
-                  Many-to-Many Relationships ({nmRelationships.length})
-                </h3>
-                
-                {nmRelationships.map(nm => (
-                  <div key={nm.junctionTable} className={`fk-nm-relationship ${nm.type === 'synced' ? 'fk-nm-synced' : ''}`}>
-                    <div className="fk-nm-header">
-                      <span className="fk-nm-display">
-                        {nm.table1} ↔ {nm.table2}
-                      </span>
-                      <span className="fk-nm-junction">via {nm.junctionTable}</span>
-                      {nm.type === 'added' && (
-                        <Badge variant="success" className="fk-nm-badge">NEW</Badge>
-                      )}
-                      {nm.type === 'synced' && (
-                        <Badge variant="info" className="fk-nm-badge">SYNCED</Badge>
-                      )}
-                    </div>
-                    
-                    {/* Show the 2 FK relationships */}
-                    <div className="fk-nm-details">
-                      {nm.tableChanges.added.map((fk, idx) => (
-                        <div key={idx} className="fk-nm-fk-row">
-                          • {fk.columnName} → {fk.relationship?.toTable}.{fk.relationship?.toColumn}
-                        </div>
-                      ))}
-                    </div>
-                    
-                    {/* Info message for synced N:M */}
-                    {nm.type === 'synced' && (
-                      <div className="fk-nm-synced-message">
-                        <FiInfo className="fk-info-icon" />
-                        <span>This N:M relationship has been applied to the database manually.</span>
-                      </div>
-                    )}
-                    
-                    {/* Single Undo button for entire N:M (only for added, not synced) */}
-                    {nm.type === 'added' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleUndoNM(nm.junctionTable, nm.table1, nm.table2)}
-                        className="fk-undo-nm-button"
-                      >
-                        <FiRotateCcw /> Remove N:M Relationship
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Regular FK Changes Section */}
-            {hasRegularChanges && hasNMRelationships && (
-              <h3 className="fk-section-title fk-regular-title">
-                Foreign Key Changes
-              </h3>
-            )}
-
-            {hasRegularChanges && isMultipleTables ? (
+            {isMultipleTables ? (
               <div className="fk-comparison-multi-table">
                 <div className="fk-tables-list">
                   {affectedTables.map(tableName => {
@@ -401,12 +351,12 @@ export const FKComparisonModal = ({
                   })}
                 </div>
               </div>
-            ) : hasRegularChanges ? (
+            ) : (
               <div className="fk-comparison-single-table">
                 <div className="fk-table-header">
                   <h3 className="fk-table-name">{affectedTables[0]}</h3>
                   <span className="fk-change-count">
-                    {changes[affectedTables[0]].added.length + changes[affectedTables[0]].removed.length} change(s)
+                    {changes[affectedTables[0]].added.length + changes[affectedTables[0]].removed.length + changes[affectedTables[0]].synced.length} change(s)
                   </span>
                 </div>
 
@@ -436,7 +386,7 @@ export const FKComparisonModal = ({
                   </div>
                 </div>
               </div>
-            ) : null}
+            )}
           </div>
 
           <div className="modal-footer">
