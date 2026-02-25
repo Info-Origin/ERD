@@ -176,32 +176,78 @@
 
 
 /* ========================================
-   RESPONSIVE DESIGN FOR VERTICAL TOOLBAR
+   RESPONSIVE DESIGN FOR VERTICAL TOOLBAR - ONLY FOR SMALL SCREENS
    ======================================== */
 
-/* Medium Laptops (1366px - 1599px) */
-@media (max-width: 1599px) {
+/* Add scrolling for small screens where buttons get cut off */
+@media (max-height: 768px) {
   .vertical-toolbar {
-    width: 70px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 10px;
   }
   
-  .toolbar-button-label {
-    font-size: 10px;
+  /* Custom scrollbar */
+  .vertical-toolbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  .vertical-toolbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .vertical-toolbar::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+  }
+  
+  /* Reduce spacing to fit more buttons */
+  .toolbar-button-wrapper {
+    margin-bottom: 6px;
+  }
+  
+  .toolbar-section > * {
+    margin-bottom: 8px;
   }
 }
 
-/* Small Laptops (1280px - 1365px) */
+/* Small Laptops (1280px - 1365px) - Priyasha's HP */
 @media (max-width: 1365px) {
   .vertical-toolbar {
-    width: 65px;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
   
+  /* Enable scrolling */
+  .vertical-toolbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  .vertical-toolbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .vertical-toolbar::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+  }
+  
+  /* Reduce spacing */
   .toolbar-button-wrapper {
-    gap: 3px;
+    gap: 2px;
+    margin-bottom: 6px;
+  }
+  
+  .toolbar-section > * {
+    margin-bottom: 8px;
+  }
+  
+  .toolbar-section > *::after {
+    bottom: -4px;
   }
   
   .toolbar-button-label {
-    font-size: 9px;
+    font-size: 8px;
   }
   
   .toolbar-icon-button {
@@ -210,48 +256,35 @@
   }
   
   .toolbar-img-icon {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
+  }
+  
+  .vertical-toolbar .icon-button {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
   }
 }
 
 /* Very Small Laptops (1024px - 1279px) */
 @media (max-width: 1279px) {
   .vertical-toolbar {
-    width: 60px;
+    width: 55px;
+    overflow-y: auto;
   }
   
   .toolbar-section {
-    gap: 6px;
+    gap: 4px;
   }
   
   .toolbar-button-wrapper {
-    gap: 2px;
+    gap: 1px;
+    margin-bottom: 5px;
   }
   
-  .toolbar-button-label {
-    font-size: 8px;
-  }
-  
-  .toolbar-icon-button {
-    width: 30px;
-    height: 30px;
-  }
-  
-  .toolbar-img-icon {
-    width: 16px;
-    height: 16px;
-  }
-  
-  .toolbar-divider {
-    margin: 6px 0;
-  }
-}
-
-/* Tablets (768px - 1023px) */
-@media (max-width: 1023px) {
-  .vertical-toolbar {
-    width: 55px;
+  .toolbar-section > * {
+    margin-bottom: 6px;
   }
   
   .toolbar-button-label {
@@ -266,5 +299,47 @@
   .toolbar-img-icon {
     width: 14px;
     height: 14px;
+  }
+  
+  .vertical-toolbar .icon-button {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+}
+
+/* Tablets (768px - 1023px) */
+@media (max-width: 1023px) {
+  .vertical-toolbar {
+    width: 50px;
+    overflow-y: auto;
+  }
+  
+  .toolbar-button-wrapper {
+    margin-bottom: 4px;
+  }
+  
+  .toolbar-section > * {
+    margin-bottom: 5px;
+  }
+  
+  .toolbar-button-label {
+    font-size: 6px;
+  }
+  
+  .toolbar-icon-button {
+    width: 26px;
+    height: 26px;
+  }
+  
+  .toolbar-img-icon {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .vertical-toolbar .icon-button {
+    width: 26px;
+    height: 26px;
+    font-size: 11px;
   }
 }

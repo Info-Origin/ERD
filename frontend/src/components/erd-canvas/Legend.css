@@ -373,24 +373,13 @@
 
 
 /* ========================================
-   ENHANCED RESPONSIVE DESIGN FOR LEGEND
+   RESPONSIVE DESIGN FOR LEGEND - ONLY FOR SMALL SCREENS
    ======================================== */
 
-/* Medium Laptops (1366px - 1599px) */
-@media (max-width: 1599px) {
-  .erd-legend {
-    width: 200px;
-  }
-  
-  .legend-item {
-    font-size: 10px;
-  }
-}
-
-/* Small Laptops (1280px - 1365px) */
+/* Small Laptops (1280px - 1365px) and below */
 @media (max-width: 1365px) {
   .erd-legend {
-    width: 180px;
+    width: 200px;
   }
   
   .legend-header {
@@ -419,7 +408,7 @@
 /* Very Small Laptops (1024px - 1279px) */
 @media (max-width: 1279px) {
   .erd-legend {
-    width: 160px;
+    width: 180px;
   }
   
   .legend-header {
