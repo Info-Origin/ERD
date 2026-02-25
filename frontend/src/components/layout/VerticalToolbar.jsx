@@ -20,12 +20,14 @@ export const VerticalToolbar = ({ onZoomIn, onZoomOut, onFitView, onResetLayout,
     toggleGridBackground,
     setIsAnyModalOpen,
     showNotification,
-    selectedSchema
+    selectedSchema,
+    hasUnsavedChanges // Available from virtualSchema spread in AppContext
   } = useApp();
   
-  const { clearAllTablePositions } = useVirtualSchema();
+  const { clearAllTablePositions, resetUnsavedChanges } = useVirtualSchema();
   
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showResetUnsavedConfirm, setShowResetUnsavedConfirm] = useState(false); // NEW: For unsaved changes reset
 
   const handleResetClick = () => {
     setShowResetConfirm(true);
@@ -40,6 +42,28 @@ export const VerticalToolbar = ({ onZoomIn, onZoomOut, onFitView, onResetLayout,
 
   const handleCancelReset = () => {
     setShowResetConfirm(false);
+    setIsAnyModalOpen(false);
+  };
+
+  // NEW: Handle reset unsaved changes
+  const handleResetUnsavedClick = () => {
+    setShowResetUnsavedConfirm(true);
+    setIsAnyModalOpen(true);
+  };
+
+  const handleConfirmResetUnsaved = async () => {
+    const success = await resetUnsavedChanges();
+    if (success) {
+      showNotification?.("Unsaved changes discarded", "success");
+    } else {
+      showNotification?.("Failed to reset changes", "error");
+    }
+    setShowResetUnsavedConfirm(false);
+    setIsAnyModalOpen(false);
+  };
+
+  const handleCancelResetUnsaved = () => {
+    setShowResetUnsavedConfirm(false);
     setIsAnyModalOpen(false);
   };
 
@@ -78,7 +102,7 @@ export const VerticalToolbar = ({ onZoomIn, onZoomOut, onFitView, onResetLayout,
         {/* Divider */}
         <div className="toolbar-divider" />
 
-        {/* Undo/Redo/Reset Section */}
+        {/* Undo/Redo Section */}
         <div className="toolbar-section">
           <div className="toolbar-button-wrapper">
             <IconButton
@@ -103,18 +127,18 @@ export const VerticalToolbar = ({ onZoomIn, onZoomOut, onFitView, onResetLayout,
           <div className="toolbar-button-wrapper">
             <button
               className="toolbar-icon-button"
-              onClick={handleResetClick}
-              title={isModified ? "Reset to original schema" : "No changes to reset"}
-              disabled={!isModified}
+              onClick={handleResetUnsavedClick}
+              title={hasUnsavedChanges ? "Reset unsaved changes" : "No unsaved changes"}
+              disabled={!hasUnsavedChanges}
               style={{
-                opacity: !isModified ? 0.5 : 1,
-                cursor: !isModified ? 'not-allowed' : 'pointer'
+                opacity: !hasUnsavedChanges ? 0.5 : 1,
+                cursor: !hasUnsavedChanges ? 'not-allowed' : 'pointer'
               }}
             >
               <img 
                 src="/rotate.png" 
-                alt="Reset"
-                className={!isModified ? 'toolbar-img-icon disabled' : 'toolbar-img-icon'}
+                alt="Reset Unsaved"
+                className={!hasUnsavedChanges ? 'toolbar-img-icon disabled' : 'toolbar-img-icon'}
                 style={{ 
                   width: '20px', 
                   height: '20px'
@@ -211,6 +235,29 @@ export const VerticalToolbar = ({ onZoomIn, onZoomOut, onFitView, onResetLayout,
             />
             <span className="toolbar-button-label">Grid</span>
           </div>
+          <div className="toolbar-button-wrapper">
+            <button
+              className="toolbar-icon-button"
+              onClick={handleResetClick}
+              title={isModified ? "Reset to original schema" : "No changes to reset"}
+              disabled={!isModified}
+              style={{
+                opacity: !isModified ? 0.5 : 1,
+                cursor: !isModified ? 'not-allowed' : 'pointer'
+              }}
+            >
+              <img 
+                src="/reset.png" 
+                alt="Reset"
+                className={!isModified ? 'toolbar-img-icon disabled' : 'toolbar-img-icon'}
+                style={{ 
+                  width: '20px', 
+                  height: '20px'
+                }}
+              />
+            </button>
+            <span className="toolbar-button-label">Reset</span>
+          </div>
         </div>
       </div>
 
@@ -223,6 +270,17 @@ export const VerticalToolbar = ({ onZoomIn, onZoomOut, onFitView, onResetLayout,
         confirmText="Yes, Reset"
         cancelText="Cancel"
         variant="danger"
+      />
+
+      <ConfirmationModal
+        isOpen={showResetUnsavedConfirm}
+        onClose={handleCancelResetUnsaved}
+        onConfirm={handleConfirmResetUnsaved}
+        title="Reset Unsaved Changes"
+        message="Are you sure you want to discard all unsaved changes? This will restore the last saved state."
+        confirmText="Yes, Discard"
+        cancelText="Cancel"
+        variant="warning"
       />
     </>
   );

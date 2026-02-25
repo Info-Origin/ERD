@@ -212,6 +212,13 @@
   flex-shrink: 0;
 }
 
+.legend-table-sample {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
 /* Responsive adjustments */
 @media (max-width: 1200px) {
   .erd-legend:not(.in-header) {

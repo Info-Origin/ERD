@@ -1053,6 +1053,50 @@ export const VirtualSchemaProvider = ({ children }) => {
     }
   }, [currentSchemaName, lastSavedTimestamp]);
 
+  // NEW: Reset unsaved changes - discard all UI changes since last save
+  const resetUnsavedChanges = useCallback(async () => {
+    if (!currentSchemaName || !originalSchema) return false;
+
+    try {
+      // Load the last saved state from database
+      const savedSchema = await loadFromDatabase(currentSchemaName);
+      const baselineSchema = await loadBaselineFromDatabase(currentSchemaName);
+      
+      if (savedSchema) {
+        // Merge real DB with saved virtual changes (last saved state)
+        const merged = mergeSchemas(originalSchema, savedSchema, baselineSchema, realDbHistory);
+        setWorkingSchema(merged);
+        
+        // Reset history to single state (the saved state)
+        const newHistory = [JSON.parse(JSON.stringify(merged))];
+        setHistory(newHistory);
+        historyRef.current = newHistory;
+        setHistoryIndex(0);
+        historyIndexRef.current = 0;
+        setIsModified(true); // Still modified from original DB, but no unsaved changes
+        setHasUnsavedChanges(false); // No unsaved changes anymore
+      } else {
+        // No saved data, reset to original DB schema
+        const clonedOriginal = JSON.parse(JSON.stringify(originalSchema));
+        setWorkingSchema(clonedOriginal);
+        
+        // Reset history to single state
+        const newHistory = [clonedOriginal];
+        setHistory(newHistory);
+        historyRef.current = newHistory;
+        setHistoryIndex(0);
+        historyIndexRef.current = 0;
+        setIsModified(false);
+        setHasUnsavedChanges(false);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error resetting unsaved changes:', error);
+      return false;
+    }
+  }, [currentSchemaName, originalSchema, realDbHistory, mergeSchemas]);
+
   // Clear virtual schema
   const clearVirtualSchema = useCallback(() => {
     if (currentSchemaName) {
@@ -2086,6 +2130,7 @@ export const VirtualSchemaProvider = ({ children }) => {
     refreshAndMerge,
     saveChangesToPersistence, // NEW: Manual save function
     refreshFromPersistence, // NEW: Manual refresh function
+    resetUnsavedChanges, // NEW: Reset unsaved UI changes
     checkForNewerChanges, // NEW: Check for newer changes from other users
     clearVirtualSchema,
     clearAllVirtualSchemas,

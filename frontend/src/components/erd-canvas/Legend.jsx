@@ -63,6 +63,53 @@ export const Legend = ({ isInHeader = false, forceExpanded = false }) => {
             <span>Auto Increment</span>
           </div>
           
+          {/* Color Code Section */}
+          <div className="legend-divider"></div>
+          <div className="legend-section-title">Visual Indicator's</div>
+          
+          
+          <div className="legend-item">
+            <div className="legend-table-sample" style={{ 
+              border: '2px solid #ef4444', 
+              boxShadow: '0 0 0 2px rgba(239, 68, 68, 0.2)' 
+            }}></div>
+            <span>Circular Dependency</span>
+          </div>
+          
+          <div className="legend-item">
+            <div className="legend-table-sample" style={{ 
+              border: '2px solid #9333ea', 
+              boxShadow: '0 0 0 2px rgba(147, 51, 234, 0.15)' 
+            }}></div>
+            <span>Junction Table (N:M)</span>
+          </div>
+          
+          <div className="legend-item">
+            <div className="legend-table-sample" style={{ 
+              border: '2px solid #14b8a6', 
+              boxShadow: '0 0 0 2px rgba(20, 184, 166, 0.2)' 
+            }}></div>
+            <span>Root Parent Table</span>
+          </div>
+
+          <div className="legend-item">
+            <div className="legend-line-sample">
+              <svg width="30" height="12" viewBox="0 0 30 12">
+                <line x1="2" y1="6" x2="28" y2="6" stroke="#2c3e50" strokeWidth="2" />
+              </svg>
+            </div>
+            <span>Database FK</span>
+          </div>
+          
+          <div className="legend-item">
+            <div className="legend-line-sample">
+              <svg width="30" height="12" viewBox="0 0 30 12">
+                <line x1="2" y1="6" x2="28" y2="6" stroke="#3b82f6" strokeWidth="2" />
+              </svg>
+            </div>
+            <span>User Created FK</span>
+          </div>
+          
           {/* Crow's foot notation legend */}
           {crowsFootMode && (
             <>
