@@ -905,6 +905,16 @@ export const VirtualSchemaProvider = ({ children }) => {
       const timestamp = Date.now();
       setLastSavedTimestamp(timestamp);
       setHasUnsavedChanges(false);
+      
+      // CRITICAL: Clear undo/redo history after successful save
+      // Saved changes become the new baseline - can't undo committed work
+      const newHistory = [JSON.parse(JSON.stringify(workingSchema))];
+      setHistory(newHistory);
+      historyRef.current = newHistory;
+      setHistoryIndex(0);
+      historyIndexRef.current = 0;
+      console.log('🔄 History cleared - undo/redo reset to saved state');
+      
       console.log('✅ Changes saved to persistence DB at', new Date(timestamp).toLocaleTimeString());
       console.log('   New timestamp:', timestamp);
       return { success: true };
@@ -932,17 +942,23 @@ export const VirtualSchemaProvider = ({ children }) => {
         // Merge real DB with saved virtual changes
         const merged = mergeSchemas(originalSchema, savedSchema, baselineSchema, realDbHistory);
         setWorkingSchema(merged);
-        const newHistory = [JSON.parse(JSON.stringify(originalSchema)), merged];
+        
+        // CRITICAL: Clear history - refreshed state becomes new baseline
+        // User's unsaved changes are discarded, can't undo past this point
+        const newHistory = [JSON.parse(JSON.stringify(merged))];
         setHistory(newHistory);
         historyRef.current = newHistory;
-        setHistoryIndex(1);
-        historyIndexRef.current = 1;
+        setHistoryIndex(0);
+        historyIndexRef.current = 0;
         setIsModified(true);
         console.log('   ✅ Merged schema with', Object.keys(merged.tables || {}).length, 'tables');
+        console.log('   🔄 History cleared - undo/redo reset to refreshed state');
       } else {
         // No saved data, use original
         const clonedOriginal = JSON.parse(JSON.stringify(originalSchema));
         setWorkingSchema(clonedOriginal);
+        
+        // Clear history for fresh start
         const newHistory = [clonedOriginal];
         setHistory(newHistory);
         historyRef.current = newHistory;
@@ -950,6 +966,7 @@ export const VirtualSchemaProvider = ({ children }) => {
         historyIndexRef.current = 0;
         setIsModified(false);
         console.log('   ✅ Using original schema');
+        console.log('   🔄 History cleared - fresh start');
       }
       
       // Get the actual timestamp from the database
