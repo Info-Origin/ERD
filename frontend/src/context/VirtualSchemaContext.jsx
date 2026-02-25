@@ -158,19 +158,20 @@ export const VirtualSchemaProvider = ({ children }) => {
           }
         });
         
-      } else if (originalSchema?.tables?.[tableName]) {
-        // Table existed in original but not in current real DB - it was deleted
-        // Don't add to merged schema
       } else {
-        // Table never existed in real DB - check baseline more carefully
-        const baselineSchema = originalSchema;
-        const existedInBaseline = baselineSchema?.tables?.[tableName];
-        
-        if (existedInBaseline) {
-          // Table existed in baseline but not in current real DB - it was deleted
-          // Don't add to merged schema
+        // Table exists in virtual but NOT in current real DB
+        // Check if it existed in baseline (originalSchema)
+        if (originalSchema?.tables?.[tableName]) {
+          // Table existed in baseline but not in current real DB - it was DELETED
+          // Don't add to merged schema (real DB has priority)
+          console.log(`🗑️ Removing table ${tableName} - deleted from real DB`);
+          console.log('  - Table was in baseline:', !!originalSchema?.tables?.[tableName]);
+          console.log('  - Table is in real DB:', !!realSchema.tables[tableName]);
+          console.log('  - Table is in virtual:', !!virtualSchema.tables[tableName]);
         } else {
-          // Table never existed in real DB - it's user-added
+          // Table never existed in real DB - it's user-added (virtual only)
+          // Keep it in merged schema
+          console.log(`✅ Keeping user-added table ${tableName} - never existed in real DB`);
           merged.tables[tableName] = virtualTable;
         }
       }
@@ -184,6 +185,10 @@ export const VirtualSchemaProvider = ({ children }) => {
     });
     
     // Clean up relationships that reference deleted tables/columns
+    console.log('🔗 Cleaning up relationships...');
+    console.log('  - Merged tables:', Object.keys(merged.tables));
+    console.log('  - Virtual relationships count:', (virtualSchema.relationships || []).length);
+    
     const validRelationships = (merged.relationships || []).filter(rel => {
       const fromTableExists = merged.tables[rel.fromTable];
       const toTableExists = merged.tables[rel.toTable];
@@ -191,6 +196,12 @@ export const VirtualSchemaProvider = ({ children }) => {
       const toColumnExists = toTableExists?.columns[rel.toColumn];
       
       const isValid = fromTableExists && toTableExists && fromColumnExists && toColumnExists;
+      
+      if (!isValid) {
+        console.log(`  ❌ Removing relationship: ${rel.fromTable}.${rel.fromColumn} -> ${rel.toTable}.${rel.toColumn}`);
+        console.log(`     - fromTable exists: ${!!fromTableExists}, toTable exists: ${!!toTableExists}`);
+      }
+      
       return isValid;
     });
     
@@ -214,6 +225,10 @@ export const VirtualSchemaProvider = ({ children }) => {
       if (fromTableExists && toTableExists && fromColumnExists && toColumnExists) {
         const key = `${rel.fromTable}.${rel.fromColumn}->${rel.toTable}.${rel.toColumn}`;
         relationshipMap.set(key, rel);
+        console.log(`  ✅ Keeping virtual relationship: ${rel.fromTable}.${rel.fromColumn} -> ${rel.toTable}.${rel.toColumn}`);
+      } else {
+        console.log(`  ❌ Skipping virtual relationship (table/column missing): ${rel.fromTable}.${rel.fromColumn} -> ${rel.toTable}.${rel.toColumn}`);
+        console.log(`     - fromTable exists: ${!!fromTableExists}, toTable exists: ${!!toTableExists}`);
       }
     });
     
@@ -714,12 +729,16 @@ export const VirtualSchemaProvider = ({ children }) => {
       
       // Update state - DO NOT update originalSchema here, keep it as the stable baseline
       setWorkingSchema(finalSchema);
-      const newHistory = [JSON.parse(JSON.stringify(baselineSchema || newRealSchema)), finalSchema];
+      
+      // CRITICAL: After refresh, treat the refreshed state as the new baseline
+      // This ensures undo/redo and save buttons are disabled (no changes yet)
+      const newHistory = [finalSchema];
       setHistory(newHistory);
-      historyRef.current = newHistory; // Update ref immediately
-      setHistoryIndex(1);
-      historyIndexRef.current = 1; // FIX: Update ref immediately
+      historyRef.current = newHistory;
+      setHistoryIndex(0);
+      historyIndexRef.current = 0;
       setIsModified(true);
+      setHasUnsavedChanges(false); // No unsaved changes after refresh
       
       return finalSchema;
     } catch (error) {

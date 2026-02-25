@@ -6,12 +6,18 @@ import { SaveConfirmationModal } from '../modals/SaveConfirmationModal';
 import "./CanvasControls.css";
 
 export const CanvasControls = ({ isCollapsed }) => {
-  const { selectedSchema, showFKComparison, showNotification, openExportPDFModal, showOutOfSyncModal } = useApp();
+  const { 
+    selectedSchema, 
+    showFKComparison, 
+    showNotification, 
+    openExportPDFModal, 
+    showOutOfSyncModal,
+    saveChangesWithDatabaseCheck // SCENARIO 4: Use new save function with DB check
+  } = useApp();
   const { 
     originalSchema, 
     workingSchema, 
-    hasUnsavedChanges,
-    saveChangesToPersistence
+    hasUnsavedChanges
   } = useVirtualSchema();
 
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -59,20 +65,23 @@ export const CanvasControls = ({ isCollapsed }) => {
   };
 
   const handleSaveConfirm = async () => {
-    const result = await saveChangesToPersistence?.();
+    // SCENARIO 4: Use new save function that checks for database changes first
+    const result = await saveChangesWithDatabaseCheck?.();
     
     if (result?.success) {
-      showNotification?.("Changes saved successfully!", "success");
+      // Success handled by the function itself
+      setShowSaveModal(false);
+    } else if (result?.reason === 'database_changes_detected') {
+      // Database changes modal will be shown, close save modal
       setShowSaveModal(false);
     } else if (result?.reason === 'conflict') {
-      // Conflict detected - show out of sync modal
+      // Conflict detected - out of sync modal already shown
       setShowSaveModal(false);
-      showOutOfSyncModal?.();
     } else if (result?.reason === 'no_changes') {
-      showNotification?.("No changes to save", "info");
+      // No changes notification already shown
       setShowSaveModal(false);
     } else {
-      showNotification?.("Failed to save changes", "error");
+      // Error notification already shown
       setShowSaveModal(false);
     }
   };

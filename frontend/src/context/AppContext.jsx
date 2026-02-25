@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { useSchemas } from "../hooks/useSchemas";
 import { useERD } from "../hooks/useERD";
 import { useSelection } from "../hooks/useSelection";
@@ -20,6 +20,10 @@ export const useApp = () => {
 export const AppProvider = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedRelationship, setHighlightedRelationship] = useState(null);
+  
+  // NEW: Track if this is initial page load (for Scenario 3: Browser Refresh)
+  const isInitialLoadRef = useRef(true);
+  const [hasCheckedForChanges, setHasCheckedForChanges] = useState(false); // State to trigger re-render
   
   // NEW: Hover-based relationship highlighting
   const [hoveredTable, setHoveredTable] = useState(null);
@@ -122,15 +126,158 @@ export const AppProvider = ({ children }) => {
   // Virtual schema context
   const virtualSchema = useVirtualSchema();
 
+  // ==================== DATABASE CHANGES DETECTION ====================
+  // MUST BE DEFINED EARLY - Used by other functions below
+  
+  // Database Changes Modal state
+  const [databaseChangesModal, setDatabaseChangesModal] = useState({
+    isOpen: false,
+    changes: null,
+    isRefreshing: false,
+    onComplete: null,
+    targetSchema: null // Track which schema the changes are for
+  });
+
+  // Check for database changes (manual trigger only)
+  const checkForDatabaseChanges = useCallback(async (onComplete = null, targetSchema = null) => {
+    // Use targetSchema if provided, otherwise use selectedSchema
+    const schemaToCheck = targetSchema || selectedSchema;
+    
+    if (!schemaToCheck) return false;
+
+    try {
+      const erdService = (await import('../services/schemaErdService')).default;
+      const { detectDatabaseChanges } = await import('../utils/databaseChangeDetector');
+      const { loadBaselineSchema } = await import('../utils/persistenceAdapter');
+
+      const baseline = loadBaselineSchema(schemaToCheck);
+      const currentRealDB = await erdService.getERDData(schemaToCheck);
+      const changeResult = detectDatabaseChanges(baseline, currentRealDB);
+
+      if (changeResult.isFirstLoad) {
+        const { saveBaselineSchema } = await import('../utils/persistenceAdapter');
+        saveBaselineSchema(schemaToCheck, currentRealDB);
+        console.log('📊 First load: Baseline schema saved for', schemaToCheck);
+        return false;
+      }
+
+      if (changeResult.hasChanges) {
+        console.log('🔍 Database changes detected in', schemaToCheck, ':', changeResult.changes);
+        setDatabaseChangesModal({
+          isOpen: true,
+          changes: changeResult.changes,
+          isRefreshing: false,
+          onComplete,
+          targetSchema: schemaToCheck // Store which schema has changes
+        });
+        setIsAnyModalOpen(true);
+        return true;
+      }
+
+      console.log('✅ No database changes detected in', schemaToCheck);
+      return false;
+    } catch (error) {
+      console.error('Error checking for database changes:', error);
+      showNotification('Failed to check for database changes', 'error');
+      return false;
+    }
+  }, [selectedSchema, showNotification]);
+
+  // Handle refresh from Database Changes Modal
+  const handleDatabaseChangesRefresh = useCallback(async () => {
+    const schemaToRefresh = databaseChangesModal.targetSchema || selectedSchema;
+    
+    if (!schemaToRefresh) return;
+
+    setDatabaseChangesModal(prev => ({ ...prev, isRefreshing: true }));
+
+    try {
+      const erdService = (await import('../services/schemaErdService')).default;
+      const { saveBaselineSchema } = await import('../utils/persistenceAdapter');
+
+      const currentRealDB = await erdService.getERDData(schemaToRefresh);
+      saveBaselineSchema(schemaToRefresh, currentRealDB);
+      console.log('💾 Baseline schema updated for', schemaToRefresh);
+
+      // Only update virtual schema if we're refreshing the CURRENT schema
+      if (schemaToRefresh === selectedSchema) {
+        if (virtualSchema.setOriginalSchema) {
+          virtualSchema.setOriginalSchema(currentRealDB);
+        }
+
+        if (virtualSchema.refreshAndMerge) {
+          await virtualSchema.refreshAndMerge(currentRealDB);
+        }
+      }
+
+      const onComplete = databaseChangesModal.onComplete;
+      setDatabaseChangesModal({
+        isOpen: false,
+        changes: null,
+        isRefreshing: false,
+        onComplete: null,
+        targetSchema: null
+      });
+      setIsAnyModalOpen(false);
+
+      showNotification('Database changes synchronized successfully', 'success');
+
+      if (onComplete) {
+        onComplete();
+      }
+    } catch (error) {
+      console.error('Error refreshing database changes:', error);
+      showNotification('Failed to refresh database changes', 'error');
+      setDatabaseChangesModal(prev => ({ ...prev, isRefreshing: false }));
+    }
+  }, [selectedSchema, virtualSchema, databaseChangesModal.onComplete, databaseChangesModal.targetSchema, showNotification]);
+
+  // Out of sync modal functions (defined early - used by actuallySaveChanges)
+  const showOutOfSyncModal = useCallback(() => {
+    setOutOfSyncModal({ isOpen: true });
+    setIsAnyModalOpen(true);
+  }, []);
+
+  const closeOutOfSyncModal = useCallback(() => {
+    setOutOfSyncModal({ isOpen: false });
+    setIsAnyModalOpen(false);
+  }, []);
+
+  const handleRefreshFromOutOfSync = useCallback(async () => {
+    const refreshed = await virtualSchema.refreshFromPersistence?.();
+    if (refreshed) {
+      showNotification("Schema refreshed. Your changes were discarded.", "info");
+    } else {
+      showNotification("Failed to refresh schema", "error");
+    }
+    closeOutOfSyncModal();
+  }, [virtualSchema, showNotification]);
+
+  // ==================== MODAL FUNCTIONS ====================
+
   // Shared Edit Table Modal functions
-  const openEditTableModal = (tableName, schemaName) => {
+  // SCENARIO 2: Edit Constraint - Check for database changes before opening
+  const openEditTableModal = useCallback(async (tableName, schemaName) => {
+    const hasDbChanges = await checkForDatabaseChanges(() => {
+      actuallyOpenEditTableModal(tableName, schemaName);
+    });
+    
+    if (hasDbChanges) {
+      return;
+    }
+    
+    actuallyOpenEditTableModal(tableName, schemaName);
+  }, [checkForDatabaseChanges]);
+
+  // Helper function to actually open the modal
+  const actuallyOpenEditTableModal = useCallback((tableName, schemaName) => {
     setSharedEditTableModal({
       isOpen: true,
       tableName,
       schemaName
     });
     setIsAnyModalOpen(true);
-  };
+  }, []);
 
   const closeEditTableModal = () => {
     setSharedEditTableModal({
@@ -383,115 +530,67 @@ export const AppProvider = ({ children }) => {
     setGridBackground(prev => !prev);
   };
 
-  // Auto-refresh mechanism for real-time sync detection (real DB changes)
-  useEffect(() => {
-    if (!selectedSchema || !erdData || erdLoading) return;
+  // Close Database Changes Modal (not used - user must refresh)
+  const closeDatabaseChangesModal = useCallback(() => {
+    // Modal cannot be closed without refreshing
+    // This function exists for consistency but does nothing
+  }, []);
 
-    const autoRefreshInterval = setInterval(async () => {
-      try {
-        // Import the service directly to fetch fresh data
-        const erdService = (await import('../services/schemaErdService')).default;
-        const freshERDData = await erdService.getERDData(selectedSchema);
-        
-        if (freshERDData) {
-          // Compare with current original schema to detect meaningful changes
-          const hasChanges = (() => {
-            if (!virtualSchema.originalSchema) return true;
+  // ==================== SAVE CHANGES HELPERS ====================
+  
+  // SCENARIO 4: Save Changes - Check for database changes before saving
+  const saveChangesWithDatabaseCheck = useCallback(async () => {
+    // Check for database changes before saving
+    const hasDbChanges = await checkForDatabaseChanges(() => {
+      // After database refresh, proceed with save
+      actuallySaveChanges();
+    });
+    
+    // If database changes modal is shown, stop here
+    if (hasDbChanges) {
+      return { success: false, reason: 'database_changes_detected' };
+    }
+    
+    // No database changes, save directly
+    return await actuallySaveChanges();
+  }, [checkForDatabaseChanges]);
 
-            // Compare table count
-            const originalTables = Object.keys(virtualSchema.originalSchema.tables || {});
-            const freshTables = Object.keys(freshERDData.tables || {});
-            if (originalTables.length !== freshTables.length) return true;
-
-            // Compare table names
-            if (!originalTables.every(table => freshTables.includes(table))) return true;
-
-            // Compare relationships count (for FK sync detection)
-            const originalRels = (virtualSchema.originalSchema.relationships || []).length;
-            const freshRels = (freshERDData.relationships || []).length;
-            if (originalRels !== freshRels) return true;
-
-            // Deep comparison for relationships (most important for FK sync)
-            const originalRelKeys = (virtualSchema.originalSchema.relationships || [])
-              .map(rel => `${rel.fromTable}.${rel.fromColumn}->${rel.toTable}.${rel.toColumn}`)
-              .sort();
-            const freshRelKeys = (freshERDData.relationships || [])
-              .map(rel => `${rel.fromTable}.${rel.fromColumn}->${rel.toTable}.${rel.toColumn}`)
-              .sort();
-            
-            return JSON.stringify(originalRelKeys) !== JSON.stringify(freshRelKeys);
-          })();
-
-          if (hasChanges) {
-            console.log('🔄 Auto-refresh detected database changes, updating schema...');
-            
-            // Update the original schema with fresh data
-            if (virtualSchema.setOriginalSchema) {
-              virtualSchema.setOriginalSchema(freshERDData);
-            }
-
-            // Trigger refresh and merge to update sync status
-            if (virtualSchema.refreshAndMerge) {
-              await virtualSchema.refreshAndMerge(freshERDData);
-            }
-
-            // If FK comparison modal is open, refresh it with new data
-            if (fkComparisonModal.isOpen && virtualSchema.workingSchema) {
-              const { compareForeignKeys } = await import('../utils/fkComparison');
-              const updatedComparison = compareForeignKeys(freshERDData, virtualSchema.workingSchema);
-              
-              console.log('🔄 FK Comparison refresh:', {
-                hasChanges: updatedComparison.hasChanges,
-                affectedTables: updatedComparison.affectedTables,
-                changes: updatedComparison.changes
-              });
-              
-              if (updatedComparison.hasChanges) {
-                setFkComparisonModal(prev => ({
-                  ...prev,
-                  comparisonResult: updatedComparison
-                }));
-                console.log('✅ FK Comparison modal updated with fresh data');
-              } else {
-                // No more changes, close the modal
-                closeFKComparison();
-                showNotification("All changes have been synchronized!", "success");
-                console.log('✅ All FK changes synchronized, closing modal');
-              }
-            }
-
-            // Refresh EditTableModal if it's open
-            if (editTableModalRefreshCallback && sharedEditTableModal.isOpen) {
-              editTableModalRefreshCallback();
-            }
-
-            // Show notification about sync detection
-            if (fkComparisonModal.isOpen) {
-              showNotification("Database changes detected and synchronized!", "info");
-            }
-          }
-        }
-      } catch (error) {
-        // Silently handle errors to avoid disrupting user experience
-        console.warn('Auto-refresh failed:', error);
+  // Helper function to actually save changes
+  const actuallySaveChanges = useCallback(async () => {
+    if (virtualSchema.saveChangesToPersistence) {
+      const result = await virtualSchema.saveChangesToPersistence();
+      
+      if (result.success) {
+        showNotification('Changes saved successfully!', 'success');
+      } else if (result.reason === 'conflict') {
+        // Show out of sync modal
+        showOutOfSyncModal();
+      } else if (result.reason === 'no_changes') {
+        showNotification('No changes to save', 'info');
+      } else {
+        showNotification('Failed to save changes', 'error');
       }
-    }, 3000); // 3 second interval
+      
+      return result;
+    }
+    return { success: false, reason: 'no_save_function' };
+  }, [virtualSchema, showNotification, showOutOfSyncModal]);
 
-    return () => clearInterval(autoRefreshInterval);
-  }, [
-    selectedSchema, 
-    erdData, 
-    erdLoading, 
-    virtualSchema.originalSchema, 
-    virtualSchema.workingSchema,
-    virtualSchema.refreshAndMerge, 
-    virtualSchema.setOriginalSchema,
-    fkComparisonModal.isOpen,
-    editTableModalRefreshCallback,
-    sharedEditTableModal.isOpen,
-    showNotification,
-    closeFKComparison
-  ]);
+  // ==================== SCENARIO TRIGGERS ====================
+  
+  // Scenario 3: Browser Refresh - Check IMMEDIATELY when schema data loads (before initialization)
+  useEffect(() => {
+    if (selectedSchema && erdData && !erdLoading && isInitialLoadRef.current && !hasCheckedForChanges) {
+      // Run check immediately (no delay) to ensure it runs BEFORE virtualSchema.initializeSchema
+      checkForDatabaseChanges();
+      
+      // Mark that we've checked (this will trigger initializeSchema useEffect)
+      setHasCheckedForChanges(true);
+      
+      // Mark initial load as complete
+      isInitialLoadRef.current = false;
+    }
+  }, [selectedSchema, erdData, erdLoading, hasCheckedForChanges, checkForDatabaseChanges]);
 
   // NEW: New changes modal functions
   const showNewChangesModal = useCallback(() => {
@@ -556,30 +655,31 @@ export const AppProvider = ({ children }) => {
     closeUnsavedChangesModal();
   }, [unsavedChangesModal.onConfirm]);
 
-  // NEW: Out of sync modal functions
-  const showOutOfSyncModal = useCallback(() => {
-    setOutOfSyncModal({ isOpen: true });
-    setIsAnyModalOpen(true);
-  }, []);
-
-  const closeOutOfSyncModal = useCallback(() => {
-    setOutOfSyncModal({ isOpen: false });
-    setIsAnyModalOpen(false);
-  }, []);
-
-  const handleRefreshFromOutOfSync = useCallback(async () => {
-    const refreshed = await virtualSchema.refreshFromPersistence?.();
-    if (refreshed) {
-      showNotification("Schema refreshed. Your changes were discarded.", "info");
-    } else {
-      showNotification("Failed to refresh schema", "error");
+  // NEW: Wrapped selectSchema with database changes check AND unsaved changes check
+  const selectSchema = useCallback(async (schemaName) => {
+    // SCENARIO 1: Schema Switching - Check for database changes
+    // Only check if switching to a DIFFERENT schema (not initial load)
+    if (selectedSchema && schemaName !== selectedSchema) {
+      // Check for database changes in the TARGET schema (schemaName)
+      const hasDbChanges = await checkForDatabaseChanges(() => {
+        // After database refresh, continue with schema switch
+        continueSchemaSwitch(schemaName);
+      }, schemaName); // Pass target schema as parameter
+      
+      // If database changes modal is shown, stop here
+      // The callback will handle the switch after refresh
+      if (hasDbChanges) {
+        return;
+      }
     }
-    closeOutOfSyncModal();
-  }, [virtualSchema, showNotification]);
+    
+    // No database changes, continue with normal flow
+    continueSchemaSwitch(schemaName);
+  }, [selectedSchema, checkForDatabaseChanges]);
 
-  // NEW: Wrapped selectSchema with unsaved changes check
-  const selectSchema = useCallback((schemaName) => {
-    // If trying to switch to a different schema and there are unsaved changes
+  // Helper function to continue schema switch after checks
+  const continueSchemaSwitch = useCallback((schemaName) => {
+    // Check for unsaved changes
     if (selectedSchema && schemaName !== selectedSchema && virtualSchema.hasUnsavedChanges) {
       // Show unsaved changes modal
       showUnsavedChangesModal(schemaName, () => {
@@ -590,7 +690,7 @@ export const AppProvider = ({ children }) => {
       // No unsaved changes, switch directly
       originalSelectSchema(schemaName);
     }
-  }, [selectedSchema, virtualSchema.hasUnsavedChanges, originalSelectSchema]);
+  }, [selectedSchema, virtualSchema.hasUnsavedChanges, originalSelectSchema, showUnsavedChangesModal]);
 
   // NEW: Periodic check for new changes from other users (persistence DB)
   // DISABLED: Only show conflict modal when user tries to save, not during idle time
@@ -637,11 +737,18 @@ export const AppProvider = ({ children }) => {
   }, [virtualSchema.hasUnsavedChanges]);
 
   // Initialize virtual schema when ERD data loads
+  // IMPORTANT: On initial load, wait for Scenario 3 check to complete first
   useEffect(() => {
     if (erdData && !erdLoading && selectedSchema) {
+      // On initial load, wait for database changes check to complete
+      if (isInitialLoadRef.current && !hasCheckedForChanges) {
+        // Check hasn't run yet, wait for it
+        return;
+      }
+      
       virtualSchema.initializeSchema(erdData);
     }
-  }, [erdData, erdLoading, selectedSchema, virtualSchema.initializeSchema]);
+  }, [erdData, erdLoading, selectedSchema, hasCheckedForChanges, virtualSchema.initializeSchema]);
 
   // Track workingSchema changes for debugging
   useEffect(() => {
@@ -931,6 +1038,13 @@ export const AppProvider = ({ children }) => {
     // Global modal state
     isAnyModalOpen,
     setIsAnyModalOpen,
+
+    // Database Changes Modal (NEW)
+    databaseChangesModal,
+    checkForDatabaseChanges,
+    handleDatabaseChangesRefresh,
+    closeDatabaseChangesModal,
+    saveChangesWithDatabaseCheck, // SCENARIO 4: Save with DB check
 
     // NEW: New changes detection modal
     newChangesModal,

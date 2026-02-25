@@ -5,6 +5,7 @@ import { ERDCanvas } from "../components/erd-canvas/ERDCanvas";
 import { VerticalToolbar } from "../components/layout/VerticalToolbar";
 import EditTableModal from "../components/modals/EditTableModal";
 import { FKComparisonModal } from "../components/modals/FKComparisonModal";
+import { DatabaseChangesModal } from "../components/modals/DatabaseChangesModal";
 import { NewChangesAvailableModal } from "../components/modals/NewChangesAvailableModal";
 import { UnsavedChangesModal } from "../components/modals/UnsavedChangesModal";
 import { OutOfSyncModal } from "../components/modals/OutOfSyncModal";
@@ -31,7 +32,9 @@ export const MainPage = () => {
     handleDiscardAndSwitch,
     outOfSyncModal,
     closeOutOfSyncModal,
-    handleRefreshFromOutOfSync
+    handleRefreshFromOutOfSync,
+    databaseChangesModal,
+    handleDatabaseChangesRefresh
   } = useApp();
   const { originalSchema, workingSchema } = useVirtualSchema();
   
@@ -67,6 +70,14 @@ export const MainPage = () => {
         baselineSchema={originalSchema}
         virtualSchema={workingSchema}
         onRevertChange={handleRevertFKChange}
+      />
+
+      {/* Database Changes Modal - NEW */}
+      <DatabaseChangesModal
+        isOpen={databaseChangesModal.isOpen}
+        changes={databaseChangesModal.changes}
+        onRefresh={handleDatabaseChangesRefresh}
+        isRefreshing={databaseChangesModal.isRefreshing}
       />
 
       {/* New Changes Available Modal */}
