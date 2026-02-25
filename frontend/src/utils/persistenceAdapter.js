@@ -86,18 +86,10 @@ export const clearRealDbHistory = (schemaName) => {
 };
 
 export const saveToStorage = (schemaName, virtualSchema) => {
-  const timestamp = Date.now();
-  console.log('💾 saveToStorage called at', new Date(timestamp).toLocaleTimeString());
-  console.log('   Schema:', schemaName);
-  console.log('   Timestamp:', timestamp);
-  
   _saveToLocalStorage('virtualSchemas', schemaName, virtualSchema);
-  console.log('   ✅ Saved to localStorage');
   
-  persistenceService.saveVirtualSchema(schemaName, virtualSchema).then(() => {
-    console.log('   ✅ Synced to database');
-  }).catch(err => {
-    console.warn('   ❌ Failed to sync virtual schema to database:', err);
+  persistenceService.saveVirtualSchema(schemaName, virtualSchema).catch(err => {
+    console.warn('Failed to sync virtual schema to database:', err);
   });
 };
 
@@ -168,24 +160,15 @@ export const getStorageTimestamp = (schemaName) => {
 
 export const checkForNewerChanges = async (schemaName, currentTimestamp) => {
   try {
-    console.log('🔍 checkForNewerChanges called:');
-    console.log('   Schema:', schemaName);
-    console.log('   My timestamp:', currentTimestamp ? new Date(currentTimestamp).toLocaleTimeString() : 'null');
-    
     // Check persistence DB for newer changes
     const dbTimestamp = await persistenceService.getVirtualSchemaTimestamp(schemaName);
     
-    console.log('   DB timestamp:', dbTimestamp ? new Date(dbTimestamp).toLocaleTimeString() : 'null');
-    
     if (!dbTimestamp || !currentTimestamp) {
-      console.log('   Result: false (missing timestamp)');
       return false;
     }
     
     // If DB has newer changes than our current timestamp, return true
-    const hasNewer = dbTimestamp > currentTimestamp;
-    console.log('   Result:', hasNewer ? 'TRUE (conflict!)' : 'FALSE (no conflict)');
-    return hasNewer;
+    return dbTimestamp > currentTimestamp;
   } catch (error) {
     console.warn('Failed to check for newer changes:', error);
     return false;
