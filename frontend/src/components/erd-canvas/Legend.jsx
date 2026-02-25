@@ -67,7 +67,6 @@ export const Legend = ({ isInHeader = false, forceExpanded = false }) => {
           <div className="legend-divider"></div>
           <div className="legend-section-title">Visual Indicator's</div>
           
-          
           <div className="legend-item">
             <div className="legend-table-sample" style={{ 
               border: '2px solid #ef4444', 

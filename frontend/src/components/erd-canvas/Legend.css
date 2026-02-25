@@ -84,8 +84,8 @@
 .legend-items {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
+  gap: 3px; /* Reduced from 4px for even tighter spacing */
+  padding: 8px 12px;
   background-color: var(--bg-primary);
   max-height: 400px;
   overflow-y: auto;
@@ -180,16 +180,27 @@
 
 .legend-divider {
   height: 1px;
-  background-color: var(--border-color);
+  background-color: rgba(255, 255, 255, 0.1); /* Subtle line that works in both themes */
   margin: 6px 0;
+  flex-shrink: 0; /* Prevent divider from being compressed */
+}
+
+/* Light theme - slightly darker divider */
+:root[data-theme="light"] .legend-divider {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Dark theme - subtle lighter divider */
+:root[data-theme="dark"] .legend-divider {
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 .legend-section-title {
   font-size: 10px;
   color: var(--text-primary);
   font-weight: 600;
-  margin-bottom: 4px;
-  margin-top: 2px;
+  margin-bottom: 2px; /* Reduced from 3px */
+  margin-top: 0px; /* Reduced from 1px */
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
