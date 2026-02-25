@@ -14,7 +14,8 @@ export const FKComparisonModal = ({
   comparisonResult,
   baselineSchema,
   virtualSchema,
-  onRevertChange
+  onRevertChange,
+  hasUnsavedChanges = true // Default to true for backward compatibility
 }) => {
   const [expandedTables, setExpandedTables] = useState(new Set());
   const [confirmModal, setConfirmModal] = useState({
@@ -192,7 +193,7 @@ export const FKComparisonModal = ({
           )}
         </div>
         <div className="fk-column-actions">
-          {(isAdded || isRemoved) && (
+          {(isAdded || isRemoved) && hasUnsavedChanges && (
             <Button
               variant="ghost"
               size="sm"
@@ -211,6 +212,12 @@ export const FKComparisonModal = ({
               <FiRotateCcw />
               {isNM ? 'Remove N:M' : 'Undo'}
             </Button>
+          )}
+          {(isAdded || isRemoved) && !hasUnsavedChanges && (
+            <div className="fk-saved-indicator" title="Changes saved to virtual database">
+              <FiCheck className="fk-saved-icon" />
+              <span>Saved</span>
+            </div>
           )}
           {isSynced && (
             <div className="fk-synced-indicator" title="This change has been applied externally">

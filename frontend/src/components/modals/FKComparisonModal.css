@@ -360,6 +360,31 @@
   border-color: var(--info);
 }
 
+.fk-saved-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: var(--success-bg);
+  border: 1px solid var(--success-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  color: var(--success-color);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.fk-saved-indicator:hover {
+  background-color: var(--success);
+  color: white;
+  border-color: var(--success);
+}
+
+.fk-saved-icon {
+  font-size: 12px;
+}
+
 .fk-info-icon {
   font-size: 12px;
 }

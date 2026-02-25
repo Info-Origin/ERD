@@ -45,15 +45,11 @@ export const DatabaseChangesModal = ({
             <h2>Database Changes Detected</h2>
           </div>
           <div className="database-changes-modal-subtitle">
-            {totalChanges} change{totalChanges !== 1 ? 's' : ''} detected in the real database
+            {totalChanges} change{totalChanges !== 1 ? 's' : ''} detected in the database schema. Refresh to stay in sync.
           </div>
         </div>
 
         <div className="database-changes-modal-body">
-          <div className="database-changes-info">
-            <p>The following changes have been made to the database since your last refresh. Click "Refresh & Sync" to update your view.</p>
-          </div>
-
           <div className="database-changes-sections">
             {formattedChanges.map((section) => (
               <div key={section.title} className="database-changes-section">

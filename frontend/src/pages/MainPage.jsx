@@ -36,7 +36,7 @@ export const MainPage = () => {
     databaseChangesModal,
     handleDatabaseChangesRefresh
   } = useApp();
-  const { originalSchema, workingSchema } = useVirtualSchema();
+  const { originalSchema, workingSchema, hasUnsavedChanges } = useVirtualSchema();
   
   // State to hold canvas control functions
   const [canvasControls, setCanvasControls] = useState({
@@ -70,6 +70,7 @@ export const MainPage = () => {
         baselineSchema={originalSchema}
         virtualSchema={workingSchema}
         onRevertChange={handleRevertFKChange}
+        hasUnsavedChanges={hasUnsavedChanges}
       />
 
       {/* Database Changes Modal - NEW */}
