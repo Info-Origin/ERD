@@ -173,3 +173,98 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+
+/* ========================================
+   RESPONSIVE DESIGN FOR VERTICAL TOOLBAR
+   ======================================== */
+
+/* Medium Laptops (1366px - 1599px) */
+@media (max-width: 1599px) {
+  .vertical-toolbar {
+    width: 70px;
+  }
+  
+  .toolbar-button-label {
+    font-size: 10px;
+  }
+}
+
+/* Small Laptops (1280px - 1365px) */
+@media (max-width: 1365px) {
+  .vertical-toolbar {
+    width: 65px;
+  }
+  
+  .toolbar-button-wrapper {
+    gap: 3px;
+  }
+  
+  .toolbar-button-label {
+    font-size: 9px;
+  }
+  
+  .toolbar-icon-button {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .toolbar-img-icon {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* Very Small Laptops (1024px - 1279px) */
+@media (max-width: 1279px) {
+  .vertical-toolbar {
+    width: 60px;
+  }
+  
+  .toolbar-section {
+    gap: 6px;
+  }
+  
+  .toolbar-button-wrapper {
+    gap: 2px;
+  }
+  
+  .toolbar-button-label {
+    font-size: 8px;
+  }
+  
+  .toolbar-icon-button {
+    width: 30px;
+    height: 30px;
+  }
+  
+  .toolbar-img-icon {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .toolbar-divider {
+    margin: 6px 0;
+  }
+}
+
+/* Tablets (768px - 1023px) */
+@media (max-width: 1023px) {
+  .vertical-toolbar {
+    width: 55px;
+  }
+  
+  .toolbar-button-label {
+    font-size: 7px;
+  }
+  
+  .toolbar-icon-button {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .toolbar-img-icon {
+    width: 14px;
+    height: 14px;
+  }
+}

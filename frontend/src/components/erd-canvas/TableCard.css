@@ -1316,3 +1316,125 @@
   margin-left: auto;
   box-shadow: 0 2px 4px rgba(147, 51, 234, 0.3);
 }
+
+
+/* ========================================
+   RESPONSIVE DESIGN FOR TABLE CARDS
+   ======================================== */
+
+/* Medium Laptops (1366px - 1599px) */
+@media (max-width: 1599px) {
+  .table-card {
+    width: 220px;
+    max-width: 260px;
+    min-width: 180px;
+  }
+  
+  .table-card-header {
+    padding: 10px 12px;
+  }
+  
+  .table-name {
+    font-size: 13px;
+  }
+  
+  .column-item {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}
+
+/* Small Laptops (1280px - 1365px) */
+@media (max-width: 1365px) {
+  .table-card {
+    width: 200px;
+    max-width: 240px;
+    min-width: 160px;
+  }
+  
+  .table-card-header {
+    padding: 8px 10px;
+  }
+  
+  .table-name {
+    font-size: 12px;
+  }
+  
+  .column-item {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+  
+  .column-name {
+    font-size: 11px;
+  }
+  
+  .column-type {
+    font-size: 10px;
+  }
+}
+
+/* Very Small Laptops (1024px - 1279px) */
+@media (max-width: 1279px) {
+  .table-card {
+    width: 180px;
+    max-width: 220px;
+    min-width: 140px;
+  }
+  
+  .table-card-header {
+    padding: 7px 8px;
+  }
+  
+  .table-name {
+    font-size: 11px;
+  }
+  
+  .column-item {
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+  
+  .column-name {
+    font-size: 10px;
+  }
+  
+  .column-type {
+    font-size: 9px;
+  }
+  
+  .badge {
+    font-size: 9px;
+    padding: 1px 4px;
+  }
+}
+
+/* Tablets (768px - 1023px) */
+@media (max-width: 1023px) {
+  .table-card {
+    width: 160px;
+    max-width: 200px;
+    min-width: 120px;
+  }
+  
+  .table-card-header {
+    padding: 6px 7px;
+  }
+  
+  .table-name {
+    font-size: 10px;
+  }
+  
+  .column-item {
+    padding: 3px 5px;
+    font-size: 9px;
+  }
+  
+  .column-name {
+    font-size: 9px;
+  }
+  
+  .column-type {
+    font-size: 8px;
+  }
+}

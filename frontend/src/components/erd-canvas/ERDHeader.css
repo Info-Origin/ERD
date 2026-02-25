@@ -1358,3 +1358,201 @@ input.modern-search-input:not(:focus) {
   background: var(--danger-color);
   color: white;
 }
+
+
+/* ========================================
+   RESPONSIVE DESIGN FOR DIFFERENT LAPTOP SCREENS
+   ======================================== */
+
+/* Large Laptops (1600px - 1920px+) - Default styles above work well */
+
+/* Medium Laptops (1366px - 1599px) - Most common laptop size */
+@media (max-width: 1599px) {
+  .erd-header-content {
+    padding: 0 12px;
+    gap: 12px;
+  }
+  
+  .erd-search-section {
+    max-width: 500px;
+    min-width: 180px;
+  }
+  
+  .modern-search-container {
+    height: 40px;
+    padding: 6px 14px;
+  }
+  
+  .show-all-button {
+    height: 34px;
+    padding: 6px 14px;
+    font-size: 13px;
+  }
+  
+  .filter-dropdown {
+    min-width: 280px;
+  }
+}
+
+/* Small Laptops (1280px - 1365px) - HP, some ThinkPads */
+@media (max-width: 1365px) {
+  .erd-header {
+    height: 56px;
+  }
+  
+  .erd-header-content {
+    padding: 0 10px;
+    gap: 10px;
+  }
+  
+  .erd-search-section {
+    max-width: 400px;
+    min-width: 160px;
+  }
+  
+  .modern-search-container {
+    height: 38px;
+    padding: 6px 12px;
+    gap: 10px;
+  }
+  
+  .modern-search-input {
+    font-size: 13px;
+  }
+  
+  .search-icon-img {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .show-all-button {
+    height: 32px;
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  .filter-dropdown {
+    min-width: 260px;
+  }
+  
+  .filter-dropdown-title {
+    font-size: 10px;
+  }
+  
+  .erd-legend-section {
+    gap: 10px;
+  }
+}
+
+/* Very Small Laptops (1024px - 1279px) - Older/budget laptops */
+@media (max-width: 1279px) {
+  .erd-header {
+    height: 52px;
+  }
+  
+  .erd-header-content {
+    padding: 0 8px;
+    gap: 8px;
+  }
+  
+  .erd-search-section {
+    max-width: 350px;
+    min-width: 140px;
+  }
+  
+  .modern-search-container {
+    height: 36px;
+    padding: 5px 10px;
+    gap: 8px;
+  }
+  
+  .modern-search-input {
+    font-size: 12px;
+  }
+  
+  .search-icon-img {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .modern-dropdown-button {
+    width: 24px;
+    height: 24px;
+    font-size: 11px;
+  }
+  
+  .show-all-button {
+    height: 30px;
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+  
+  .filter-dropdown {
+    min-width: 240px;
+  }
+  
+  .filter-table-item {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+  
+  .erd-legend-section {
+    gap: 8px;
+    padding: 8px 0;
+  }
+  
+  .chip-item {
+    padding: 3px 6px 3px 10px;
+    font-size: 11px;
+  }
+  
+  .chip-text {
+    max-width: 120px;
+  }
+}
+
+/* Tablets (768px - 1023px) - Optional support */
+@media (max-width: 1023px) {
+  .erd-header {
+    height: 50px;
+  }
+  
+  .erd-header-content {
+    padding: 0 6px;
+    gap: 6px;
+  }
+  
+  .erd-search-section {
+    max-width: 300px;
+    min-width: 120px;
+  }
+  
+  .modern-search-container {
+    height: 34px;
+    padding: 4px 8px;
+    gap: 6px;
+  }
+  
+  .modern-search-input {
+    font-size: 11px;
+  }
+  
+  .search-icon-img {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .show-all-button {
+    height: 28px;
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+  
+  .filter-dropdown {
+    min-width: 200px;
+  }
+  
+  .erd-legend-section {
+    gap: 6px;
+  }
+}

@@ -199,3 +199,87 @@
     border-radius: 0;
   }
 }
+
+
+/* ========================================
+   RESPONSIVE DESIGN FOR MODALS
+   ======================================== */
+
+/* Medium Laptops (1366px - 1599px) */
+@media (max-width: 1599px) {
+  .modal-content {
+    max-width: 90%;
+    padding: 20px;
+  }
+  
+  .modal-header {
+    font-size: 18px;
+  }
+  
+  .modal-body {
+    font-size: 13px;
+  }
+}
+
+/* Small Laptops (1280px - 1365px) */
+@media (max-width: 1365px) {
+  .modal-content {
+    max-width: 92%;
+    padding: 18px;
+  }
+  
+  .modal-header {
+    font-size: 16px;
+  }
+  
+  .modal-body {
+    font-size: 12px;
+  }
+  
+  .modal-footer button {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}
+
+/* Very Small Laptops (1024px - 1279px) */
+@media (max-width: 1279px) {
+  .modal-content {
+    max-width: 95%;
+    padding: 16px;
+  }
+  
+  .modal-header {
+    font-size: 15px;
+  }
+  
+  .modal-body {
+    font-size: 11px;
+  }
+  
+  .modal-footer button {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+}
+
+/* Tablets (768px - 1023px) */
+@media (max-width: 1023px) {
+  .modal-content {
+    max-width: 98%;
+    padding: 14px;
+  }
+  
+  .modal-header {
+    font-size: 14px;
+  }
+  
+  .modal-body {
+    font-size: 10px;
+  }
+  
+  .modal-footer button {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+}

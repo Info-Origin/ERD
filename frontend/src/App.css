@@ -40,3 +40,52 @@
 .read-the-docs {
   color: #888;
 }
+
+
+/* ========================================
+   RESPONSIVE DESIGN FOR OVERALL LAYOUT
+   ======================================== */
+
+/* Medium Laptops (1366px - 1599px) */
+@media (max-width: 1599px) {
+  .app-container {
+    font-size: 14px;
+  }
+}
+
+/* Small Laptops (1280px - 1365px) */
+@media (max-width: 1365px) {
+  .app-container {
+    font-size: 13px;
+  }
+  
+  /* Adjust any fixed widths or heights */
+  button {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+}
+
+/* Very Small Laptops (1024px - 1279px) */
+@media (max-width: 1279px) {
+  .app-container {
+    font-size: 12px;
+  }
+  
+  button {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+}
+
+/* Tablets (768px - 1023px) */
+@media (max-width: 1023px) {
+  .app-container {
+    font-size: 11px;
+  }
+  
+  button {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+}

@@ -370,3 +370,87 @@
     max-width: none;
   }
 }
+
+
+/* ========================================
+   ENHANCED RESPONSIVE DESIGN FOR LEGEND
+   ======================================== */
+
+/* Medium Laptops (1366px - 1599px) */
+@media (max-width: 1599px) {
+  .erd-legend {
+    width: 200px;
+  }
+  
+  .legend-item {
+    font-size: 10px;
+  }
+}
+
+/* Small Laptops (1280px - 1365px) */
+@media (max-width: 1365px) {
+  .erd-legend {
+    width: 180px;
+  }
+  
+  .legend-header {
+    padding: 8px 10px;
+  }
+  
+  .legend-title {
+    font-size: 10px;
+  }
+  
+  .legend-items {
+    padding: 7px 10px;
+    gap: 2px;
+  }
+  
+  .legend-item {
+    font-size: 10px;
+    gap: 6px;
+  }
+  
+  .legend-section-title {
+    font-size: 9px;
+  }
+}
+
+/* Very Small Laptops (1024px - 1279px) */
+@media (max-width: 1279px) {
+  .erd-legend {
+    width: 160px;
+  }
+  
+  .legend-header {
+    padding: 7px 8px;
+  }
+  
+  .legend-title {
+    font-size: 9px;
+  }
+  
+  .legend-items {
+    padding: 6px 8px;
+    gap: 2px;
+  }
+  
+  .legend-item {
+    font-size: 9px;
+    gap: 5px;
+  }
+  
+  .legend-section-title {
+    font-size: 8px;
+  }
+  
+  .legend-line-sample {
+    width: 25px;
+    height: 10px;
+  }
+  
+  .legend-table-sample {
+    width: 16px;
+    height: 16px;
+  }
+}
