@@ -478,24 +478,29 @@ export const VirtualSchemaProvider = ({ children }) => {
       return updatedSchema;
     };
 
-    // OPTIMIZED: Check localStorage first to avoid unnecessary database calls
-    // Only hit database if localStorage indicates data might exist
+    // ALWAYS check database when switching schemas to get latest changes from other users
+    // Even if we have no local data, other users might have saved changes
     const localSchema = loadFromStorage(schemaName);
     const localTimestamp = getStorageTimestamp(schemaName);
     
-    let savedSchema = null;
+    console.log('🔍 Schema load check:', {
+      schema: schemaName,
+      hasLocalSchema: !!localSchema,
+      localTimestamp: localTimestamp ? new Date(localTimestamp).toLocaleTimeString() : 'none'
+    });
     
-    if (localTimestamp) {
-      // Data exists in localStorage - check database for latest version
-      // This ensures we get updates from other users
-      savedSchema = await loadFromDatabase(schemaName);
-      
-      if (!savedSchema) {
-        // Database doesn't have it but localStorage does
-        // This can happen if database sync failed or was cleared
-        // Use localStorage data as fallback
-        savedSchema = localSchema;
-      }
+    // CRITICAL: Always check database for multi-user collaboration
+    console.log('📡 Checking database for updates from other users...');
+    let savedSchema = await loadFromDatabase(schemaName);
+    
+    if (savedSchema) {
+      console.log('✅ Loaded data from database');
+    } else if (localSchema) {
+      // Database doesn't have it but localStorage does (sync failed)
+      savedSchema = localSchema;
+      console.log('📦 Using localStorage fallback');
+    } else {
+      console.log('⏭️ No saved data found (fresh schema)');
     }
     
     if (savedSchema) {
@@ -504,6 +509,11 @@ export const VirtualSchemaProvider = ({ children }) => {
       
       // Get the timestamp from the database (not localStorage)
       const dbTimestamp = await persistenceService.getVirtualSchemaTimestamp(schemaName);
+      console.log('📅 Timestamps:', {
+        local: localTimestamp ? new Date(localTimestamp).toLocaleTimeString() : 'none',
+        database: dbTimestamp ? new Date(dbTimestamp).toLocaleTimeString() : 'none'
+      });
+      
       if (dbTimestamp) {
         setLastSavedTimestamp(dbTimestamp);
       }
@@ -572,25 +582,28 @@ export const VirtualSchemaProvider = ({ children }) => {
       updatedSchema = recalculateIsIdentifying(updatedSchema);
       
       setWorkingSchema(updatedSchema);
-      const newHistory = [JSON.parse(JSON.stringify(erdData)), updatedSchema];
+      
+      // CRITICAL: When loading saved data, treat it as the baseline (no changes yet)
+      // This ensures undo/redo and save buttons are disabled until user makes changes
+      const newHistory = [updatedSchema];
       setHistory(newHistory);
-      historyRef.current = newHistory; // Update ref immediately
-      setHistoryIndex(1);
-      historyIndexRef.current = 1;
+      historyRef.current = newHistory;
+      setHistoryIndex(0);
+      historyIndexRef.current = 0;
       setIsModified(true);
-      setHasUnsavedChanges(false); // Clear unsaved flag when loading schema
+      setHasUnsavedChanges(false);
     } else {
       const clonedSchema = JSON.parse(JSON.stringify(erdData));
       setWorkingSchema(clonedSchema);
       const newHistory = [clonedSchema];
       setHistory(newHistory);
-      historyRef.current = newHistory; // Update ref immediately
+      historyRef.current = newHistory;
       setHistoryIndex(0);
       historyIndexRef.current = 0;
       setIsModified(false);
-      setHasUnsavedChanges(false); // Clear unsaved flag when loading schema
+      setHasUnsavedChanges(false);
     }
-  }, [currentSchemaName]); // Add currentSchemaName to dependencies
+  }, [currentSchemaName]);
 
   // Force refresh and merge with current real DB state
   const refreshAndMerge = useCallback(async (newRealSchema) => {
