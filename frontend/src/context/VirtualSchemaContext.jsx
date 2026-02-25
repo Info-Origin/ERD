@@ -207,7 +207,15 @@ export const VirtualSchemaProvider = ({ children }) => {
     
     // Merge relationships from virtual schema (user-added relationships)
     const virtualRelationships = virtualSchema.relationships || [];
+    const realRelationships = realSchema.relationships || [];
     const relationshipMap = new Map();
+    
+    // Create a map of real relationships for quick lookup
+    const realRelationshipKeys = new Set();
+    realRelationships.forEach(rel => {
+      const key = `${rel.fromTable}.${rel.fromColumn}->${rel.toTable}.${rel.toColumn}`;
+      realRelationshipKeys.add(key);
+    });
     
     // Add valid relationships
     validRelationships.forEach(rel => {
@@ -224,7 +232,23 @@ export const VirtualSchemaProvider = ({ children }) => {
       
       if (fromTableExists && toTableExists && fromColumnExists && toColumnExists) {
         const key = `${rel.fromTable}.${rel.fromColumn}->${rel.toTable}.${rel.toColumn}`;
-        relationshipMap.set(key, rel);
+        
+        // CRITICAL FIX: If this relationship now exists in the real database,
+        // mark it as synced but keep isUserCreated for comparison modal detection
+        const existsInRealDB = realRelationshipKeys.has(key);
+        const cleanedRel = { ...rel };
+        
+        if (existsInRealDB && cleanedRel.isUserCreated) {
+          // Relationship was user-created but now exists in real DB
+          // Mark as synced so comparison modal can detect it
+          // But also remove isUserCreated so line color changes from blue to black
+          cleanedRel.isSynced = true;
+          delete cleanedRel.isUserCreated;
+          delete cleanedRel.createdAt;
+          console.log(`  🔄 Relationship now in real DB (marked as synced): ${rel.fromTable}.${rel.fromColumn} -> ${rel.toTable}.${rel.toColumn}`);
+        }
+        
+        relationshipMap.set(key, cleanedRel);
         console.log(`  ✅ Keeping virtual relationship: ${rel.fromTable}.${rel.fromColumn} -> ${rel.toTable}.${rel.toColumn}`);
       } else {
         console.log(`  ❌ Skipping virtual relationship (table/column missing): ${rel.fromTable}.${rel.fromColumn} -> ${rel.toTable}.${rel.toColumn}`);

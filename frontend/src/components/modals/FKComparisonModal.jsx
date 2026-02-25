@@ -271,11 +271,6 @@ export const FKComparisonModal = ({
         <div className="modal-content fk-comparison-modal" onClick={e => e.stopPropagation()}>
           <div className="modal-header">
             <h2>Foreign Key Changes Detected</h2>
-            {isRefreshing && (
-              <div className="fk-refresh-indicator" title="Checking for updates...">
-                <div className="fk-refresh-spinner"></div>
-              </div>
-            )}
             <button id="fk-comparison-modal-close" className="modal-close" onClick={onClose}>×</button>
           </div>
 
