@@ -375,12 +375,21 @@ export const VirtualSchemaProvider = ({ children }) => {
     
     // CRITICAL: Save the baseline schema for future comparisons
     // This represents the FIRST real DB state we saw for this schema
-    // Load from DATABASE to get latest baseline from other users
-    let baselineSchema = await loadBaselineFromDatabase(schemaName);
-    if (!baselineSchema) {
-      // First time loading this schema - save it as baseline
+    // OPTIMIZED: Check localStorage first to avoid unnecessary database call
+    let baselineSchema = loadBaselineSchema(schemaName);
+    
+    if (baselineSchema) {
+      // Baseline exists in localStorage - check database for updates from other users
+      const dbBaseline = await loadBaselineFromDatabase(schemaName);
+      if (dbBaseline) {
+        baselineSchema = dbBaseline;
+        console.log('🔍 Loaded baseline from database');
+      }
+    } else {
+      // No baseline exists - first time loading this schema
       saveBaselineSchema(schemaName, erdData);
       baselineSchema = erdData;
+      console.log('📝 Created new baseline schema');
     }
     
     // Track real DB history for better merge decisions - do this BEFORE merging
@@ -471,9 +480,32 @@ export const VirtualSchemaProvider = ({ children }) => {
       return updatedSchema;
     };
 
-    // CRITICAL: Load from DATABASE when switching schemas to get latest changes from other users
-    // This ensures User B sees User A's changes when switching back to a schema
-    const savedSchema = await loadFromDatabase(schemaName);
+    // OPTIMIZED: Check localStorage first to avoid unnecessary database calls
+    // Only hit database if localStorage indicates data might exist
+    const localSchema = loadFromStorage(schemaName);
+    const localTimestamp = getStorageTimestamp(schemaName);
+    
+    let savedSchema = null;
+    
+    if (localTimestamp) {
+      // Data exists in localStorage - check database for latest version
+      // This ensures we get updates from other users
+      savedSchema = await loadFromDatabase(schemaName);
+      
+      if (savedSchema) {
+        console.log('🔍 Loaded schema from database (has updates from other users)');
+      } else {
+        // Database doesn't have it but localStorage does
+        // This can happen if database sync failed or was cleared
+        // Use localStorage data as fallback
+        savedSchema = localSchema;
+        console.log('📦 Using localStorage data (database sync pending or failed)');
+      }
+    } else {
+      // No localStorage data - schema has never been saved, skip database check
+      savedSchema = null;
+      console.log('⏭️ Skipped database check (no previous saves for this schema)');
+    }
     
     if (savedSchema) {
       // MERGE STRATEGY: Combine real DB schema with virtual schema changes
