@@ -619,11 +619,21 @@ export const ERDHeader = ({ onTableFilter, isSchemaCollapsed }) => {
     
     setSelectedChildren(newSelectedChildren);
     
+    // Check if all children are now unchecked - if so, uncheck "DIRECT CHILDREN" checkbox
+    if (newSelectedChildren.size === 0 && !hideDirectChildren) {
+      setHideDirectChildren(true);
+    }
+    
+    // Check if any children are now checked - if so, check "DIRECT CHILDREN" checkbox
+    if (newSelectedChildren.size > 0 && hideDirectChildren) {
+      setHideDirectChildren(false);
+    }
+    
     // Update visible tables
     const visibleTables = Array.from(selectedTables);
     newSelectedChildren.forEach(child => visibleTables.push(child));
     onTableFilter([...new Set(visibleTables)], lastSelectedTable);
-  }, [selectedChildren, selectedTables, hierarchyData, onTableFilter, lastSelectedTable]);
+  }, [selectedChildren, selectedTables, hierarchyData, onTableFilter, lastSelectedTable, hideDirectChildren]);
 
   // Render child hierarchy with indentation
   const renderChildHierarchy = useCallback((children, depth, parentTable = '') => {
