@@ -441,7 +441,7 @@ export const formatChangesForDisplay = (changes) => {
   
   if (tableCount > 0) {
     sections.push({
-      title: 'Tables',
+      title: 'Table Changes',
       count: tableCount,
       items: [
         ...changes.tables.added.map(t => ({
@@ -469,7 +469,7 @@ export const formatChangesForDisplay = (changes) => {
   
   if (columnCount > 0) {
     sections.push({
-      title: 'Columns',
+      title: 'Column Changes',
       count: columnCount,
       items: [
         ...changes.columns.added.map(c => ({
@@ -502,7 +502,7 @@ export const formatChangesForDisplay = (changes) => {
   
   if (relCount > 0) {
     sections.push({
-      title: 'Relationships',
+      title: 'Foreign Key Changes',
       count: relCount,
       items: [
         ...changes.relationships.added.map(r => ({
