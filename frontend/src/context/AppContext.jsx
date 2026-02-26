@@ -162,7 +162,6 @@ export const AppProvider = ({ children }) => {
       }
 
       if (changeResult.hasChanges) {
-        console.log('🔍 Database changes detected in', schemaToCheck, ':', changeResult.changes);
         setDatabaseChangesModal({
           isOpen: true,
           changes: changeResult.changes,
@@ -174,7 +173,6 @@ export const AppProvider = ({ children }) => {
         return true;
       }
 
-      console.log('✅ No database changes detected in', schemaToCheck);
       return false;
     } catch (error) {
       console.error('Error checking for database changes:', error);
@@ -197,7 +195,6 @@ export const AppProvider = ({ children }) => {
 
       const currentRealDB = await erdService.getERDData(schemaToRefresh);
       saveBaselineSchema(schemaToRefresh, currentRealDB);
-      console.log('💾 Baseline schema updated for', schemaToRefresh);
 
       // Only update virtual schema if we're refreshing the CURRENT schema
       if (schemaToRefresh === selectedSchema) {

@@ -185,24 +185,13 @@ export const VirtualSchemaProvider = ({ children }) => {
     });
     
     // Clean up relationships that reference deleted tables/columns
-    console.log('🔗 Cleaning up relationships...');
-    console.log('  - Merged tables:', Object.keys(merged.tables));
-    console.log('  - Virtual relationships count:', (virtualSchema.relationships || []).length);
-    
     const validRelationships = (merged.relationships || []).filter(rel => {
       const fromTableExists = merged.tables[rel.fromTable];
       const toTableExists = merged.tables[rel.toTable];
       const fromColumnExists = fromTableExists?.columns[rel.fromColumn];
       const toColumnExists = toTableExists?.columns[rel.toColumn];
       
-      const isValid = fromTableExists && toTableExists && fromColumnExists && toColumnExists;
-      
-      if (!isValid) {
-        console.log(`  ❌ Removing relationship: ${rel.fromTable}.${rel.fromColumn} -> ${rel.toTable}.${rel.toColumn}`);
-        console.log(`     - fromTable exists: ${!!fromTableExists}, toTable exists: ${!!toTableExists}`);
-      }
-      
-      return isValid;
+      return fromTableExists && toTableExists && fromColumnExists && toColumnExists;
     });
     
     // Merge relationships from virtual schema (user-added relationships)
@@ -245,14 +234,9 @@ export const VirtualSchemaProvider = ({ children }) => {
           cleanedRel.isSynced = true;
           delete cleanedRel.isUserCreated;
           delete cleanedRel.createdAt;
-          console.log(`  🔄 Relationship now in real DB (marked as synced): ${rel.fromTable}.${rel.fromColumn} -> ${rel.toTable}.${rel.toColumn}`);
         }
         
         relationshipMap.set(key, cleanedRel);
-        console.log(`  ✅ Keeping virtual relationship: ${rel.fromTable}.${rel.fromColumn} -> ${rel.toTable}.${rel.toColumn}`);
-      } else {
-        console.log(`  ❌ Skipping virtual relationship (table/column missing): ${rel.fromTable}.${rel.fromColumn} -> ${rel.toTable}.${rel.toColumn}`);
-        console.log(`     - fromTable exists: ${!!fromTableExists}, toTable exists: ${!!toTableExists}`);
       }
     });
     
@@ -522,24 +506,12 @@ export const VirtualSchemaProvider = ({ children }) => {
     const localSchema = loadFromStorage(schemaName);
     const localTimestamp = getStorageTimestamp(schemaName);
     
-    console.log('🔍 Schema load check:', {
-      schema: schemaName,
-      hasLocalSchema: !!localSchema,
-      localTimestamp: localTimestamp ? new Date(localTimestamp).toLocaleTimeString() : 'none'
-    });
-    
     // CRITICAL: Always check database for multi-user collaboration
-    console.log('📡 Checking database for updates from other users...');
     let savedSchema = await loadFromDatabase(schemaName);
     
-    if (savedSchema) {
-      console.log('✅ Loaded data from database');
-    } else if (localSchema) {
+    if (!savedSchema && localSchema) {
       // Database doesn't have it but localStorage does (sync failed)
       savedSchema = localSchema;
-      console.log('📦 Using localStorage fallback');
-    } else {
-      console.log('⏭️ No saved data found (fresh schema)');
     }
     
     if (savedSchema) {
@@ -548,10 +520,6 @@ export const VirtualSchemaProvider = ({ children }) => {
       
       // Get the timestamp from the database (not localStorage)
       const dbTimestamp = await persistenceService.getVirtualSchemaTimestamp(schemaName);
-      console.log('📅 Timestamps:', {
-        local: localTimestamp ? new Date(localTimestamp).toLocaleTimeString() : 'none',
-        database: dbTimestamp ? new Date(dbTimestamp).toLocaleTimeString() : 'none'
-      });
       
       if (dbTimestamp) {
         setLastSavedTimestamp(dbTimestamp);
@@ -609,7 +577,6 @@ export const VirtualSchemaProvider = ({ children }) => {
       if (baselineNeedsUpdate) {
         saveBaselineSchema(schemaName, updatedBaseline);
         baselineSchema = updatedBaseline;
-        console.log('✅ Baseline schema updated to match real DB');
       }
       
       const mergedSchema = mergeSchemas(erdData, savedSchema, baselineSchema, updatedRealDbHistory);
@@ -714,7 +681,6 @@ export const VirtualSchemaProvider = ({ children }) => {
       if (baselineNeedsUpdate) {
         saveBaselineSchema(currentSchemaName, updatedBaseline);
         baselineSchema = updatedBaseline;
-        console.log('✅ Baseline schema updated to match real DB');
       }
       
       // Merge the new real schema with current virtual changes
