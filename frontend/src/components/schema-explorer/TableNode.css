@@ -7,7 +7,7 @@
   align-items: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-md);
-  padding-left: calc(var(--spacing-md) + var(--spacing-lg));
+  padding-left: var(--spacing-md);
   cursor: pointer;
   transition: all var(--transition-fast);
   user-select: none;
@@ -98,7 +98,7 @@
 .table-selected {
   background-color: transparent !important;
   border-left: 3px solid transparent !important;
-  padding-left: calc(var(--spacing-md) + var(--spacing-lg) - 3px);
+  padding-left: calc(var(--spacing-md) - 3px);
 }
 
 .table-toggle {

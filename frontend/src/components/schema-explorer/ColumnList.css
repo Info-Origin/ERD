@@ -9,7 +9,7 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--spacing-sm) var(--spacing-md);
-  padding-left: calc(var(--spacing-md) + var(--spacing-lg) + var(--spacing-xs));  /* More balanced indentation: 44px */
+  padding-left: calc(var(--spacing-md) + var(--spacing-lg));  /* Indent slightly more than table */
   font-size: var(--font-size-sm);
   border-bottom: 1px solid var(--border-color);
   transition: background-color var(--transition-fast);
@@ -40,6 +40,7 @@
   flex: 1;
   min-width: 0;
   margin-right: var(--spacing-md); /* Add margin to create space from meta section */
+  margin-left: var(--spacing-sm); /* Add left margin for consistent spacing */
 }
 
 .column-icon {
@@ -84,7 +85,7 @@
 
 .column-empty {
   padding: var(--spacing-md);
-  padding-left: calc(var(--spacing-md) + var(--spacing-lg) + var(--spacing-xs));  /* Match column item indentation: 44px */
+  padding-left: calc(var(--spacing-md) + var(--spacing-lg));  /* Match column item indentation */
   font-size: var(--font-size-sm);
   color: var(--text-tertiary);
   font-style: italic;
