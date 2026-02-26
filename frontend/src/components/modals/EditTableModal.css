@@ -145,6 +145,13 @@
   background: var(--danger-hover);
 }
 
+.btn-delete-mode:disabled {
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .btn-delete-selected {
   padding: 0.5rem 1rem;
   background: var(--danger-color);
@@ -386,6 +393,19 @@
   background: var(--bg-hover);
   color: var(--danger-color);
   transform: scale(1.05);
+}
+
+.btn-edit:disabled,
+.btn-delete:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: var(--text-tertiary);
+}
+
+.btn-edit:disabled:hover,
+.btn-delete:disabled:hover {
+  background: transparent;
+  transform: none;
 }
 
 .btn-save {
