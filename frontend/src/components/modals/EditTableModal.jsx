@@ -80,6 +80,30 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
   const [columnNotes, setColumnNotes] = useState({}); // Store notes for each column
   const [isApplyingConstraints, setIsApplyingConstraints] = useState(false); // Track when we're applying constraints
   const [isSavingFK, setIsSavingFK] = useState(false); // Track when we're saving FK to prevent reload
+  const previousColumnsRef = React.useRef([]); // Track previous columns for rename detection
+  
+  // Load column notes from localStorage on mount
+  useEffect(() => {
+    if (isOpen && tableName && schemaName) {
+      const storageKey = `columnNotes_${schemaName}_${tableName}`;
+      const savedNotes = localStorage.getItem(storageKey);
+      if (savedNotes) {
+        try {
+          setColumnNotes(JSON.parse(savedNotes));
+        } catch (e) {
+          console.error('Failed to load column notes:', e);
+        }
+      }
+    }
+  }, [isOpen, tableName, schemaName]);
+
+  // Save column notes to localStorage whenever they change
+  useEffect(() => {
+    if (tableName && schemaName && Object.keys(columnNotes).length > 0) {
+      const storageKey = `columnNotes_${schemaName}_${tableName}`;
+      localStorage.setItem(storageKey, JSON.stringify(columnNotes));
+    }
+  }, [columnNotes, tableName, schemaName]);
   
   // Bulk FK deletion state
   const [isDeleteMode, setIsDeleteMode] = useState(false);
@@ -139,6 +163,54 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
   // - addColumn, deleteColumn, renameColumn, renameTable functions
   // - showAddColumn, newColumn state
 
+  // Helper function to detect column renames and transfer descriptions
+  const transferDescriptionsOnRename = useCallback((oldColumns, newColumns, currentNotes) => {
+    if (!oldColumns || oldColumns.length === 0) return currentNotes;
+    
+    const updatedNotes = { ...currentNotes };
+    let hasChanges = false;
+    
+    // Strategy 1: Match by position (index) - most reliable for renames
+    newColumns.forEach((newCol, index) => {
+      if (index < oldColumns.length) {
+        const oldCol = oldColumns[index];
+        
+        // If names are different but position is same, likely a rename
+        if (oldCol.name !== newCol.name && currentNotes[oldCol.name]) {
+          updatedNotes[newCol.name] = currentNotes[oldCol.name];
+          delete updatedNotes[oldCol.name];
+          hasChanges = true;
+          console.log(`📝 Transferred description from "${oldCol.name}" to "${newCol.name}" (by position)`);
+        }
+      }
+    });
+    
+    // Strategy 2: Match by properties (type, constraints) for columns that moved positions
+    if (!hasChanges) {
+      const oldColumnMap = new Map();
+      oldColumns.forEach(col => {
+        const key = `${col.type}_${col.pk}_${col.fk}_${col.unique}_${col.nullable}`;
+        if (!oldColumnMap.has(key)) {
+          oldColumnMap.set(key, col.name);
+        }
+      });
+      
+      newColumns.forEach(newCol => {
+        const key = `${newCol.type}_${newCol.pk}_${newCol.fk}_${newCol.unique}_${newCol.nullable}`;
+        const oldName = oldColumnMap.get(key);
+        
+        if (oldName && oldName !== newCol.name && currentNotes[oldName] && !updatedNotes[newCol.name]) {
+          updatedNotes[newCol.name] = currentNotes[oldName];
+          delete updatedNotes[oldName];
+          hasChanges = true;
+          console.log(`📝 Transferred description from "${oldName}" to "${newCol.name}" (by properties)`);
+        }
+      });
+    }
+    
+    return updatedNotes;
+  }, []);
+
   // Initialize data when modal opens
   useEffect(() => {
     if (isOpen && workingSchema && tableName && !isSavingFK) { // Don't reload during FK save
@@ -165,9 +237,32 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
           typeLength: getTypeLength(columnData.type),
           defaultValue: columnData.defaultValue || ''
         }));
+        
+        // Transfer descriptions if columns were renamed
+        console.log('🔍 [Modal Open] Checking for column renames...', {
+          oldColumnsCount: previousColumnsRef.current.length,
+          newColumnsCount: columnList.length,
+          oldColumns: previousColumnsRef.current.map(c => c.name),
+          newColumns: columnList.map(c => c.name),
+          currentNotes: Object.keys(columnNotes)
+        });
+        
+        if (previousColumnsRef.current.length > 0) {
+          const updatedNotes = transferDescriptionsOnRename(previousColumnsRef.current, columnList, columnNotes);
+          if (JSON.stringify(updatedNotes) !== JSON.stringify(columnNotes)) {
+            console.log('✅ [Modal Open] Descriptions updated:', updatedNotes);
+            setColumnNotes(updatedNotes);
+          } else {
+            console.log('ℹ️ [Modal Open] No description changes needed');
+          }
+        }
+        
+        // Update ref with current columns
+        previousColumnsRef.current = columnList;
         setColumns(columnList);
       } else {
         setColumns([]);
+        previousColumnsRef.current = [];
       }
 
       // Load foreign keys
@@ -189,7 +284,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       // Reset editing state
       setEditingFK(null);
     }
-  }, [isOpen, tableName, workingSchema, isSavingFK]); // Add isSavingFK to dependencies
+  }, [isOpen, tableName, workingSchema, isSavingFK, transferDescriptionsOnRename]); // Remove columnNotes to avoid infinite loop
 
   
   // Refresh columns when switching to Columns or Constraints tab
@@ -210,10 +305,32 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
           typeLength: getTypeLength(columnData.type),
           defaultValue: columnData.defaultValue || ''
         }));
+        
+        // Transfer descriptions if columns were renamed
+        console.log('🔍 [Tab Switch] Checking for column renames...', {
+          oldColumnsCount: previousColumnsRef.current.length,
+          newColumnsCount: columnList.length,
+          oldColumns: previousColumnsRef.current.map(c => c.name),
+          newColumns: columnList.map(c => c.name),
+          currentNotes: Object.keys(columnNotes)
+        });
+        
+        if (previousColumnsRef.current.length > 0) {
+          const updatedNotes = transferDescriptionsOnRename(previousColumnsRef.current, columnList, columnNotes);
+          if (JSON.stringify(updatedNotes) !== JSON.stringify(columnNotes)) {
+            console.log('✅ [Tab Switch] Descriptions updated:', updatedNotes);
+            setColumnNotes(updatedNotes);
+          } else {
+            console.log('ℹ️ [Tab Switch] No description changes needed');
+          }
+        }
+        
+        // Update ref with current columns
+        previousColumnsRef.current = columnList;
         setColumns(columnList);
       }
     }
-  }, [activeTab, workingSchema, tableName]);
+  }, [activeTab, workingSchema, tableName, transferDescriptionsOnRename]); // Remove columnNotes to avoid infinite loop
 
   // Watch for workingSchema changes after applying constraints
   useEffect(() => {
