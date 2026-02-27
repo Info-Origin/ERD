@@ -100,6 +100,20 @@ export const VirtualSchemaProvider = ({ children }) => {
       if (realTable) {
         // Table exists in both real and virtual schemas
         
+        // CRITICAL FIX: Check if this table existed in the baseline
+        // If it didn't exist in baseline but exists now in real DB, it's a NEWLY CREATED table
+        // In this case, we should use ONLY the real DB version and ignore any old virtual data
+        const existedInBaseline = originalSchema?.tables?.[tableName];
+        
+        if (!existedInBaseline) {
+          // Table is NEW in real DB (didn't exist in baseline)
+          // Use ONLY real DB data, ignore any old virtual data for this table
+          console.log(`🆕 New table detected: ${tableName} - using only real DB data, ignoring old virtual data`);
+          merged.tables[tableName] = JSON.parse(JSON.stringify(realTable));
+          return; // Skip to next table (don't merge virtual data)
+        }
+        
+        // Table existed in baseline - proceed with normal merge
         // Start with real table structure
         merged.tables[tableName] = {
           ...realTable,
@@ -221,6 +235,21 @@ export const VirtualSchemaProvider = ({ children }) => {
       
       if (fromTableExists && toTableExists && fromColumnExists && toColumnExists) {
         const key = `${rel.fromTable}.${rel.fromColumn}->${rel.toTable}.${rel.toColumn}`;
+        
+        // CRITICAL FIX: Check if this is a relationship for a table that was deleted and recreated
+        // If the table exists in real DB but NOT in baseline, it's a NEW table (recreated)
+        // Don't apply old virtual relationships to recreated tables
+        const fromTableInBaseline = originalSchema?.tables?.[rel.fromTable];
+        const toTableInBaseline = originalSchema?.tables?.[rel.toTable];
+        const fromTableInReal = realSchema.tables[rel.fromTable];
+        const toTableInReal = realSchema.tables[rel.toTable];
+        
+        // If table exists in real DB but NOT in baseline, it's a recreated table
+        // Skip old virtual relationships for recreated tables
+        if ((fromTableInReal && !fromTableInBaseline) || (toTableInReal && !toTableInBaseline)) {
+          console.log(`⚠️ Skipping old relationship for recreated table: ${rel.fromTable}.${rel.fromColumn} → ${rel.toTable}.${rel.toColumn}`);
+          return; // Skip this relationship
+        }
         
         // CRITICAL FIX: If this relationship now exists in the real database,
         // mark it as synced but keep isUserCreated for comparison modal detection
@@ -685,6 +714,51 @@ export const VirtualSchemaProvider = ({ children }) => {
       
       // Merge the new real schema with current virtual changes
       const mergedSchema = mergeSchemas(newRealSchema, workingSchema, baselineSchema, realDbHistory);
+      
+      // CRITICAL FIX: Clean up virtual relationships for tables that were deleted from real DB
+      // This prevents old relationships from reappearing when a table is recreated with the same name
+      const deletedTables = Object.keys(baselineSchema?.tables || {}).filter(
+        tableName => !newRealSchema.tables[tableName]
+      );
+      
+      if (deletedTables.length > 0) {
+        console.log('🧹 Cleaning up relationships for deleted tables:', deletedTables);
+        
+        // Remove relationships that reference deleted tables
+        mergedSchema.relationships = (mergedSchema.relationships || []).filter(rel => {
+          const fromTableDeleted = deletedTables.includes(rel.fromTable);
+          const toTableDeleted = deletedTables.includes(rel.toTable);
+          
+          if (fromTableDeleted || toTableDeleted) {
+            console.log(`  - Removing relationship: ${rel.fromTable}.${rel.fromColumn} → ${rel.toTable}.${rel.toColumn}`);
+            return false;
+          }
+          
+          return true;
+        });
+        
+        // CRITICAL: Remove deleted tables from the merged schema as well
+        deletedTables.forEach(tableName => {
+          if (mergedSchema.tables[tableName]) {
+            console.log(`  - Removing table from merged schema: ${tableName}`);
+            delete mergedSchema.tables[tableName];
+          }
+        });
+        
+        // CRITICAL: Update the baseline to reflect table deletions
+        // This ensures that when the table is recreated, it starts fresh without old relationships
+        const cleanedBaseline = JSON.parse(JSON.stringify(baselineSchema));
+        deletedTables.forEach(tableName => {
+          delete cleanedBaseline.tables[tableName];
+        });
+        saveBaselineSchema(currentSchemaName, cleanedBaseline);
+        
+        // CRITICAL: Save the cleaned schema to localStorage
+        // This is the KEY fix - we must save the cleaned schema so when table is recreated,
+        // the old relationships don't come back from localStorage
+        console.log('💾 Saving cleaned schema to localStorage (without deleted tables and their relationships)');
+        saveToStorage(currentSchemaName, mergedSchema);
+      }
       
       // Apply FK detection
       const applyFKDetection = (schema) => {

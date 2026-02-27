@@ -21,9 +21,19 @@ export const AppProvider = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedRelationship, setHighlightedRelationship] = useState(null);
   
-  // NEW: Track if this is initial page load (for Scenario 3: Browser Refresh)
+  //  Track if this is initial page load (for Scenario 3: Browser Refresh)
   const isInitialLoadRef = useRef(true);
   const [hasCheckedForChanges, setHasCheckedForChanges] = useState(false); // State to trigger re-render
+  const lastCheckedSchemaRef = useRef(null); // Track which schema we last checked
+  
+  // Get connectionId from ConnectionContext for multi-database support
+  const ConnectionContext = createContext();
+  try {
+    const connectionContext = useContext(require('./ConnectionContext').ConnectionContext);
+    var connectionId = connectionContext?.connectionId || null;
+  } catch (e) {
+    var connectionId = null; // Fallback if ConnectionContext not available
+  }
   
   // NEW: Hover-based relationship highlighting
   const [hoveredTable, setHoveredTable] = useState(null);
@@ -150,14 +160,15 @@ export const AppProvider = ({ children }) => {
       const { detectDatabaseChanges } = await import('../utils/databaseChangeDetector');
       const { loadBaselineSchema } = await import('../utils/persistenceAdapter');
 
-      const baseline = loadBaselineSchema(schemaToCheck);
+      // Load baseline with connectionId for multi-database support
+      const baseline = loadBaselineSchema(schemaToCheck, connectionId);
       const currentRealDB = await erdService.getERDData(schemaToCheck);
       const changeResult = detectDatabaseChanges(baseline, currentRealDB);
 
       if (changeResult.isFirstLoad) {
         const { saveBaselineSchema } = await import('../utils/persistenceAdapter');
-        saveBaselineSchema(schemaToCheck, currentRealDB);
-        console.log('📊 First load: Baseline schema saved for', schemaToCheck);
+        saveBaselineSchema(schemaToCheck, currentRealDB, connectionId);
+        //console.log('📊 First load: Baseline schema saved for', schemaToCheck);
         return false;
       }
 
@@ -179,7 +190,7 @@ export const AppProvider = ({ children }) => {
       showNotification('Failed to check for database changes', 'error');
       return false;
     }
-  }, [selectedSchema, showNotification]);
+  }, [selectedSchema, showNotification, connectionId]);
 
   // Handle refresh from Database Changes Modal
   const handleDatabaseChangesRefresh = useCallback(async () => {
@@ -575,19 +586,46 @@ export const AppProvider = ({ children }) => {
 
   // ==================== SCENARIO TRIGGERS ====================
   
-  // Scenario 3: Browser Refresh - Check IMMEDIATELY when schema data loads (before initialization)
+  // Reset checked schema when connectionId changes (new database connection)
   useEffect(() => {
-    if (selectedSchema && erdData && !erdLoading && isInitialLoadRef.current && !hasCheckedForChanges) {
-      // Run check immediately (no delay) to ensure it runs BEFORE virtualSchema.initializeSchema
-      checkForDatabaseChanges();
-      
-      // Mark that we've checked (this will trigger initializeSchema useEffect)
-      setHasCheckedForChanges(true);
-      
-      // Mark initial load as complete
-      isInitialLoadRef.current = false;
+    if (connectionId) {
+      lastCheckedSchemaRef.current = null; // Reset to allow checking for new connection
+      // console.log('🔄 ConnectionId changed, resetting baseline check');
     }
-  }, [selectedSchema, erdData, erdLoading, hasCheckedForChanges, checkForDatabaseChanges]);
+  }, [connectionId]);
+  
+  // Scenario 3: Browser Refresh + Schema Switch - Check IMMEDIATELY when schema data loads (before initialization)
+  useEffect(() => {
+    if (selectedSchema && erdData && !erdLoading) {
+      // Skip if we've already checked this schema
+      if (lastCheckedSchemaRef.current === selectedSchema) {
+        return;
+      }
+      
+      // On initial load, check for database changes
+      if (isInitialLoadRef.current && !hasCheckedForChanges) {
+        // Run check immediately (no delay) to ensure it runs BEFORE virtualSchema.initializeSchema
+        checkForDatabaseChanges();
+        
+        // Mark that we've checked (this will trigger initializeSchema useEffect)
+        setHasCheckedForChanges(true);
+        
+        // Mark initial load as complete
+        isInitialLoadRef.current = false;
+        
+        // Track which schema we checked
+        lastCheckedSchemaRef.current = selectedSchema;
+      } else if (!isInitialLoadRef.current) {
+        // On schema switch (not initial load), also check for database changes
+        // This handles the case where a table was deleted and user switches schemas
+        checkForDatabaseChanges();
+        
+        // Track which schema we checked
+        lastCheckedSchemaRef.current = selectedSchema;
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSchema, erdData, erdLoading, hasCheckedForChanges]); // Removed checkForDatabaseChanges to prevent re-triggering
 
   // NEW: New changes modal functions
   const showNewChangesModal = useCallback(() => {
@@ -652,31 +690,9 @@ export const AppProvider = ({ children }) => {
     closeUnsavedChangesModal();
   }, [unsavedChangesModal.onConfirm]);
 
-  // NEW: Wrapped selectSchema with database changes check AND unsaved changes check
+  // NEW: Wrapped selectSchema with unsaved changes check only
   const selectSchema = useCallback(async (schemaName) => {
-    // SCENARIO 1: Schema Switching - Check for database changes
-    // Only check if switching to a DIFFERENT schema (not initial load)
-    if (selectedSchema && schemaName !== selectedSchema) {
-      // Check for database changes in the TARGET schema (schemaName)
-      const hasDbChanges = await checkForDatabaseChanges(() => {
-        // After database refresh, continue with schema switch
-        continueSchemaSwitch(schemaName);
-      }, schemaName); // Pass target schema as parameter
-      
-      // If database changes modal is shown, stop here
-      // The callback will handle the switch after refresh
-      if (hasDbChanges) {
-        return;
-      }
-    }
-    
-    // No database changes, continue with normal flow
-    continueSchemaSwitch(schemaName);
-  }, [selectedSchema, checkForDatabaseChanges]);
-
-  // Helper function to continue schema switch after checks
-  const continueSchemaSwitch = useCallback((schemaName) => {
-    // Check for unsaved changes
+    // Check for unsaved changes when switching schemas
     if (selectedSchema && schemaName !== selectedSchema && virtualSchema.hasUnsavedChanges) {
       // Show unsaved changes modal
       showUnsavedChangesModal(schemaName, () => {

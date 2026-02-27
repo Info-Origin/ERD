@@ -49,20 +49,41 @@ function _deleteFromLocalStorage(storageType, schemaName) {
 
 // ==================== PUBLIC API ====================
 
-export const saveBaselineSchema = (schemaName, baselineSchema) => {
-  _saveToLocalStorage('baselineSchemas', schemaName, baselineSchema);
-  persistenceService.saveBaselineSchema(schemaName, baselineSchema).catch(err => {
+export const saveBaselineSchema = (schemaName, baselineSchema, connectionId = null) => {
+  // If connectionId provided, use composite key for multi-database support
+  const storageKey = connectionId ? `${connectionId}_${schemaName}` : schemaName;
+  
+  _saveToLocalStorage('baselineSchemas', storageKey, baselineSchema);
+  persistenceService.saveBaselineSchema(storageKey, baselineSchema).catch(err => {
     console.warn('Failed to sync baseline schema to database:', err);
   });
 };
 
-export const loadBaselineSchema = (schemaName) => {
-  return _loadFromLocalStorage('baselineSchemas', schemaName);
+export const loadBaselineSchema = (schemaName, connectionId = null) => {
+  // Try new format first (with connectionId) for multi-database support
+  if (connectionId) {
+    const newKey = `${connectionId}_${schemaName}`;
+    const baseline = _loadFromLocalStorage('baselineSchemas', newKey);
+    if (baseline) {
+      // console.log(`✅ Loaded baseline with connectionId: ${newKey}`);
+      return baseline;
+    }
+    console.log(`⚠️ No baseline found with connectionId, trying fallback...`);
+  }
+  
+  // Fallback to old format (without connectionId) for backward compatibility
+  const baseline = _loadFromLocalStorage('baselineSchemas', schemaName);
+  if (baseline) {
+    // console.log(`✅ Loaded baseline (legacy format): ${schemaName}`);
+  }
+  return baseline;
 };
 
-export const clearBaselineSchema = (schemaName) => {
-  _deleteFromLocalStorage('baselineSchemas', schemaName);
-  persistenceService.deleteBaselineSchema(schemaName).catch(err => {
+export const clearBaselineSchema = (schemaName, connectionId = null) => {
+  const storageKey = connectionId ? `${connectionId}_${schemaName}` : schemaName;
+  
+  _deleteFromLocalStorage('baselineSchemas', storageKey);
+  persistenceService.deleteBaselineSchema(storageKey).catch(err => {
     console.warn('Failed to delete baseline schema from database:', err);
   });
 };
@@ -131,19 +152,22 @@ export const loadFromDatabase = async (schemaName) => {
   }
 };
 
-export const loadBaselineFromDatabase = async (schemaName) => {
+export const loadBaselineFromDatabase = async (schemaName, connectionId = null) => {
   try {
-    const schema = await persistenceService.loadBaselineSchema(schemaName);
+    // Try new format first (with connectionId)
+    const storageKey = connectionId ? `${connectionId}_${schemaName}` : schemaName;
+    const schema = await persistenceService.loadBaselineSchema(storageKey);
     
     // Also update localStorage with the fresh data
     if (schema) {
-      _saveToLocalStorage('baselineSchemas', schemaName, schema);
+      _saveToLocalStorage('baselineSchemas', storageKey, schema);
+      // console.log(`✅ Loaded baseline from database: ${storageKey}`);
     }
     
     return schema;
   } catch (error) {
     console.warn('Failed to load baseline from database, falling back to localStorage:', error);
-    return _loadFromLocalStorage('baselineSchemas', schemaName);
+    return loadBaselineSchema(schemaName, connectionId);
   }
 };
 
