@@ -6,11 +6,7 @@ import './DraggableMiniMap.css';
 
 export const DraggableMiniMap = ({ nodeColor, nodeStrokeColor, nodeBorderRadius, maskColor, style }) => {
   const { isAnyModalOpen } = useApp();
-  const [isExpanded, setIsExpanded] = useState(() => {
-    // Try to load saved state from localStorage
-    const saved = localStorage.getItem('minimap-expanded');
-    return saved ? JSON.parse(saved) : true; // Default to expanded
-  });
+  const [isExpanded, setIsExpanded] = useState(false); // Default to expanded, no persistence
   const [minimapKey, setMinimapKey] = useState(0);
   const mountCountRef = useRef(0);
 
@@ -21,9 +17,7 @@ export const DraggableMiniMap = ({ nodeColor, nodeStrokeColor, nodeBorderRadius,
   }, []);
 
   const toggleExpanded = () => {
-    const newState = !isExpanded;
-    setIsExpanded(newState);
-    localStorage.setItem('minimap-expanded', JSON.stringify(newState));
+    setIsExpanded(!isExpanded);
   };
 
   // Hide minimap when any modal is open

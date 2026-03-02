@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { THEMES, STORAGE_KEYS } from "../utils/constants";
+import { THEMES } from "../utils/constants";
 
 const ThemeContext = createContext();
 
@@ -11,10 +11,23 @@ export const useTheme = () => {
   return context;
 };
 
+// Cookie helper functions
+const getCookie = (name) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
+};
+
+const setCookie = (name, value, days) => {
+  const maxAge = days * 24 * 60 * 60; // Convert days to seconds
+  document.cookie = `${name}=${value}; max-age=${maxAge}; path=/; SameSite=Lax`;
+};
+
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState(() => {
-    // Check localStorage first
-    const saved = localStorage.getItem(STORAGE_KEYS.THEME);
+    // Check cookie first
+    const saved = getCookie('theme');
     if (saved) return saved;
 
     // Check system preference
@@ -30,7 +43,8 @@ export const ThemeProvider = ({ children }) => {
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem(STORAGE_KEYS.THEME, theme);
+    // Save to cookie with 400-day expiry
+    setCookie('theme', theme, 400);
   }, [theme]);
 
   const toggleTheme = () => {
