@@ -17,6 +17,7 @@ import { ConflictWarningModal } from './ConflictWarningModal';
 import AlertModal from './AlertModal';
 import ConfirmModal from './ConfirmModal';
 import { NMPreviewModal } from './NMPreviewModal';
+import { getTableColumnNotes, saveColumnNote } from '../../services/columnNotesService';
 import './Modal.css';
 import './EditTableModal.css';
 import './AlertModal.css';
@@ -83,27 +84,40 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
   const [isSavingFK, setIsSavingFK] = useState(false); // Track when we're saving FK to prevent reload
   const previousColumnsRef = React.useRef([]); // Track previous columns for rename detection
   
-  // Load column notes from localStorage on mount
+  // Load column notes from database on mount
   useEffect(() => {
-    if (isOpen && tableName && schemaName) {
-      const storageKey = `columnNotes_${schemaName}_${tableName}`;
-      const savedNotes = localStorage.getItem(storageKey);
-      if (savedNotes) {
+    const loadColumnNotes = async () => {
+      if (isOpen && tableName && schemaName) {
         try {
-          setColumnNotes(JSON.parse(savedNotes));
-        } catch (e) {
-          console.error('Failed to load column notes:', e);
+          const notes = await getTableColumnNotes(schemaName, tableName);
+          setColumnNotes(notes);
+        } catch (error) {
+          console.error('Failed to load column notes from database:', error);
+          setColumnNotes({});
         }
       }
-    }
+    };
+    
+    loadColumnNotes();
   }, [isOpen, tableName, schemaName]);
 
-  // Save column notes to localStorage whenever they change
+  // Save column notes to database with debounce
   useEffect(() => {
-    if (tableName && schemaName && Object.keys(columnNotes).length > 0) {
-      const storageKey = `columnNotes_${schemaName}_${tableName}`;
-      localStorage.setItem(storageKey, JSON.stringify(columnNotes));
-    }
+    if (!tableName || !schemaName) return;
+    
+    // Debounce timer
+    const timeoutId = setTimeout(async () => {
+      // Save each note that has changed
+      for (const [columnName, note] of Object.entries(columnNotes)) {
+        try {
+          await saveColumnNote(schemaName, tableName, columnName, note);
+        } catch (error) {
+          console.error(`Failed to save note for ${columnName}:`, error);
+        }
+      }
+    }, 1000); // Save after 1 second of no changes
+    
+    return () => clearTimeout(timeoutId);
   }, [columnNotes, tableName, schemaName]);
   
   // Bulk FK deletion state

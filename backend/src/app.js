@@ -5,6 +5,7 @@ import connectionRoutes from "./routes/connectionRoutes.js";
 import relationshipRoutes from "./routes/relationshipRoutes.js";
 import exportRoutes from "./routes/exportRoutes.js";
 import persistenceRoutes from "./routes/persistenceRoutes.js";
+import columnNotesRoutes from "./routes/columnNotesRoutes.js";
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
 
 const app = express();
@@ -21,6 +22,7 @@ app.use("/api/schemas", relationshipRoutes);
 app.use("/api", schemaRoutes);
 app.use("/api/export", exportRoutes);
 app.use("/api/persistence", persistenceRoutes);
+app.use("/api/column-notes", columnNotesRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
