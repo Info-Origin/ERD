@@ -161,13 +161,13 @@ export const AppProvider = ({ children }) => {
       const { loadBaselineSchema } = await import('../utils/persistenceAdapter');
 
       // Load baseline with connectionId for multi-database support
-      const baseline = loadBaselineSchema(schemaToCheck, connectionId);
+      const baseline = await loadBaselineSchema(schemaToCheck, connectionId);
       const currentRealDB = await erdService.getERDData(schemaToCheck);
       const changeResult = detectDatabaseChanges(baseline, currentRealDB);
 
       if (changeResult.isFirstLoad) {
         const { saveBaselineSchema } = await import('../utils/persistenceAdapter');
-        saveBaselineSchema(schemaToCheck, currentRealDB, connectionId);
+        await saveBaselineSchema(schemaToCheck, currentRealDB, connectionId);
         //console.log('📊 First load: Baseline schema saved for', schemaToCheck);
         return false;
       }

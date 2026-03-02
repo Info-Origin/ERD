@@ -58,6 +58,7 @@ export const VirtualSchemaProvider = ({ children }) => {
   const [tablePositions, setTablePositions] = useState({});
   const [isSwitchingSchema, setIsSwitchingSchema] = useState(false);
   const [realDbHistory, setRealDbHistory] = useState([]); // Track real DB changes over time
+  const [connectionId, setConnectionId] = useState(null); // Track current connection ID
   const historyIndexRef = useRef(-1);
   const historyRef = useRef([]);
 
@@ -76,7 +77,10 @@ export const VirtualSchemaProvider = ({ children }) => {
   // Auto-save table positions (canvas layout only)
   useEffect(() => {
     if (currentSchemaName && Object.keys(tablePositions).length > 0) {
-      saveTablePositions(currentSchemaName, tablePositions);
+      // Save asynchronously without blocking UI
+      saveTablePositions(currentSchemaName, tablePositions).catch(err => {
+        console.warn('Failed to save table positions:', err);
+      });
     }
   }, [tablePositions, currentSchemaName]);
 
@@ -330,10 +334,15 @@ export const VirtualSchemaProvider = ({ children }) => {
   }, []);
 
   // Initialize virtual schema from original or database
-  const initializeSchema = useCallback(async (erdData) => {
+  const initializeSchema = useCallback(async (erdData, connId = null) => {
     if (!erdData) return;
 
     const schemaName = erdData.schemaName;
+    
+    // Update connectionId if provided
+    if (connId !== null) {
+      setConnectionId(connId);
+    }
     
     // If switching to a different schema, prepare new schema data first, then switch atomically
     if (currentSchemaName && currentSchemaName !== schemaName) {
@@ -341,7 +350,7 @@ export const VirtualSchemaProvider = ({ children }) => {
       setIsSwitchingSchema(true);
       
       // Prepare new schema data
-      const savedTablePositions = loadTablePositions(schemaName);
+      const savedTablePositions = await loadTablePositions(schemaName);
       
       // Apply FK detection to schema based on relationships
       const applyFKDetection = (schema) => {
@@ -370,7 +379,7 @@ export const VirtualSchemaProvider = ({ children }) => {
       };
 
       // Prepare new working schema
-      const savedSchema = loadFromStorage(schemaName);
+      const savedSchema = await loadFromStorage(schemaName);
       
       let newWorkingSchema;
       let newHistory;
@@ -427,27 +436,20 @@ export const VirtualSchemaProvider = ({ children }) => {
     
     // CRITICAL: Save the baseline schema for future comparisons
     // This represents the FIRST real DB state we saw for this schema
-    // OPTIMIZED: Check localStorage first to avoid unnecessary database call
-    let baselineSchema = loadBaselineSchema(schemaName);
+    let baselineSchema = await loadBaselineSchema(schemaName, connectionId);
     
-    if (baselineSchema) {
-      // Baseline exists in localStorage - check database for updates from other users
-      const dbBaseline = await loadBaselineFromDatabase(schemaName);
-      if (dbBaseline) {
-        baselineSchema = dbBaseline;
-      }
-    } else {
+    if (!baselineSchema) {
       // No baseline exists - first time loading this schema
-      saveBaselineSchema(schemaName, erdData);
+      await saveBaselineSchema(schemaName, erdData, connectionId);
       baselineSchema = erdData;
     }
     
     // Track real DB history for better merge decisions - do this BEFORE merging
-    const updatedRealDbHistory = (() => {
+    const updatedRealDbHistory = await (async () => {
       const currentRealTables = Object.keys(erdData.tables || {});
       
-      // Load existing history from localStorage
-      const existingHistory = loadRealDbHistory(schemaName);
+      // Load existing history from database
+      const existingHistory = await loadRealDbHistory(schemaName);
       
       // If this is a completely new schema, initialize history
       if (currentSchemaName !== schemaName) {
@@ -456,7 +458,7 @@ export const VirtualSchemaProvider = ({ children }) => {
           tables: currentRealTables,
           schema: JSON.parse(JSON.stringify(erdData))
         }];
-        saveRealDbHistory(schemaName, newHistory);
+        await saveRealDbHistory(schemaName, newHistory);
         return newHistory;
       }
       
@@ -467,7 +469,7 @@ export const VirtualSchemaProvider = ({ children }) => {
           tables: currentRealTables,
           schema: JSON.parse(JSON.stringify(erdData))
         }];
-        saveRealDbHistory(schemaName, newHistory);
+        await saveRealDbHistory(schemaName, newHistory);
         return newHistory;
       }
       
@@ -489,7 +491,7 @@ export const VirtualSchemaProvider = ({ children }) => {
         // Keep history manageable (last 50 entries)
         const trimmedHistory = updatedHistory.slice(-50);
         
-        saveRealDbHistory(schemaName, trimmedHistory);
+        await saveRealDbHistory(schemaName, trimmedHistory);
         return trimmedHistory;
       }
       
@@ -500,8 +502,8 @@ export const VirtualSchemaProvider = ({ children }) => {
     // Update the history state
     setRealDbHistory(updatedRealDbHistory);
 
-    // Load table positions from localStorage
-    const savedTablePositions = loadTablePositions(schemaName);
+    // Load table positions from database
+    const savedTablePositions = await loadTablePositions(schemaName);
     setTablePositions(savedTablePositions);
 
     // Apply FK detection to schema based on relationships
@@ -532,8 +534,8 @@ export const VirtualSchemaProvider = ({ children }) => {
 
     // ALWAYS check database when switching schemas to get latest changes from other users
     // Even if we have no local data, other users might have saved changes
-    const localSchema = loadFromStorage(schemaName);
-    const localTimestamp = getStorageTimestamp(schemaName);
+    const localSchema = await loadFromStorage(schemaName);
+    const localTimestamp = await getStorageTimestamp(schemaName);
     
     // CRITICAL: Always check database for multi-user collaboration
     let savedSchema = await loadFromDatabase(schemaName);
@@ -604,7 +606,7 @@ export const VirtualSchemaProvider = ({ children }) => {
       
       // Save updated baseline if changes were made
       if (baselineNeedsUpdate) {
-        saveBaselineSchema(schemaName, updatedBaseline);
+        await saveBaselineSchema(schemaName, updatedBaseline, connectionId);
         baselineSchema = updatedBaseline;
       }
       
@@ -647,13 +649,13 @@ export const VirtualSchemaProvider = ({ children }) => {
     try {
       // CRITICAL FIX: Use the persistent baseline schema for comparison
       // This ensures that deleted tables/columns are properly detected
-      let baselineSchema = loadBaselineSchema(currentSchemaName);
+      let baselineSchema = await loadBaselineSchema(currentSchemaName, connectionId);
       
       if (!baselineSchema) {
         // If no baseline exists, use the current originalSchema and save it
         baselineSchema = originalSchema;
         if (baselineSchema) {
-          saveBaselineSchema(currentSchemaName, baselineSchema);
+          await saveBaselineSchema(currentSchemaName, baselineSchema, connectionId);
         }
       }
       
@@ -708,7 +710,7 @@ export const VirtualSchemaProvider = ({ children }) => {
       
       // Save updated baseline if changes were made
       if (baselineNeedsUpdate) {
-        saveBaselineSchema(currentSchemaName, updatedBaseline);
+        await saveBaselineSchema(currentSchemaName, updatedBaseline, connectionId);
         baselineSchema = updatedBaseline;
       }
       
@@ -751,13 +753,13 @@ export const VirtualSchemaProvider = ({ children }) => {
         deletedTables.forEach(tableName => {
           delete cleanedBaseline.tables[tableName];
         });
-        saveBaselineSchema(currentSchemaName, cleanedBaseline);
+        await saveBaselineSchema(currentSchemaName, cleanedBaseline, connectionId);
         
-        // CRITICAL: Save the cleaned schema to localStorage
+        // CRITICAL: Save the cleaned schema to database
         // This is the KEY fix - we must save the cleaned schema so when table is recreated,
-        // the old relationships don't come back from localStorage
-        console.log('💾 Saving cleaned schema to localStorage (without deleted tables and their relationships)');
-        saveToStorage(currentSchemaName, mergedSchema);
+        // the old relationships don't come back
+        console.log('💾 Saving cleaned schema to database (without deleted tables and their relationships)');
+        await saveToStorage(currentSchemaName, mergedSchema);
       }
       
       // Apply FK detection
@@ -979,21 +981,21 @@ export const VirtualSchemaProvider = ({ children }) => {
   }, [originalSchema, protectSyncedFKs]); // Add dependencies
 
   // Reset to original
-  const resetToOriginal = useCallback(() => {
+  const resetToOriginal = useCallback(async () => {
     if (originalSchema && currentSchemaName) {
       const clonedOriginal = JSON.parse(JSON.stringify(originalSchema));
       setWorkingSchema(clonedOriginal);
       const newHistory = [clonedOriginal];
       setHistory(newHistory);
-      historyRef.current = newHistory; // Update ref immediately
+      historyRef.current = newHistory;
       setHistoryIndex(0);
-      historyIndexRef.current = 0; // FIX: Update ref immediately
+      historyIndexRef.current = 0;
       setIsModified(false);
-      setHasUnsavedChanges(false); // Clear unsaved flag
-      clearFromStorage(currentSchemaName);
-      clearBaselineSchema(currentSchemaName); // Clear baseline so it gets reset
+      setHasUnsavedChanges(false);
+      await clearFromStorage(currentSchemaName);
+      await clearBaselineSchema(currentSchemaName, connectionId);
     }
-  }, [originalSchema, currentSchemaName]);
+  }, [originalSchema, currentSchemaName, connectionId]);
 
   // NEW: Manual save function with conflict detection
   const saveChangesToPersistence = useCallback(async () => {
@@ -1012,7 +1014,7 @@ export const VirtualSchemaProvider = ({ children }) => {
       }
 
       // No conflict, proceed with save
-      saveToStorage(currentSchemaName, workingSchema);
+      await saveToStorage(currentSchemaName, workingSchema);
       const timestamp = Date.now();
       setLastSavedTimestamp(timestamp);
       setHasUnsavedChanges(false);
@@ -1138,22 +1140,22 @@ export const VirtualSchemaProvider = ({ children }) => {
   }, [currentSchemaName, originalSchema, realDbHistory, mergeSchemas]);
 
   // Clear virtual schema
-  const clearVirtualSchema = useCallback(() => {
+  const clearVirtualSchema = useCallback(async () => {
     if (currentSchemaName) {
-      clearFromStorage(currentSchemaName);
-      clearRealDbHistory(currentSchemaName);
-      clearBaselineSchema(currentSchemaName); // Clear baseline as well
+      await clearFromStorage(currentSchemaName);
+      await clearRealDbHistory(currentSchemaName);
+      await clearBaselineSchema(currentSchemaName, connectionId);
     }
     setWorkingSchema(null);
     setOriginalSchema(null);
     setHistory([]);
-    historyRef.current = []; // Update ref immediately
+    historyRef.current = [];
     setHistoryIndex(-1);
-    historyIndexRef.current = -1; // FIX: Update ref immediately
+    historyIndexRef.current = -1;
     setIsModified(false);
     setCurrentSchemaName(null);
     setRealDbHistory([]);
-  }, [currentSchemaName]);
+  }, [currentSchemaName, connectionId]);
 
   // Clear ALL virtual schemas (for global refresh)
   const clearAllVirtualSchemas = useCallback(() => {

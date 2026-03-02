@@ -1,183 +1,153 @@
 /**
  * Persistence Adapter
- * Provides synchronous interface with async background sync to database
- * Uses localStorage for immediate reads/writes, syncs to database in background
+ * Database-only storage for virtual schemas, baseline, and table positions
+ * No localStorage caching - all data stored in persistence database
  */
 
 import persistenceService from '../services/persistenceService.js';
 
-// Storage keys
-const STORAGE_KEY = "reverseERD_virtualSchemas";
-const TABLE_POSITIONS_KEY = "reverseERD_tablePositions";
-const REAL_DB_HISTORY_KEY = "reverseERD_realDbHistory";
-const BASELINE_SCHEMA_KEY = "reverseERD_baselineSchemas";
-
-// ==================== PRIVATE HELPERS ====================
-
-function _saveToLocalStorage(storageType, schemaName, data) {
-  try {
-    const key = `reverseERD_${storageType}`;
-    const stored = JSON.parse(localStorage.getItem(key) || '{}');
-    stored[schemaName] = { data, timestamp: Date.now() };
-    localStorage.setItem(key, JSON.stringify(stored));
-  } catch (error) {
-    console.warn('Failed to save to localStorage:', error);
-  }
-}
-
-function _loadFromLocalStorage(storageType, schemaName) {
-  try {
-    const key = `reverseERD_${storageType}`;
-    const stored = JSON.parse(localStorage.getItem(key) || '{}');
-    return stored[schemaName]?.data || null;
-  } catch (error) {
-    console.warn('Failed to load from localStorage:', error);
-    return null;
-  }
-}
-
-function _deleteFromLocalStorage(storageType, schemaName) {
-  try {
-    const key = `reverseERD_${storageType}`;
-    const stored = JSON.parse(localStorage.getItem(key) || '{}');
-    delete stored[schemaName];
-    localStorage.setItem(key, JSON.stringify(stored));
-  } catch (error) {
-    console.warn('Failed to delete from localStorage:', error);
-  }
-}
-
 // ==================== PUBLIC API ====================
 
-export const saveBaselineSchema = (schemaName, baselineSchema, connectionId = null) => {
+export const saveBaselineSchema = async (schemaName, baselineSchema, connectionId = null) => {
   // If connectionId provided, use composite key for multi-database support
   const storageKey = connectionId ? `${connectionId}_${schemaName}` : schemaName;
   
-  _saveToLocalStorage('baselineSchemas', storageKey, baselineSchema);
-  persistenceService.saveBaselineSchema(storageKey, baselineSchema).catch(err => {
-    console.warn('Failed to sync baseline schema to database:', err);
-  });
+  try {
+    await persistenceService.saveBaselineSchema(storageKey, baselineSchema);
+  } catch (err) {
+    console.warn('Failed to save baseline schema to database:', err);
+    throw err;
+  }
 };
 
-export const loadBaselineSchema = (schemaName, connectionId = null) => {
-  // Try new format first (with connectionId) for multi-database support
-  if (connectionId) {
-    const newKey = `${connectionId}_${schemaName}`;
-    const baseline = _loadFromLocalStorage('baselineSchemas', newKey);
+export const loadBaselineSchema = async (schemaName, connectionId = null) => {
+  try {
+    // Try new format first (with connectionId) for multi-database support
+    const storageKey = connectionId ? `${connectionId}_${schemaName}` : schemaName;
+    const baseline = await persistenceService.loadBaselineSchema(storageKey);
+    
     if (baseline) {
-      // console.log(`✅ Loaded baseline with connectionId: ${newKey}`);
       return baseline;
     }
-    console.log(`⚠️ No baseline found with connectionId, trying fallback...`);
+    
+    // If connectionId was used but not found, try fallback without connectionId
+    if (connectionId) {
+      console.log(`⚠️ No baseline found with connectionId, trying fallback...`);
+      const fallbackBaseline = await persistenceService.loadBaselineSchema(schemaName);
+      return fallbackBaseline;
+    }
+    
+    return null;
+  } catch (error) {
+    console.warn('Failed to load baseline schema from database:', error);
+    return null;
   }
-  
-  // Fallback to old format (without connectionId) for backward compatibility
-  const baseline = _loadFromLocalStorage('baselineSchemas', schemaName);
-  if (baseline) {
-    // console.log(`✅ Loaded baseline (legacy format): ${schemaName}`);
-  }
-  return baseline;
 };
 
-export const clearBaselineSchema = (schemaName, connectionId = null) => {
+export const clearBaselineSchema = async (schemaName, connectionId = null) => {
   const storageKey = connectionId ? `${connectionId}_${schemaName}` : schemaName;
   
-  _deleteFromLocalStorage('baselineSchemas', storageKey);
-  persistenceService.deleteBaselineSchema(storageKey).catch(err => {
+  try {
+    await persistenceService.deleteBaselineSchema(storageKey);
+  } catch (err) {
     console.warn('Failed to delete baseline schema from database:', err);
-  });
+  }
 };
 
-export const saveRealDbHistory = (schemaName, history) => {
-  _saveToLocalStorage('realDbHistory', schemaName, history);
-  persistenceService.saveRealDbHistory(schemaName, history).catch(err => {
-    console.warn('Failed to sync real DB history to database:', err);
-  });
+export const saveRealDbHistory = async (schemaName, history) => {
+  try {
+    await persistenceService.saveRealDbHistory(schemaName, history);
+  } catch (err) {
+    console.warn('Failed to save real DB history to database:', err);
+    throw err;
+  }
 };
 
-export const loadRealDbHistory = (schemaName) => {
-  return _loadFromLocalStorage('realDbHistory', schemaName) || [];
+export const loadRealDbHistory = async (schemaName) => {
+  try {
+    const history = await persistenceService.loadRealDbHistory(schemaName);
+    return history || [];
+  } catch (error) {
+    console.warn('Failed to load real DB history from database:', error);
+    return [];
+  }
 };
 
-export const clearRealDbHistory = (schemaName) => {
-  _deleteFromLocalStorage('realDbHistory', schemaName);
-  persistenceService.deleteRealDbHistory(schemaName).catch(err => {
+export const clearRealDbHistory = async (schemaName) => {
+  try {
+    await persistenceService.deleteRealDbHistory(schemaName);
+  } catch (err) {
     console.warn('Failed to delete real DB history from database:', err);
-  });
+  }
 };
 
-export const saveToStorage = (schemaName, virtualSchema) => {
-  _saveToLocalStorage('virtualSchemas', schemaName, virtualSchema);
-  
-  persistenceService.saveVirtualSchema(schemaName, virtualSchema).catch(err => {
-    console.warn('Failed to sync virtual schema to database:', err);
-  });
+export const saveToStorage = async (schemaName, virtualSchema) => {
+  try {
+    await persistenceService.saveVirtualSchema(schemaName, virtualSchema);
+  } catch (err) {
+    console.warn('Failed to save virtual schema to database:', err);
+    throw err;
+  }
 };
 
-export const saveTablePositions = (schemaName, positions) => {
-  _saveToLocalStorage('tablePositions', schemaName, positions);
-  persistenceService.saveTablePositions(schemaName, positions).catch(err => {
-    console.warn('Failed to sync table positions to database:', err);
-  });
+export const saveTablePositions = async (schemaName, positions) => {
+  try {
+    await persistenceService.saveTablePositions(schemaName, positions);
+  } catch (err) {
+    console.warn('Failed to save table positions to database:', err);
+    throw err;
+  }
 };
 
-export const loadTablePositions = (schemaName) => {
-  return _loadFromLocalStorage('tablePositions', schemaName) || {};
+export const loadTablePositions = async (schemaName) => {
+  try {
+    const positions = await persistenceService.loadTablePositions(schemaName);
+    return positions || {};
+  } catch (error) {
+    console.warn('Failed to load table positions from database:', error);
+    return {};
+  }
 };
 
-export const clearTablePositions = (schemaName) => {
-  _deleteFromLocalStorage('tablePositions', schemaName);
-  persistenceService.deleteTablePositions(schemaName).catch(err => {
+export const clearTablePositions = async (schemaName) => {
+  try {
+    await persistenceService.deleteTablePositions(schemaName);
+  } catch (err) {
     console.warn('Failed to delete table positions from database:', err);
-  });
+  }
 };
 
-export const loadFromStorage = (schemaName) => {
-  return _loadFromLocalStorage('virtualSchemas', schemaName);
+export const loadFromStorage = async (schemaName) => {
+  try {
+    const schema = await persistenceService.loadVirtualSchema(schemaName);
+    return schema;
+  } catch (error) {
+    console.warn('Failed to load virtual schema from database:', error);
+    return null;
+  }
 };
 
 export const loadFromDatabase = async (schemaName) => {
   try {
     const schema = await persistenceService.loadVirtualSchema(schemaName);
-    
-    // Also update localStorage with the fresh data
-    if (schema) {
-      _saveToLocalStorage('virtualSchemas', schemaName, schema);
-    }
-    
     return schema;
   } catch (error) {
-    console.warn('Failed to load from database, falling back to localStorage:', error);
-    return _loadFromLocalStorage('virtualSchemas', schemaName);
+    console.warn('Failed to load from database:', error);
+    return null;
   }
 };
 
 export const loadBaselineFromDatabase = async (schemaName, connectionId = null) => {
-  try {
-    // Try new format first (with connectionId)
-    const storageKey = connectionId ? `${connectionId}_${schemaName}` : schemaName;
-    const schema = await persistenceService.loadBaselineSchema(storageKey);
-    
-    // Also update localStorage with the fresh data
-    if (schema) {
-      _saveToLocalStorage('baselineSchemas', storageKey, schema);
-      // console.log(`✅ Loaded baseline from database: ${storageKey}`);
-    }
-    
-    return schema;
-  } catch (error) {
-    console.warn('Failed to load baseline from database, falling back to localStorage:', error);
-    return loadBaselineSchema(schemaName, connectionId);
-  }
+  // This function now just calls loadBaselineSchema (which is already database-only)
+  return loadBaselineSchema(schemaName, connectionId);
 };
 
-export const getStorageTimestamp = (schemaName) => {
+export const getStorageTimestamp = async (schemaName) => {
   try {
-    const key = 'reverseERD_virtualSchemas';
-    const stored = JSON.parse(localStorage.getItem(key) || '{}');
-    return stored[schemaName]?.timestamp || null;
+    const timestamp = await persistenceService.getVirtualSchemaTimestamp(schemaName);
+    return timestamp || null;
   } catch (error) {
-    console.warn('Failed to get timestamp from localStorage:', error);
+    console.warn('Failed to get timestamp from database:', error);
     return null;
   }
 };
@@ -199,20 +169,15 @@ export const checkForNewerChanges = async (schemaName, currentTimestamp) => {
   }
 };
 
-export const clearFromStorage = (schemaName) => {
-  _deleteFromLocalStorage('virtualSchemas', schemaName);
-  persistenceService.deleteVirtualSchema(schemaName).catch(err => {
+export const clearFromStorage = async (schemaName) => {
+  try {
+    await persistenceService.deleteVirtualSchema(schemaName);
+  } catch (err) {
     console.warn('Failed to delete virtual schema from database:', err);
-  });
+  }
 };
 
-export const clearAllFromStorage = () => {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(TABLE_POSITIONS_KEY);
-    localStorage.removeItem(REAL_DB_HISTORY_KEY);
-    localStorage.removeItem(BASELINE_SCHEMA_KEY);
-  } catch (error) {
-    console.warn("Failed to clear all from localStorage:", error);
-  }
+export const clearAllFromStorage = async () => {
+  // Database-only storage - nothing to clear from localStorage
+  console.log('clearAllFromStorage: Using database-only storage, no localStorage to clear');
 };
