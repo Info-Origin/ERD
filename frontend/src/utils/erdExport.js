@@ -82,8 +82,7 @@ const exportViaServer = async (options, progressCallback) => {
     const response = await fetch(`${backendURL}/api/export/pdf`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         imageData: imageDataUrl,
