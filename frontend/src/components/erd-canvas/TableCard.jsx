@@ -318,10 +318,10 @@ export const TableCard = memo(({ data }) => {
           "table-card-hover": !isSelected,
           "table-card-relationship-highlighted": isTableHighlighted && !isTableNMHighlighted, // Regular highlight only if not N:M
           "table-card-nm-highlighted": isTableNMHighlighted, // NEW: Purple N:M highlight (HIGHEST priority)
-          "table-card-junction": isJunctionTable && !isTableNMHighlighted, // NEW: Permanent purple for junction tables (but not when N:M highlighted to avoid double styling)
-          "table-card-search-highlighted": isHighlighted, // Add search highlight class
+          "table-card-junction": isJunctionTable && !isTableNMHighlighted && !isHighlighted, // NEW: Permanent purple for junction tables (but not when N:M highlighted or search highlighted)
+          "table-card-search-highlighted": isHighlighted, // Add search highlight class (HIGHEST PRIORITY)
           "table-card-parent": isParent && !isHighlighted && !isTableHighlighted && !isTableNMHighlighted && !isJunctionTable, // Add parent class only if not already highlighted or junction
-          "table-card-circular-dependency": isInCircularDependency && !isTableNMHighlighted && !isJunctionTable, // Circular dependency highlight (but not when N:M highlighted or junction)
+          "table-card-circular-dependency": isInCircularDependency && !isTableNMHighlighted && !isJunctionTable && !isHighlighted, // Circular dependency highlight (but not when N:M highlighted, junction, or search highlighted)
         })}
         onClick={handleClick}
         onContextMenu={handleContextMenu}

@@ -57,7 +57,7 @@
     0 4px 16px rgba(16, 185, 129, 0.3) !important;
   transform: translateY(-2px) !important;
   background-color: var(--bg-primary) !important;
-  z-index: 25 !important; /* Search highlighted tables on top of relationship highlights */
+  z-index: 40 !important; /* HIGHEST priority - search highlighted tables on top of everything */
   animation: searchHighlightPulse 2s ease-in-out;
 }
 

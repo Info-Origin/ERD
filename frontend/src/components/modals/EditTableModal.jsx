@@ -1664,6 +1664,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                     </div>
                     <div className="edit-constraint-pk">
                       <input
+                        id={`pk-${tableName}-${column.name}`}
+                        name={`pk-${tableName}-${column.name}`}
                         type="checkbox"
                         checked={Boolean(column.pk)}
                         onChange={(e) => {
@@ -1673,6 +1675,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                     </div>
                     <div className="edit-constraint-nn">
                       <input
+                        id={`nn-${tableName}-${column.name}`}
+                        name={`nn-${tableName}-${column.name}`}
                         type="checkbox"
                         checked={!column.nullable}
                         onChange={(e) => {
@@ -1683,6 +1687,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                     </div>
                     <div className="edit-constraint-uq">
                       <input
+                        id={`uq-${tableName}-${column.name}`}
+                        name={`uq-${tableName}-${column.name}`}
                         type="checkbox"
                         checked={Boolean(column.unique)}
                         onChange={(e) => {
@@ -1739,6 +1745,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                   {isDeleteMode && (
                     <div className="edit-fk-checkbox">
                       <input
+                        id="select-all-fks"
+                        name="select-all-fks"
                         type="checkbox"
                         checked={selectedFKs.size > 0 && selectedFKs.size === foreignKeys.filter(fk => fk.isVirtual).length}
                         onChange={handleSelectAllFKs}
@@ -1762,6 +1770,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                     {isDeleteMode && (
                       <div className="edit-fk-checkbox">
                         <input
+                          id={`fk-select-${index}`}
+                          name={`fk-select-${index}`}
                           type="checkbox"
                           checked={selectedFKs.has(index)}
                           onChange={() => handleToggleFKSelection(index)}
@@ -1773,6 +1783,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                       {editingFK === index && fk.isVirtual ? (
                         // In edit mode - allow typing new column name or show selected column name
                         <input
+                          id={`fk-name-${index}`}
+                          name={`fk-name-${index}`}
                           type="text"
                           value={fk.fromColumn && fk.fromColumn !== '__CREATE_NEW__' ? fk.fromColumn : fk.newColumnName || ''}
                           onChange={(e) => {
@@ -1809,6 +1821,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                       <div className="edit-fk-column">
                         {editingFK === index && fk.isVirtual ? (
                           <input
+                            id={`fk-junction-${index}`}
+                            name={`fk-junction-${index}`}
                             type="text"
                             value={fk.junctionTableName || ''}
                             onChange={(e) => handleFKChange(index, 'junctionTableName', e.target.value)}
@@ -1826,6 +1840,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                       // 1:1 or 1:N: Show Child Column selector
                       <div className="edit-fk-column">
                         <select
+                          id={`fk-from-column-${index}`}
+                          name={`fk-from-column-${index}`}
                           value={fk.fromColumn && fk.fromColumn !== '__CREATE_NEW__' ? fk.fromColumn : ''}
                           onChange={(e) => {
                             const value = e.target.value;
@@ -1853,6 +1869,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                     )}
                     <div className="edit-fk-ref-table">
                       <select
+                        id={`fk-to-table-${index}`}
+                        name={`fk-to-table-${index}`}
                         value={fk.toTable}
                         onChange={(e) => handleFKChange(index, 'toTable', e.target.value)}
                         disabled={editingFK !== index || !fk.isVirtual}
@@ -1869,6 +1887,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                     </div>
                     <div className="edit-fk-ref-column">
                       <select
+                        id={`fk-to-column-${index}`}
+                        name={`fk-to-column-${index}`}
                         value={fk.toColumn}
                         onChange={(e) => handleFKChange(index, 'toColumn', e.target.value)}
                         disabled={editingFK !== index || !fk.isVirtual}
@@ -1894,6 +1914,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                           
                           return (
                             <select
+                              id={`fk-cardinality-${index}`}
+                              name={`fk-cardinality-${index}`}
                               value={fk.cardinality || detectedCardinality}
                               onChange={(e) => handleFKChange(index, 'cardinality', e.target.value)}
                               disabled={isPK && fk.cardinality !== 'N:M'}
@@ -1931,6 +1953,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                     </div>
                     <div className="edit-fk-on-update">
                       <select
+                        id={`fk-on-update-${index}`}
+                        name={`fk-on-update-${index}`}
                         value={fk.onUpdate}
                         onChange={(e) => handleFKChange(index, 'onUpdate', e.target.value)}
                         disabled={editingFK !== index || !fk.isVirtual}
@@ -1945,6 +1969,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                     </div>
                     <div className="edit-fk-on-delete">
                       <select
+                        id={`fk-on-delete-${index}`}
+                        name={`fk-on-delete-${index}`}
                         value={fk.onDelete}
                         onChange={(e) => handleFKChange(index, 'onDelete', e.target.value)}
                         disabled={editingFK !== index || !fk.isVirtual}
@@ -2047,6 +2073,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                       </div>
                       <div className="col-notes">
                         <input
+                          id={`notes-${tableName}-${column.name}`}
+                          name={`notes-${tableName}-${column.name}`}
                           type="text"
                           className="notes-input"
                           placeholder="Add description..."
