@@ -63,6 +63,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
     addManyToManyRelationship, // NEW: N:M relationship creation
     isTableJunctionTable, // NEW: Helper to detect junction tables
     deleteRelationship,
+    deleteTable, // For deleting junction tables
     deleteColumn, // Add this for deleting user-created FK columns
     togglePrimaryKey,
     toggleUnique,
@@ -233,6 +234,10 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       
       // Reset pending constraint changes
       setPendingConstraintChanges({});
+      
+      // Reset delete mode state
+      setIsDeleteMode(false);
+      setSelectedFKs(new Set());
       
       // Load columns (read-only for constraint editing)
       const tableData = workingSchema.tables[tableName];
@@ -969,6 +974,34 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
     const fksToDelete = Array.from(selectedFKs).map(index => foreignKeys[index]);
     const fkNames = fksToDelete.map(fk => fk.name).join(', ');
     
+    // Check if this is a junction table
+    const tableData = workingSchema.tables[tableName];
+    const allColumns = Object.values(tableData?.columns || {});
+    const fkColumns = allColumns.filter(col => col.fk);
+    const pkColumns = allColumns.filter(col => col.pk);
+    
+    const isJunctionTable = tableData?.isJunctionTable || 
+      (fkColumns.length === 2 && pkColumns.length === 2 && 
+       fkColumns.every(fkCol => fkCol.pk));
+    
+    if (isJunctionTable) {
+      // Show warning that deleting FKs from junction table will delete entire table
+      showConfirm(
+        'Delete Junction Table',
+        `"${tableName}" is a junction table for a many-to-many relationship. Deleting foreign keys will delete the entire table and break the N:M relationship. Continue?`,
+        () => {
+          // Delete the entire table (this automatically removes all relationships in one operation)
+          // This creates only ONE history entry for undo/redo
+          deleteTable(tableName);
+          
+          // Close the modal
+          onClose();
+        },
+        'danger'
+      );
+      return;
+    }
+    
     showConfirm(
       'Delete Selected Foreign Keys',
       `Are you sure you want to delete ${selectedFKs.size} foreign key(s)?\n\n${fkNames}\n\nThis action cannot be undone.`,
@@ -997,6 +1030,34 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       // Only allow deleting virtual FKs
       if (!fk.isVirtual) {
         showAlert('Cannot Delete', 'Real database foreign keys cannot be deleted from the ERD tool. This would require direct database changes.', 'warning');
+        return;
+      }
+      
+      // Check if this is a junction table
+      const tableData = workingSchema.tables[tableName];
+      const allColumns = Object.values(tableData?.columns || {});
+      const fkColumns = allColumns.filter(col => col.fk);
+      const pkColumns = allColumns.filter(col => col.pk);
+      
+      const isJunctionTable = tableData?.isJunctionTable || 
+        (fkColumns.length === 2 && pkColumns.length === 2 && 
+         fkColumns.every(fkCol => fkCol.pk));
+      
+      if (isJunctionTable) {
+        // Show warning that deleting FK from junction table will delete entire table
+        showConfirm(
+          'Delete Junction Table',
+          `"${tableName}" is a junction table for a many-to-many relationship. Deleting this foreign key will delete the entire table and break the N:M relationship. Continue?`,
+          () => {
+            // Delete the entire table (this automatically removes all relationships in one operation)
+            // This creates only ONE history entry for undo/redo
+            deleteTable(tableName);
+            
+            // Close the modal
+            onClose();
+          },
+          'danger'
+        );
         return;
       }
       
