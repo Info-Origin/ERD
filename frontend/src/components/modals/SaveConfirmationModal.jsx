@@ -13,7 +13,7 @@ export const SaveConfirmationModal = ({ isOpen, onConfirm, onCancel }) => {
         </div>
         
         <div className="modal-body">
-          <p>Do you want to save changes to the persistence database?</p>
+          <p>Do you want to save changes to the virtual database?</p>
         </div>
         
         <div className="modal-footer">

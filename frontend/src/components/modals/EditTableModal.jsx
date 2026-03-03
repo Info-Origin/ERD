@@ -254,13 +254,13 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         }));
         
         // Transfer descriptions if columns were renamed
-        console.log('🔍 [Modal Open] Checking for column renames...', {
-          oldColumnsCount: previousColumnsRef.current.length,
-          newColumnsCount: columnList.length,
-          oldColumns: previousColumnsRef.current.map(c => c.name),
-          newColumns: columnList.map(c => c.name),
-          currentNotes: Object.keys(columnNotes)
-        });
+        // console.log('🔍 [Modal Open] Checking for column renames...', {
+        //   oldColumnsCount: previousColumnsRef.current.length,
+        //   newColumnsCount: columnList.length,
+        //   oldColumns: previousColumnsRef.current.map(c => c.name),
+        //   newColumns: columnList.map(c => c.name),
+        //   currentNotes: Object.keys(columnNotes)
+        // });
         
         if (previousColumnsRef.current.length > 0) {
           const updatedNotes = transferDescriptionsOnRename(previousColumnsRef.current, columnList, columnNotes);
@@ -268,7 +268,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
             console.log('✅ [Modal Open] Descriptions updated:', updatedNotes);
             setColumnNotes(updatedNotes);
           } else {
-            console.log('ℹ️ [Modal Open] No description changes needed');
+            // console.log('ℹ️ [Modal Open] No description changes needed');
           }
         }
         
@@ -322,13 +322,13 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
         }));
         
         // Transfer descriptions if columns were renamed
-        console.log('🔍 [Tab Switch] Checking for column renames...', {
-          oldColumnsCount: previousColumnsRef.current.length,
-          newColumnsCount: columnList.length,
-          oldColumns: previousColumnsRef.current.map(c => c.name),
-          newColumns: columnList.map(c => c.name),
-          currentNotes: Object.keys(columnNotes)
-        });
+        // console.log('🔍 [Tab Switch] Checking for column renames...', {
+        //   oldColumnsCount: previousColumnsRef.current.length,
+        //   newColumnsCount: columnList.length,
+        //   oldColumns: previousColumnsRef.current.map(c => c.name),
+        //   newColumns: columnList.map(c => c.name),
+        //   currentNotes: Object.keys(columnNotes)
+        // });
         
         if (previousColumnsRef.current.length > 0) {
           const updatedNotes = transferDescriptionsOnRename(previousColumnsRef.current, columnList, columnNotes);
@@ -336,7 +336,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
             console.log('✅ [Tab Switch] Descriptions updated:', updatedNotes);
             setColumnNotes(updatedNotes);
           } else {
-            console.log('ℹ️ [Tab Switch] No description changes needed');
+          //  console.log('ℹ️ [Tab Switch] No description changes needed');
           }
         }
         
@@ -1247,7 +1247,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                 finalJunctionName
               );
 
-              console.log('✅ N:M relationship created:', result);
+           //   console.log('✅ N:M relationship created:', result);
 
               // Close preview modal
               setNMPreviewModal({ ...nmPreviewModal, isOpen: false });
