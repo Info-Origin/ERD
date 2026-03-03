@@ -1,6 +1,4 @@
--- ============================================================================
 -- Fix Permissions for Persistence User
--- ============================================================================
 -- Purpose: Fix database user permissions
 -- Run this if you get "Access denied" errors
 --
@@ -12,7 +10,6 @@
 --
 -- Usage:
 --   mysql -u root -p < fix_permissions.sql
--- ============================================================================
 
 -- Fix Permissions for Persistence User
 -- Run this script in MySQL Workbench or MySQL CLI as root user

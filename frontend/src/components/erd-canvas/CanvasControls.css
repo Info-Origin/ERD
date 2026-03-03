@@ -165,7 +165,7 @@
   transition: all var(--transition-fast);
   background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
-  cursor: pointer;
+  cursor: pointer !important;
   position: relative;
 }
 

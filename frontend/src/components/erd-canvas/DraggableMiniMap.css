@@ -110,20 +110,16 @@
   position: relative !important;
 }
 
-/* Responsive sizing */
+/* Responsive sizing - Hide minimap on tablets and smaller screens */
+@media (max-width: 1024px) {
+  .static-minimap-wrapper {
+    display: none; /* Hide minimap completely on tablets to avoid overlap with bottom buttons */
+  }
+}
+
 @media (max-width: 768px) {
   .static-minimap-wrapper {
-    bottom: 10px;
-    right: 10px;
-  }
-  
-  .minimap-content-wrapper {
-    width: 150px;
-    height: 100px;
-  }
-  
-  .static-minimap-wrapper.expanded {
-    width: 150px;
+    display: none; /* Keep hidden on mobile */
   }
 }
 

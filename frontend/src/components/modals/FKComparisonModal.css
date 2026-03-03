@@ -399,6 +399,14 @@
 }
 
 /* Responsive */
+@media (max-width: 1024px) {
+  .fk-comparison-modal {
+    max-width: 90vw;
+    width: 90vw;
+    max-height: 85vh;
+  }
+}
+
 @media (max-width: 768px) {
   .fk-comparison-modal {
     max-width: 95%;
