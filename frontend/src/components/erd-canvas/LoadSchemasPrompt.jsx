@@ -1,22 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { FiDatabase, FiAlertCircle } from 'react-icons/fi';
 import { Loader } from '../common/Loader';
-import { useApp } from '../../context/AppContext';
 import './LoadSchemasPrompt.css';
 
 export const LoadSchemasPrompt = ({ onLoadSchemas }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [shouldAutoSelect, setShouldAutoSelect] = useState(false);
-  const { schemas, selectSchema } = useApp();
-
-  // Auto-select first schema after schemas are loaded
-  useEffect(() => {
-    if (shouldAutoSelect && schemas && schemas.length > 0) {
-      selectSchema(schemas[0]);
-      setShouldAutoSelect(false);
-    }
-  }, [schemas, shouldAutoSelect, selectSchema]);
 
   const handleLoadClick = async () => {
     setIsLoading(true);
@@ -24,8 +13,6 @@ export const LoadSchemasPrompt = ({ onLoadSchemas }) => {
 
     try {
       await onLoadSchemas();
-      // Trigger auto-select after schemas load
-      setShouldAutoSelect(true);
     } catch (err) {
       setError(err.message || 'Failed to load schemas');
     } finally {

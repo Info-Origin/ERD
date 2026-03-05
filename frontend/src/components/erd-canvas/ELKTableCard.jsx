@@ -8,11 +8,7 @@ import { useApp } from "../../context/AppContext";
 import { clsx } from "clsx";
 import "./TableCard.css";
 
-/**
- * ELK-based Table Card Component (Visual Only)
- * Uses ELK port information for precise handle positioning
- * Relationship creation functionality removed
- */
+
 export const ELKTableCard = memo(({ data, selected }) => {
   const { selectTable, highlightedRelationship } = useApp();
   

@@ -44,7 +44,9 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
     erdData, 
     erdLoading, 
     erdError, 
-    selectedSchema, 
+    selectedSchema,
+    selectSchema,
+    schemas,
     selectedTable, 
     setHighlightedRelationship, 
     highlightedRelationship,
@@ -91,6 +93,14 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
   const [highlightedTable, setHighlightedTable] = useState(null); // Track highlighted table
   const [highlightedColumn, setHighlightedColumn] = useState(null); // NEW: Track highlighted column
   const [layoutResetKey, setLayoutResetKey] = useState(0); // Key to force layout reset
+
+  // Auto-select first schema after schemas are loaded
+  useEffect(() => {
+    if (schemasHasLoaded && schemas && schemas.length > 0 && !selectedSchema) {
+      console.log('Auto-selecting first schema after load:', schemas[0]);
+      selectSchema(schemas[0]);
+    }
+  }, [schemasHasLoaded, schemas, selectedSchema, selectSchema]);
 
   const { nodes, edges: rawEdges, getInitialViewport, onNodesChange, onEdgesChange, forceLayout, layoutError } = useERDLayout(
     erdData,
