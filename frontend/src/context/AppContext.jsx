@@ -269,21 +269,8 @@ export const AppProvider = ({ children }) => {
   // ==================== MODAL FUNCTIONS ====================
 
   // Shared Edit Table Modal functions
-  // SCENARIO 2: Edit Constraint - Check for database changes before opening
-  const openEditTableModal = useCallback(async (tableName, schemaName) => {
-    const hasDbChanges = await checkForDatabaseChanges(() => {
-      actuallyOpenEditTableModal(tableName, schemaName);
-    });
-    
-    if (hasDbChanges) {
-      return;
-    }
-    
-    actuallyOpenEditTableModal(tableName, schemaName);
-  }, [checkForDatabaseChanges]);
-
-  // Helper function to actually open the modal
-  const actuallyOpenEditTableModal = useCallback((tableName, schemaName) => {
+  // Open modal directly without database change check
+  const openEditTableModal = useCallback((tableName, schemaName) => {
     setSharedEditTableModal({
       isOpen: true,
       tableName,
@@ -599,7 +586,7 @@ export const AppProvider = ({ children }) => {
     }
   }, [connectionId]);
   
-  // Scenario 3: Browser Refresh + Schema Switch - Check IMMEDIATELY when schema data loads (before initialization)
+  // Scenario 3: Browser Refresh - Check IMMEDIATELY when schema data loads (before initialization)
   useEffect(() => {
     if (selectedSchema && erdData && !erdLoading) {
       // Skip if we've already checked this schema
@@ -620,14 +607,8 @@ export const AppProvider = ({ children }) => {
         
         // Track which schema we checked
         lastCheckedSchemaRef.current = selectedSchema;
-      } else if (!isInitialLoadRef.current) {
-        // On schema switch (not initial load), also check for database changes
-        // This handles the case where a table was deleted and user switches schemas
-        checkForDatabaseChanges();
-        
-        // Track which schema we checked
-        lastCheckedSchemaRef.current = selectedSchema;
       }
+      // REMOVED: Schema switch check - no longer checking for database changes when switching schemas
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSchema, erdData, erdLoading, hasCheckedForChanges]); // Removed checkForDatabaseChanges to prevent re-triggering
