@@ -3,12 +3,14 @@ import schemaService from "../services/schemaService";
 
 /**
  * Hook to fetch and manage schemas list
+ * @param {boolean} autoFetch - Whether to automatically fetch schemas on mount (default: false)
  * @returns {Object} { schemas, loading, error, refetch }
  */
-export const useSchemas = () => {
+export const useSchemas = (autoFetch = false) => {
   const [schemas, setSchemas] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   const fetchSchemas = async () => {
     setLoading(true);
@@ -17,6 +19,7 @@ export const useSchemas = () => {
     try {
       const data = await schemaService.getSchemas();
       setSchemas(data);
+      setHasLoaded(true);
     } catch (err) {
       setError(err.message || "Failed to load schemas");
       console.error("Error fetching schemas:", err);
@@ -26,13 +29,16 @@ export const useSchemas = () => {
   };
 
   useEffect(() => {
-    fetchSchemas();
-  }, []);
+    if (autoFetch) {
+      fetchSchemas();
+    }
+  }, [autoFetch]);
 
   return {
     schemas,
     loading,
     error,
+    hasLoaded,
     refetch: fetchSchemas,
   };
 };

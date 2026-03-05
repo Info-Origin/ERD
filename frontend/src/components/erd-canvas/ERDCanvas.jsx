@@ -16,6 +16,7 @@ import { ERDHeader } from "./ERDHeader";
 import { CanvasControls } from "./CanvasControls";
 import { RelationshipToolbar } from "./RelationshipToolbar";
 import { Loader } from "../common/Loader";
+import { LoadSchemasPrompt } from "./LoadSchemasPrompt";
 import { RelationshipDetailsModal } from "../modals/RelationshipDetailsModal";
 import { DeleteRelationshipModal } from "../modals/DeleteRelationshipModal";
 import { ExportPDFModal } from "../modals/ExportPDFModal";
@@ -54,6 +55,8 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
     crowsFootMode, 
     gridBackground, 
     showNotification,
+    schemasHasLoaded,
+    refetchSchemas,
     // Relationship modals
     relationshipDetailsModal,
     closeRelationshipDetailsModal,
@@ -371,6 +374,11 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
   }, [forceLayout]);
 
   // Routing toggle removed - using direct stepped lines only
+
+  // Show LoadSchemasPrompt if no schemas have been loaded yet
+  if (!schemasHasLoaded) {
+    return <LoadSchemasPrompt onLoadSchemas={refetchSchemas} />;
+  }
 
   if (!selectedSchema) {
     return (

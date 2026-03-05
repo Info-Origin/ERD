@@ -379,6 +379,25 @@ class PersistenceService {
   }
 
   /**
+   * Get list of saved schema names from database
+   */
+  async getSavedSchemas() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/persistence/schemas`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to get saved schemas');
+      }
+      
+      const data = await response.json();
+      return data.schemas || [];
+    } catch (error) {
+      console.error('Error getting saved schemas:', error);
+      return [];
+    }
+  }
+
+  /**
    * Load from localStorage as fallback
    */
   _loadFromLocalStorage(storageType, schemaName) {

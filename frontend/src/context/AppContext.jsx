@@ -124,8 +124,9 @@ export const AppProvider = ({ children }) => {
     schemas,
     loading: schemasLoading,
     error: schemasError,
+    hasLoaded: schemasHasLoaded,
     refetch: refetchSchemas,
-  } = useSchemas();
+  } = useSchemas(false); // Don't auto-fetch on mount
   const {
     erdData,
     loading: erdLoading,
@@ -135,6 +136,10 @@ export const AppProvider = ({ children }) => {
 
   // Virtual schema context
   const virtualSchema = useVirtualSchema();
+
+  // ==================== INITIALIZATION ====================
+  // No auto-load on mount - user must click "Load Schemas" button
+  // This ensures schema explorer starts empty and LoadSchemasPrompt is shown
 
   // ==================== DATABASE CHANGES DETECTION ====================
   // MUST BE DEFINED EARLY - Used by other functions below
@@ -949,6 +954,7 @@ export const AppProvider = ({ children }) => {
     schemas,
     schemasLoading,
     schemasError,
+    schemasHasLoaded,
     refetchSchemas,
 
     // ERD Data (with race condition protection during schema switching)
