@@ -251,22 +251,27 @@ export const VirtualSchemaProvider = ({ children }) => {
         // If table exists in real DB but NOT in baseline, it's a recreated table
         // Skip old virtual relationships for recreated tables
         if ((fromTableInReal && !fromTableInBaseline) || (toTableInReal && !toTableInBaseline)) {
-          console.log(`⚠️ Skipping old relationship for recreated table: ${rel.fromTable}.${rel.fromColumn} → ${rel.toTable}.${rel.toColumn}`);
           return; // Skip this relationship
         }
         
-        // CRITICAL FIX: If this relationship now exists in the real database,
-        // mark it as synced but keep isUserCreated for comparison modal detection
+        // CRITICAL FIX: Handle FK sync state changes
         const existsInRealDB = realRelationshipKeys.has(key);
         const cleanedRel = { ...rel };
         
         if (existsInRealDB && cleanedRel.isUserCreated) {
-          // Relationship was user-created but now exists in real DB
+          // Case 1: Virtual FK now exists in real DB (user added it manually)
           // Mark as synced so comparison modal can detect it
-          // But also remove isUserCreated so line color changes from blue to black
+          // Remove isUserCreated so line color changes from blue to black
           cleanedRel.isSynced = true;
           delete cleanedRel.isUserCreated;
           delete cleanedRel.createdAt;
+        } else if (!existsInRealDB && cleanedRel.isSynced) {
+          // Case 2: Synced FK was deleted from real DB (back to virtual-only)
+          // Restore isUserCreated flag so line turns blue again
+          // Remove isSynced flag
+          cleanedRel.isUserCreated = true;
+          cleanedRel.createdAt = Date.now(); // Add timestamp for "created X minutes ago"
+          delete cleanedRel.isSynced;
         }
         
         relationshipMap.set(key, cleanedRel);
@@ -334,7 +339,7 @@ export const VirtualSchemaProvider = ({ children }) => {
   }, []);
 
   // Initialize virtual schema from original or database
-  const initializeSchema = useCallback(async (erdData, connId = null) => {
+  const initializeSchema = useCallback(async (erdData, connId = null, isFromPersistenceDB = false) => {
     if (!erdData) return;
 
     const schemaName = erdData.schemaName;
@@ -550,8 +555,8 @@ export const VirtualSchemaProvider = ({ children }) => {
     }
     
     if (savedSchema) {
-      // MERGE STRATEGY: Combine real DB schema with virtual schema changes
-      // CRITICAL: Use the persistent baseline schema for comparison
+      // BROWSER REFRESH FLOW: Load ONLY persistence DB data (no merge with actual DB)
+      // This preserves all virtual changes including isUserCreated flags
       
       // Get the timestamp from the database (not localStorage)
       const dbTimestamp = await persistenceService.getVirtualSchemaTimestamp(schemaName);
@@ -560,14 +565,12 @@ export const VirtualSchemaProvider = ({ children }) => {
         setLastSavedTimestamp(dbTimestamp);
       }
       
-      // IMPORTANT: Do NOT update baseline from erdData here!
-      // erdData comes from persistence DB (not real DB) after "Load Schemas"
-      // Baseline should ONLY be updated when user clicks Sync in "Database Changes Detected" modal
+      // CRITICAL FIX: On browser refresh, erdData comes from persistence DB (not actual DB)
+      // So we should NOT merge - just use savedSchema directly to preserve all flags
+      // This keeps isUserCreated flags intact so blue lines stay blue after refresh
       
-      const mergedSchema = mergeSchemas(erdData, savedSchema, baselineSchema, updatedRealDbHistory);
-      
-      // Apply FK detection to merged schema to ensure relationships are properly marked
-      let updatedSchema = applyFKDetection(mergedSchema);
+      // Apply FK detection to ensure relationships are properly marked
+      let updatedSchema = applyFKDetection(savedSchema);
       
       // Recalculate isIdentifying for all relationships based on current PK status
       updatedSchema = recalculateIsIdentifying(updatedSchema);

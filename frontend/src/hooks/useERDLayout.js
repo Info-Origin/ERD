@@ -178,7 +178,7 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
               type: rel.type || 'ONE_TO_MANY', // For backward compatibility
               cardinalityType: rel.cardinalityType || '1:N',
               constraintName: rel.constraintName,
-              isUserCreated: false,
+              isUserCreated: rel.isUserCreated || false, // Use the isUserCreated flag from relationship
               isIdentifying: rel.isIdentifying, // Pass through identifying relationship flag
               isUnique: rel.isUnique, // Pass through unique constraint flag
               isJunctionTable: rel.isJunctionTable, // Pass through junction table flag
@@ -460,7 +460,7 @@ export const useERDLayout = (erdData, selectedTable, filteredTables = null, high
             type: rel.type || 'ONE_TO_MANY', // For backward compatibility
             cardinalityType: rel.cardinalityType || '1:N',
             constraintName: rel.constraintName,
-            isUserCreated: false,
+            isUserCreated: rel.isUserCreated || false, // Use the isUserCreated flag from relationship
             isIdentifying: rel.isIdentifying, // Pass through identifying relationship flag
             isUnique: rel.isUnique, // Pass through unique constraint flag
             isJunctionTable: rel.isJunctionTable, // Pass through junction table flag
