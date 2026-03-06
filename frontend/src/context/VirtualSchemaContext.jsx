@@ -432,17 +432,21 @@ export const VirtualSchemaProvider = ({ children }) => {
     
     // Initial schema load (not switching)
     setCurrentSchemaName(schemaName);
-    setOriginalSchema(erdData);
     
-    // CRITICAL: Save the baseline schema for future comparisons
-    // This represents the FIRST real DB state we saw for this schema
+    // CRITICAL: Load baseline schema separately - NEVER use erdData as originalSchema
+    // erdData might come from persistence DB (virtual schema) after "Load Schemas" feature
+    // originalSchema must ALWAYS be the frozen baseline from real DB
     let baselineSchema = await loadBaselineSchema(schemaName, connectionId);
     
     if (!baselineSchema) {
       // No baseline exists - first time loading this schema
+      // In this case, erdData IS from real DB (first load), so we can use it
       await saveBaselineSchema(schemaName, erdData, connectionId);
       baselineSchema = erdData;
     }
+    
+    // ALWAYS set originalSchema to baseline, not erdData
+    setOriginalSchema(baselineSchema);
     
     // Track real DB history for better merge decisions - do this BEFORE merging
     const updatedRealDbHistory = await (async () => {
@@ -556,59 +560,9 @@ export const VirtualSchemaProvider = ({ children }) => {
         setLastSavedTimestamp(dbTimestamp);
       }
       
-      // DYNAMIC BASELINE UPDATE: If real DB has new tables that aren't in baseline,
-      // update the baseline to include them. This ensures that when they're later
-      // deleted, they'll be properly detected as deletions.
-      const realTables = Object.keys(erdData.tables || {});
-      const baselineTables = Object.keys(baselineSchema?.tables || {});
-      const newTablesInReal = realTables.filter(table => !baselineTables.includes(table));
-      
-      // CRITICAL FIX: Also remove columns from baseline that no longer exist in real DB
-      let baselineNeedsUpdate = newTablesInReal.length > 0;
-      const updatedBaseline = JSON.parse(JSON.stringify(baselineSchema || {}));
-      if (!updatedBaseline.tables) updatedBaseline.tables = {};
-      
-      // Add new tables
-      if (newTablesInReal.length > 0) {
-        newTablesInReal.forEach(tableName => {
-          updatedBaseline.tables[tableName] = erdData.tables[tableName];
-        });
-      }
-      
-      // Clean up baseline: remove columns that don't exist in real DB anymore
-      Object.keys(updatedBaseline.tables || {}).forEach(tableName => {
-        const baselineTable = updatedBaseline.tables[tableName];
-        const realTable = erdData.tables[tableName];
-        
-        if (realTable && baselineTable.columns) {
-          const baselineColumns = Object.keys(baselineTable.columns);
-          const realColumns = Object.keys(realTable.columns);
-          
-          baselineColumns.forEach(columnName => {
-            if (!realColumns.includes(columnName)) {
-              // Column exists in baseline but not in real DB - remove it
-              console.log(`🧹 Cleaning baseline: removing ${tableName}.${columnName}`);
-              delete updatedBaseline.tables[tableName].columns[columnName];
-              baselineNeedsUpdate = true;
-            }
-          });
-          
-          // Also add new columns from real DB to baseline
-          realColumns.forEach(columnName => {
-            if (!baselineColumns.includes(columnName)) {
-              console.log(`➕ Updating baseline: adding ${tableName}.${columnName}`);
-              updatedBaseline.tables[tableName].columns[columnName] = realTable.columns[columnName];
-              baselineNeedsUpdate = true;
-            }
-          });
-        }
-      });
-      
-      // Save updated baseline if changes were made
-      if (baselineNeedsUpdate) {
-        await saveBaselineSchema(schemaName, updatedBaseline, connectionId);
-        baselineSchema = updatedBaseline;
-      }
+      // IMPORTANT: Do NOT update baseline from erdData here!
+      // erdData comes from persistence DB (not real DB) after "Load Schemas"
+      // Baseline should ONLY be updated when user clicks Sync in "Database Changes Detected" modal
       
       const mergedSchema = mergeSchemas(erdData, savedSchema, baselineSchema, updatedRealDbHistory);
       
@@ -983,6 +937,7 @@ export const VirtualSchemaProvider = ({ children }) => {
   // Reset to original
   const resetToOriginal = useCallback(async () => {
     if (originalSchema && currentSchemaName) {
+      // Reset working schema to match baseline (originalSchema)
       const clonedOriginal = JSON.parse(JSON.stringify(originalSchema));
       setWorkingSchema(clonedOriginal);
       const newHistory = [clonedOriginal];
@@ -992,10 +947,15 @@ export const VirtualSchemaProvider = ({ children }) => {
       historyIndexRef.current = 0;
       setIsModified(false);
       setHasUnsavedChanges(false);
-      await clearFromStorage(currentSchemaName);
-      await clearBaselineSchema(currentSchemaName, connectionId);
+      
+      // Save the reset virtual schema (now matches baseline) to persistence DB
+      // This ensures the schema doesn't disappear after reset
+      await saveToStorage(currentSchemaName, clonedOriginal);
+      
+      // Update last saved timestamp
+      setLastSavedTimestamp(Date.now());
     }
-  }, [originalSchema, currentSchemaName, connectionId]);
+  }, [originalSchema, currentSchemaName, saveToStorage]);
 
   // NEW: Manual save function with conflict detection
   const saveChangesToPersistence = useCallback(async () => {

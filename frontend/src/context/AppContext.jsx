@@ -126,6 +126,7 @@ export const AppProvider = ({ children }) => {
     error: schemasError,
     hasLoaded: schemasHasLoaded,
     refetch: refetchSchemas,
+    setSchemas: setSchemasDirectly, // NEW: Manual schema list setter
   } = useSchemas(false); // Don't auto-fetch on mount
   const {
     erdData,
@@ -137,9 +138,115 @@ export const AppProvider = ({ children }) => {
   // Virtual schema context
   const virtualSchema = useVirtualSchema();
 
+  // ==================== LOAD ALL SCHEMAS (First Time) ====================
+  // This function loads ALL schemas from real DB and saves them to persistence DB
+  const loadAllSchemasFirstTime = useCallback(async () => {
+    try {
+      console.log('🔄 Loading all schemas from real DB for first time...');
+      
+      // Step 1: Fetch schema list from real DB
+      await refetchSchemas();
+      
+      // Wait for schemas to be populated
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Step 2: Get the schema list
+      const schemaService = (await import('../services/schemaService')).default;
+      const schemaList = await schemaService.getSchemas();
+      
+      console.log(`📊 Found ${schemaList.length} schemas, saving all to persistence DB...`);
+      
+      // Step 3: For each schema, fetch ERD data and save to persistence DB
+      const erdService = (await import('../services/schemaErdService')).default;
+      const { saveBaselineSchema } = await import('../utils/persistenceAdapter');
+      const persistenceService = (await import('../services/persistenceService')).default;
+      
+      let successCount = 0;
+      let failCount = 0;
+      
+      for (let i = 0; i < schemaList.length; i++) {
+        const schemaName = schemaList[i];
+        try {
+          console.log(`  Loading ${i + 1}/${schemaList.length}: ${schemaName}`);
+          
+          // Fetch ERD data from real DB
+          const erdData = await erdService.getERDData(schemaName);
+          
+          // Save baseline
+          await saveBaselineSchema(schemaName, erdData, connectionId);
+          
+          // Save virtual schema (same as baseline initially)
+          await persistenceService.saveVirtualSchema(schemaName, erdData);
+          
+          successCount++;
+        } catch (error) {
+          console.error(`  ❌ Failed to load ${schemaName}:`, error);
+          failCount++;
+        }
+      }
+      
+      console.log(`✅ Loaded ${successCount}/${schemaList.length} schemas (${failCount} failed)`);
+      
+      // Step 4: Update schemas state so app knows schemas are loaded
+      setSchemasDirectly(schemaList);
+      
+      // Step 5: Wait for React to process state updates, then auto-select first schema
+      if (schemaList.length > 0) {
+        // Use longer delay to ensure all state updates are processed
+        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log(`🎯 Auto-selecting first schema: ${schemaList[0]}`);
+        originalSelectSchema(schemaList[0]);
+      }
+      
+      return { success: true, total: schemaList.length, successCount, failCount };
+    } catch (error) {
+      console.error('❌ Error loading all schemas:', error);
+      throw error;
+    }
+  }, [refetchSchemas, originalSelectSchema, connectionId, setSchemasDirectly]);
+
   // ==================== INITIALIZATION ====================
-  // No auto-load on mount - user must click "Load Schemas" button
-  // This ensures schema explorer starts empty and LoadSchemasPrompt is shown
+  // Check for saved schemas on mount and auto-load if found
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        // Check if there are any saved schemas in persistence DB
+        const persistenceService = (await import('../services/persistenceService')).default;
+        const savedSchemas = await persistenceService.getSavedSchemas();
+        
+        if (savedSchemas && savedSchemas.length > 0) {
+          // Schemas exist in persistence DB - load from cache (NO real DB query)
+          console.log('✅ Found saved schemas in persistence DB, loading from cache');
+          
+          // Convert saved schemas to the format expected by schema explorer
+          const schemaList = savedSchemas.map(s => s.schema_name);
+          
+          // Set schemas directly without fetching from real DB
+          setSchemasDirectly(schemaList);
+          
+          // Check if there's a last selected schema in localStorage
+          const lastSelectedSchema = localStorage.getItem('reverseERD_lastSelectedSchema');
+          
+          // Auto-select the last selected schema, or first schema if none saved
+          const schemaToSelect = (lastSelectedSchema && schemaList.includes(lastSelectedSchema)) 
+            ? lastSelectedSchema 
+            : savedSchemas[0]?.schema_name;
+          
+          if (schemaToSelect) {
+            setTimeout(() => {
+              originalSelectSchema(schemaToSelect);
+            }, 100);
+          }
+        } else {
+          console.log('ℹ️ No saved schemas found, showing "Load Schemas" button');
+        }
+      } catch (error) {
+        console.error('Error initializing app:', error);
+      }
+    };
+
+    initializeApp();
+  }, []); // Run only once on mount
 
   // ==================== DATABASE CHANGES DETECTION ====================
   // MUST BE DEFINED EARLY - Used by other functions below
@@ -937,6 +1044,7 @@ export const AppProvider = ({ children }) => {
     schemasError,
     schemasHasLoaded,
     refetchSchemas,
+    loadAllSchemasFirstTime, // NEW: Load all schemas from real DB and save to persistence DB
 
     // ERD Data (with race condition protection during schema switching)
     erdData: (() => {

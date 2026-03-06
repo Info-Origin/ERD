@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import erdService from "../services/schemaErdService";
+import persistenceService from "../services/persistenceService";
 
 /**
  * Hook to fetch and manage ERD data for a schema
- * WITH CACHING - Only fetches once per schema, reuses cached data on switch back
+ * PERSISTENCE-FIRST: Always loads from persistence DB, never from real DB (after first load)
  * @param {string} schemaName - Name of the schema
  * @returns {Object} { erdData, loading, error, refetch }
  */
@@ -12,7 +13,7 @@ export const useERD = (schemaName) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
-  // Cache to store fetched ERD data per schema
+  // Cache to store fetched ERD data per schema (in-memory, cleared on refresh)
   const erdCacheRef = useRef({});
 
   const fetchERD = async (forceRefresh = false) => {
@@ -21,22 +22,42 @@ export const useERD = (schemaName) => {
       return;
     }
 
-    // Check cache first (unless force refresh)
+    // Check in-memory cache first (unless force refresh)
     if (!forceRefresh && erdCacheRef.current[schemaName]) {
-      console.log(`✅ useERD: Using cached data for "${schemaName}"`);
+      console.log(`✅ useERD: Using in-memory cache for "${schemaName}"`);
       setERDData(erdCacheRef.current[schemaName]);
       return;
     }
 
-    console.log(`🔄 useERD: Fetching fresh data for "${schemaName}"`);
     setLoading(true);
     setError(null);
 
     try {
-      const data = await erdService.getERDData(schemaName);
+      let data;
+      
+      // CRITICAL: Always try persistence DB first (unless force refresh)
+      if (!forceRefresh) {
+        console.log(`🔍 useERD: Checking persistence DB for "${schemaName}"`);
+        const persistedData = await persistenceService.loadVirtualSchema(schemaName);
+        
+        if (persistedData) {
+          console.log(`✅ useERD: Using persistence DB for "${schemaName}" (no real DB fetch)`);
+          data = persistedData;
+        } else {
+          // Schema not found in persistence DB
+          // This means schemas haven't been loaded yet OR schema doesn't exist
+          console.log(`❌ useERD: Schema "${schemaName}" not found in persistence DB`);
+          throw new Error(`Schema "${schemaName}" not found. Please load schemas first.`);
+        }
+      } else {
+        // Force refresh - fetch from real DB (only when explicitly requested)
+        console.log(`🔄 useERD: Force refresh - Fetching from real DB for "${schemaName}"`);
+        data = await erdService.getERDData(schemaName);
+      }
+      
       setERDData(data);
       
-      // Store in cache
+      // Store in in-memory cache
       erdCacheRef.current[schemaName] = data;
     } catch (err) {
       console.error('❌ useERD: Error fetching ERD for', schemaName, ':', err);
@@ -54,7 +75,7 @@ export const useERD = (schemaName) => {
     erdData,
     loading,
     error,
-    refetch: fetchERD, // Can pass true to force refresh
+    refetch: fetchERD, // Can pass true to force refresh from real DB
   };
 };
 

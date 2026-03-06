@@ -28,6 +28,12 @@ export const useSchemas = (autoFetch = false) => {
     }
   };
 
+  // NEW: Allow manually setting schemas without fetching from real DB
+  const setSchemasDirectly = (schemaList) => {
+    setSchemas(schemaList);
+    setHasLoaded(true);
+  };
+
   useEffect(() => {
     if (autoFetch) {
       fetchSchemas();
@@ -40,6 +46,7 @@ export const useSchemas = (autoFetch = false) => {
     error,
     hasLoaded,
     refetch: fetchSchemas,
+    setSchemas: setSchemasDirectly, // NEW: Expose setter for manual schema list updates
   };
 };
 

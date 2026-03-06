@@ -59,6 +59,7 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
     showNotification,
     schemasHasLoaded,
     refetchSchemas,
+    loadAllSchemasFirstTime, // NEW: Load all schemas from real DB
     // Relationship modals
     relationshipDetailsModal,
     closeRelationshipDetailsModal,
@@ -94,12 +95,10 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
   const [highlightedColumn, setHighlightedColumn] = useState(null); // NEW: Track highlighted column
   const [layoutResetKey, setLayoutResetKey] = useState(0); // Key to force layout reset
 
-  // Auto-select first schema after schemas are loaded
+  // Auto-select is now handled by AppContext (both for first load and refresh)
+  // This useEffect is kept for backward compatibility but does nothing
   useEffect(() => {
-    if (schemasHasLoaded && schemas && schemas.length > 0 && !selectedSchema) {
-      console.log('Auto-selecting first schema after load:', schemas[0]);
-      selectSchema(schemas[0]);
-    }
+    // Auto-select logic moved to AppContext for better control
   }, [schemasHasLoaded, schemas, selectedSchema, selectSchema]);
 
   const { nodes, edges: rawEdges, getInitialViewport, onNodesChange, onEdgesChange, forceLayout, layoutError } = useERDLayout(
@@ -387,7 +386,7 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
 
   // Show LoadSchemasPrompt if no schemas have been loaded yet
   if (!schemasHasLoaded) {
-    return <LoadSchemasPrompt onLoadSchemas={refetchSchemas} />;
+    return <LoadSchemasPrompt onLoadSchemas={loadAllSchemasFirstTime} />;
   }
 
   if (!selectedSchema) {

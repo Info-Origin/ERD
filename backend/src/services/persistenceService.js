@@ -93,11 +93,12 @@ class PersistenceService {
 
   /**
    * Get all virtual schemas (for admin/debugging)
+   * Returns schemas in alphabetical order for consistent UI display
    */
   async getAllVirtualSchemas() {
     try {
       const [rows] = await persistencePool.execute(
-        'SELECT schema_name, updated_at FROM virtual_schemas ORDER BY updated_at DESC'
+        'SELECT schema_name, updated_at FROM virtual_schemas ORDER BY schema_name ASC'
       );
       return rows;
     } catch (error) {
