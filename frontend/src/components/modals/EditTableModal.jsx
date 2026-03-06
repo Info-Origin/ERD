@@ -55,6 +55,7 @@ const CardinalityIcon = ({ cardinality, isIdentifying }) => {
 const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
   const {
     workingSchema,
+    originalSchema, // NEW: Get baseline schema to check if columns are from real DB
     hasUnsavedChanges,
     addRelationship,
     addForeignKeyWithNewColumn, // NEW: Atomic FK creation
@@ -147,6 +148,14 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
     onConfirm: null
   });
   
+  // Helper function to check if column exists in baseline (real DB)
+  const isColumnFromRealDB = useCallback((columnName) => {
+    if (!originalSchema || !tableName) return false;
+    const baselineTable = originalSchema.tables?.[tableName];
+    if (!baselineTable) return false;
+    return Boolean(baselineTable.columns?.[columnName]);
+  }, [originalSchema, tableName]);
+
   // Helper functions for modals
   const showAlert = (title, message, type = 'info') => {
     setAlertModal({ isOpen: true, title, message, type });
@@ -659,6 +668,22 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
     
     console.log('🔧 Constraint toggled:', { columnName, constraintType, newValue });
     
+    // CRITICAL: Check if trying to set PK on a virtual column when real DB already has PK
+    if (constraintType === 'pk' && newValue === true) {
+      // Check if any real DB column already has PK
+      const realDBHasPK = columns.some(col => isColumnFromRealDB(col.name) && col.pk);
+      
+      if (realDBHasPK) {
+        // Show error - cannot have virtual PK when real DB already defines one
+        showAlert(
+          'Cannot Set Primary Key',
+          'This table already has a primary key defined in the real database. A table can only have one primary key. To change the primary key, you must modify it in the actual database.',
+          'error'
+        );
+        return; // Don't allow the change
+      }
+    }
+    
     // Update pending changes
     setPendingConstraintChanges(prev => {
       const updated = {
@@ -677,9 +702,10 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
       
       // Special handling for PK constraint - only one column can be PK
       if (constraintType === 'pk' && newValue === true) {
-        // Uncheck all other PK columns in UI
+        // Uncheck all OTHER VIRTUAL PK columns in UI (don't touch real DB columns)
         newColumns.forEach((col, idx) => {
-          if (idx !== index && col.pk) {
+          if (idx !== index && col.pk && !isColumnFromRealDB(col.name)) {
+            // Only uncheck if it's a virtual column
             newColumns[idx] = { ...col, pk: false };
             // Also remove from pending changes for other columns
             setPendingConstraintChanges(prev => ({
@@ -1708,10 +1734,25 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                   <div className="edit-constraint-uq">UQ</div>
                 </div>
                 
-                {columns.map((column, index) => (
+                {columns.map((column, index) => {
+                  const isFromRealDB = isColumnFromRealDB(column.name);
+                  // Show "-" for null, undefined, empty string, or the string "NULL"
+                  const displayDefault = (column.defaultValue === null || 
+                                         column.defaultValue === undefined || 
+                                         column.defaultValue === '' ||
+                                         column.defaultValue === 'NULL') 
+                    ? '-' 
+                    : column.defaultValue;
+                  
+                  return (
                   <div key={`${column.originalName || column.name}-${index}`} className="edit-constraint-row">
                     <div className="edit-constraint-name" title={column.name}>
                       <span className="column-name-readonly">{column.name}</span>
+                      {isFromRealDB && (
+                        <span className="real-db-badge" title="Column from real database - constraints are read-only">
+                          DB
+                        </span>
+                      )}
                     </div>
                     <div className="edit-constraint-type">
                       <span className="column-type-readonly" title={getFullDataType(column.type)}>
@@ -1720,7 +1761,7 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                     </div>
                     <div className="edit-constraint-default">
                       <span className="default-value-readonly">
-                        {column.defaultValue || 'NULL'}
+                        {displayDefault}
                       </span>
                     </div>
                     <div className="edit-constraint-pk">
@@ -1732,6 +1773,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                         onChange={(e) => {
                           handleConstraintToggle(index, 'pk', e.target.checked);
                         }}
+                        disabled={isFromRealDB}
+                        title={isFromRealDB ? 'Real DB column - constraint is read-only' : 'Toggle primary key'}
                       />
                     </div>
                     <div className="edit-constraint-nn">
@@ -1743,7 +1786,8 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                         onChange={(e) => {
                           handleConstraintToggle(index, 'nullable', !e.target.checked);
                         }}
-                        disabled={column.pk} // PK columns are always NOT NULL
+                        disabled={column.pk || isFromRealDB} // PK columns are always NOT NULL, or real DB column
+                        title={isFromRealDB ? 'Real DB column - constraint is read-only' : column.pk ? 'Primary key columns are always NOT NULL' : 'Toggle nullable'}
                       />
                     </div>
                     <div className="edit-constraint-uq">
@@ -1755,10 +1799,13 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
                         onChange={(e) => {
                           handleConstraintToggle(index, 'unique', e.target.checked);
                         }}
+                        disabled={isFromRealDB}
+                        title={isFromRealDB ? 'Real DB column - constraint is read-only' : 'Toggle unique'}
                       />
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

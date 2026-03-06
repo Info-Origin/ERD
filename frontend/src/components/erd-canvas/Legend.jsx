@@ -6,7 +6,17 @@ import "./Legend.css";
 
 export const Legend = ({ isInHeader = false, forceExpanded = false }) => {
   const { crowsFootMode } = useApp();
-  const [isExpanded, setIsExpanded] = useState(false);
+  
+  // Initialize from localStorage, default to OPEN (true) for first-time users
+  const [isExpanded, setIsExpanded] = useState(() => {
+    const saved = localStorage.getItem('reverseERD_legendExpanded');
+    return saved !== null ? saved === 'true' : true; // Default to true (open)
+  });
+
+  // Save to localStorage whenever state changes
+  useEffect(() => {
+    localStorage.setItem('reverseERD_legendExpanded', isExpanded.toString());
+  }, [isExpanded]);
 
   // Open legend when forceExpanded prop changes to true
   useEffect(() => {

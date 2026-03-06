@@ -6,9 +6,20 @@ import './DraggableMiniMap.css';
 
 export const DraggableMiniMap = ({ nodeColor, nodeStrokeColor, nodeBorderRadius, maskColor, style }) => {
   const { isAnyModalOpen } = useApp();
-  const [isExpanded, setIsExpanded] = useState(false); // Default to expanded, no persistence
+  
+  // Initialize from localStorage, default to OPEN (true) for first-time users
+  const [isExpanded, setIsExpanded] = useState(() => {
+    const saved = localStorage.getItem('reverseERD_minimapExpanded');
+    return saved !== null ? saved === 'true' : true; // Default to true (open)
+  });
+  
   const [minimapKey, setMinimapKey] = useState(0);
   const mountCountRef = useRef(0);
+
+  // Save to localStorage whenever state changes
+  useEffect(() => {
+    localStorage.setItem('reverseERD_minimapExpanded', isExpanded.toString());
+  }, [isExpanded]);
 
   // Force minimap to remount when component mounts
   useEffect(() => {

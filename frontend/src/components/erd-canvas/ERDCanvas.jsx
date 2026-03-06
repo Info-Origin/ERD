@@ -51,8 +51,8 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
     setHighlightedRelationship, 
     highlightedRelationship,
     setHighlightedRelationshipWithTimer, // Add this for relationship creation feedback
-    setHighlightedNMRelationship, // NEW: Clear N:M highlight on canvas click
-    setHighlightedNMRelationshipWithTimer, // NEW: Clear N:M highlight with timer cleanup
+    setHighlightedNMRelationship, // Clear N:M highlight on canvas click
+    setHighlightedNMRelationshipWithTimer, //  Clear N:M highlight with timer cleanup
     routingMode, 
     crowsFootMode, 
     gridBackground, 
