@@ -2119,7 +2119,9 @@ export const VirtualSchemaProvider = ({ children }) => {
     workingSchema,
     isModified,
     hasUnsavedChanges, // NEW: Expose unsaved changes state
+    setHasUnsavedChanges, // NEW: Expose setter for unsaved changes flag
     lastSavedTimestamp, // NEW: Expose last saved timestamp
+    setLastSavedTimestamp, // NEW: Expose setter for timestamp updates
     isSwitchingSchema,
     canUndo: historyIndex > 0,
     canRedo: historyIndex < history.length - 1,

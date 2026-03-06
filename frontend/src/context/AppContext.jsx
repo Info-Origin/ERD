@@ -21,11 +21,6 @@ export const AppProvider = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedRelationship, setHighlightedRelationship] = useState(null);
   
-  //  Track if this is initial page load (for Scenario 3: Browser Refresh)
-  const isInitialLoadRef = useRef(true);
-  const [hasCheckedForChanges, setHasCheckedForChanges] = useState(false); // State to trigger re-render
-  const lastCheckedSchemaRef = useRef(null); // Track which schema we last checked
-  
   // Get connectionId from ConnectionContext for multi-database support
   const ConnectionContext = createContext();
   try {
@@ -314,19 +309,47 @@ export const AppProvider = ({ children }) => {
 
     try {
       const erdService = (await import('../services/schemaErdService')).default;
-      const { saveBaselineSchema } = await import('../utils/persistenceAdapter');
+      const persistenceService = (await import('../services/persistenceService')).default;
 
+      // Fetch current real DB state
       const currentRealDB = await erdService.getERDData(schemaToRefresh);
-      saveBaselineSchema(schemaToRefresh, currentRealDB);
+      
+      // DO NOT save baseline here - let refreshAndMerge handle it
+      // This ensures the merge can see the old baseline and detect deletions
 
       // Only update virtual schema if we're refreshing the CURRENT schema
       if (schemaToRefresh === selectedSchema) {
+        // Update originalSchema to the new real DB state
+        // This will become the new baseline after merge
         if (virtualSchema.setOriginalSchema) {
           virtualSchema.setOriginalSchema(currentRealDB);
+          console.log('✅ Updated originalSchema to new real DB state');
         }
-
+        
         if (virtualSchema.refreshAndMerge) {
-          await virtualSchema.refreshAndMerge(currentRealDB);
+          // Merge real DB changes with virtual changes
+          // refreshAndMerge will update the baseline internally
+          const mergedSchema = await virtualSchema.refreshAndMerge(currentRealDB);
+          
+          // CRITICAL: Save merged schema to persistence DB so it persists after browser refresh
+          if (mergedSchema) {
+            await persistenceService.saveVirtualSchema(schemaToRefresh, mergedSchema);
+            
+            // Get the actual timestamp from persistence DB after saving
+            const dbTimestamp = await persistenceService.getVirtualSchemaTimestamp(schemaToRefresh);
+            
+            if (dbTimestamp && virtualSchema.setLastSavedTimestamp) {
+              virtualSchema.setLastSavedTimestamp(dbTimestamp);
+              console.log('✅ Updated lastSavedTimestamp after sync:', dbTimestamp);
+            }
+            
+            // Clear unsaved changes flag
+            if (virtualSchema.setHasUnsavedChanges) {
+              virtualSchema.setHasUnsavedChanges(false);
+            }
+            
+            console.log('✅ Sync complete - merged schema saved to persistence DB');
+          }
         }
       }
 
@@ -685,40 +708,17 @@ export const AppProvider = ({ children }) => {
 
   // ==================== SCENARIO TRIGGERS ====================
   
-  // Reset checked schema when connectionId changes (new database connection)
-  useEffect(() => {
-    if (connectionId) {
-      lastCheckedSchemaRef.current = null; // Reset to allow checking for new connection
-      // console.log('🔄 ConnectionId changed, resetting baseline check');
-    }
-  }, [connectionId]);
+  // REMOVED: Scenario 3 Browser Refresh Check
+  // Browser refresh should NEVER query real DB - everything loads from persistence DB
+  // Real DB is only checked when user clicks "Save Changes" button
+  // This ensures zero real DB queries on refresh (cost savings requirement)
   
-  // Scenario 3: Browser Refresh - Check IMMEDIATELY when schema data loads (before initialization)
+  // Initialize virtual schema when ERD data loads
   useEffect(() => {
-    if (selectedSchema && erdData && !erdLoading) {
-      // Skip if we've already checked this schema
-      if (lastCheckedSchemaRef.current === selectedSchema) {
-        return;
-      }
-      
-      // On initial load, check for database changes
-      if (isInitialLoadRef.current && !hasCheckedForChanges) {
-        // Run check immediately (no delay) to ensure it runs BEFORE virtualSchema.initializeSchema
-        checkForDatabaseChanges();
-        
-        // Mark that we've checked (this will trigger initializeSchema useEffect)
-        setHasCheckedForChanges(true);
-        
-        // Mark initial load as complete
-        isInitialLoadRef.current = false;
-        
-        // Track which schema we checked
-        lastCheckedSchemaRef.current = selectedSchema;
-      }
-      // REMOVED: Schema switch check - no longer checking for database changes when switching schemas
+    if (erdData && !erdLoading && selectedSchema) {
+      virtualSchema.initializeSchema(erdData);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSchema, erdData, erdLoading, hasCheckedForChanges]); // Removed checkForDatabaseChanges to prevent re-triggering
+  }, [erdData, erdLoading, selectedSchema, virtualSchema.initializeSchema]);
 
   // NEW: New changes modal functions
   const showNewChangesModal = useCallback(() => {
@@ -841,20 +841,6 @@ export const AppProvider = ({ children }) => {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [virtualSchema.hasUnsavedChanges]);
-
-  // Initialize virtual schema when ERD data loads
-  // IMPORTANT: On initial load, wait for Scenario 3 check to complete first
-  useEffect(() => {
-    if (erdData && !erdLoading && selectedSchema) {
-      // On initial load, wait for database changes check to complete
-      if (isInitialLoadRef.current && !hasCheckedForChanges) {
-        // Check hasn't run yet, wait for it
-        return;
-      }
-      
-      virtualSchema.initializeSchema(erdData);
-    }
-  }, [erdData, erdLoading, selectedSchema, hasCheckedForChanges, virtualSchema.initializeSchema]);
 
   // Track workingSchema changes for debugging
   useEffect(() => {
