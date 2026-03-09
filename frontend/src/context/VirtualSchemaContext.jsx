@@ -272,6 +272,11 @@ export const VirtualSchemaProvider = ({ children }) => {
           cleanedRel.isUserCreated = true;
           cleanedRel.createdAt = Date.now(); // Add timestamp for "created X minutes ago"
           delete cleanedRel.isSynced;
+        } else if (!existsInRealDB && !cleanedRel.isUserCreated && !cleanedRel.isSynced) {
+          // Case 3: FK was added directly to actual DB (not virtual), then deleted from actual DB
+          // This FK should be removed entirely - don't keep it in virtual schema
+          console.log(`🗑️ Removing FK that was deleted from actual DB: ${rel.fromTable}.${rel.fromColumn} -> ${rel.toTable}.${rel.toColumn}`);
+          return; // Skip this relationship - don't add to merged schema
         }
         
         relationshipMap.set(key, cleanedRel);
