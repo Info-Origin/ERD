@@ -168,9 +168,18 @@ export const VirtualSchemaProvider = ({ children }) => {
                 // Don't add to merged schema (respect real DB changes)
                 console.log(`🗑️ Removing column ${tableName}.${columnName} - deleted from real DB`);
               } else {
-                // Edge case: column in virtual but not in baseline or real DB
-                // This shouldn't happen, but keep it to be safe
-                merged.tables[tableName].columns[columnName] = virtualColumn;
+                // CRITICAL FIX: Check if this is an FK column that was added after baseline
+                // If column has FK flag but doesn't exist in real DB or baseline, it was likely
+                // an FK column added to actual DB after baseline, then deleted
+                // Don't keep it in virtual schema
+                if (virtualColumn.fk) {
+                  console.log(`🗑️ Removing FK column ${tableName}.${columnName} - was added to actual DB after baseline, then deleted`);
+                  // Don't add to merged schema
+                } else {
+                  // Edge case: column in virtual but not in baseline or real DB, and not FK
+                  // This shouldn't happen, but keep it to be safe
+                  merged.tables[tableName].columns[columnName] = virtualColumn;
+                }
               }
             }
           }
