@@ -666,8 +666,6 @@ const EditTableModal = ({ isOpen, onClose, tableName, schemaName }) => {
     const column = columns[index];
     const columnName = column.name;
     
-    console.log('🔧 Constraint toggled:', { columnName, constraintType, newValue });
-    
     // CRITICAL: Check if trying to set PK on a virtual column when real DB already has PK
     if (constraintType === 'pk' && newValue === true) {
       // Check if any real DB column already has PK

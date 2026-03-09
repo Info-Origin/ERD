@@ -202,14 +202,9 @@ export const VirtualSchemaProvider = ({ children }) => {
         if (originalSchema?.tables?.[tableName]) {
           // Table existed in baseline but not in current real DB - it was DELETED
           // Don't add to merged schema (real DB has priority)
-          console.log(`🗑️ Removing table ${tableName} - deleted from real DB`);
-          console.log('  - Table was in baseline:', !!originalSchema?.tables?.[tableName]);
-          console.log('  - Table is in real DB:', !!realSchema.tables[tableName]);
-          console.log('  - Table is in virtual:', !!virtualSchema.tables[tableName]);
         } else {
           // Table never existed in real DB - it's user-added (virtual only)
           // Keep it in merged schema
-          console.log(`✅ Keeping user-added table ${tableName} - never existed in real DB`);
           merged.tables[tableName] = virtualTable;
         }
       }
@@ -705,15 +700,12 @@ export const VirtualSchemaProvider = ({ children }) => {
       );
       
       if (deletedTables.length > 0) {
-        console.log('🧹 Cleaning up relationships for deleted tables:', deletedTables);
-        
         // Remove relationships that reference deleted tables
         mergedSchema.relationships = (mergedSchema.relationships || []).filter(rel => {
           const fromTableDeleted = deletedTables.includes(rel.fromTable);
           const toTableDeleted = deletedTables.includes(rel.toTable);
           
           if (fromTableDeleted || toTableDeleted) {
-            console.log(`  - Removing relationship: ${rel.fromTable}.${rel.fromColumn} → ${rel.toTable}.${rel.toColumn}`);
             return false;
           }
           
@@ -723,7 +715,6 @@ export const VirtualSchemaProvider = ({ children }) => {
         // CRITICAL: Remove deleted tables from the merged schema as well
         deletedTables.forEach(tableName => {
           if (mergedSchema.tables[tableName]) {
-            console.log(`  - Removing table from merged schema: ${tableName}`);
             delete mergedSchema.tables[tableName];
           }
         });
@@ -739,7 +730,6 @@ export const VirtualSchemaProvider = ({ children }) => {
         // CRITICAL: Save the cleaned schema to database
         // This is the KEY fix - we must save the cleaned schema so when table is recreated,
         // the old relationships don't come back
-        console.log('💾 Saving cleaned schema to database (without deleted tables and their relationships)');
         await saveToStorage(currentSchemaName, mergedSchema);
       }
       
