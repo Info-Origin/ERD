@@ -9,7 +9,7 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   transition: all 0.2s ease;
-  overflow: hidden;
+  overflow: visible; /* Changed from hidden to allow lock icon to show outside */
   position: relative;
   z-index: 10; /* Tables above relationship lines */
 }
