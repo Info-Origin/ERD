@@ -75,7 +75,7 @@ const exportViaServer = async (options, progressCallback) => {
     // Step 4: Send to server (60%)
     progressCallback(60, 'Sending to server...');
     
-    const backendURL = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:4000';
+    const backendURL = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:4001';
     
     const response = await fetch(`${backendURL}/api/export/pdf`, {
       method: 'POST',

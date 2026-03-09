@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4001/api';
+
 const ConnectionContext = createContext();
 
 export const useConnection = () => {
@@ -67,7 +69,7 @@ export const ConnectionProvider = ({ children }) => {
     // Then try to close the connection on backend (best effort)
     if (currentConnection) {
       try {
-        await fetch(`http://localhost:4000/api/connection/${currentConnection.info.connectionId}`, {
+        await fetch(`${API_BASE_URL}/connection/${currentConnection.info.connectionId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${currentConnection.token}`

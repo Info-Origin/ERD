@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4001/api';
 
 /**
  * Lock Service - Frontend API for table locking
@@ -30,7 +30,7 @@ class LockService {
     try {
       const sessionId = this.getSessionId();
       
-      const response = await fetch(`${API_BASE_URL}/api/locks/acquire`, {
+      const response = await fetch(`${API_BASE_URL}/locks/acquire`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -62,7 +62,7 @@ class LockService {
     try {
       const sessionId = this.getSessionId();
       
-      const response = await fetch(`${API_BASE_URL}/api/locks/release`, {
+      const response = await fetch(`${API_BASE_URL}/locks/release`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -93,7 +93,7 @@ class LockService {
   async getLockStatus(schemaName, tableName) {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/locks/status/${encodeURIComponent(schemaName)}/${encodeURIComponent(tableName)}`
+        `${API_BASE_URL}/locks/status/${encodeURIComponent(schemaName)}/${encodeURIComponent(tableName)}`
       );
 
       const data = await response.json();
@@ -110,7 +110,7 @@ class LockService {
   async getSchemaLocks(schemaName) {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/locks/schema/${encodeURIComponent(schemaName)}`
+        `${API_BASE_URL}/locks/schema/${encodeURIComponent(schemaName)}`
       );
 
       const data = await response.json();

@@ -3,6 +3,8 @@ import { useConnection } from '../../context/ConnectionContext';
 import './Modal.css';
 import './ConnectionModal.css';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4001/api';
+
 export const ConnectionModal = ({ isOpen, onClose, onConnect }) => {
   const { isConnected, activeConnection, disconnect } = useConnection();
   
@@ -102,7 +104,7 @@ export const ConnectionModal = ({ isOpen, onClose, onConnect }) => {
     setTestResult(null);
     
     try {
-      const response = await fetch('http://localhost:4000/api/connection/test', {
+      const response = await fetch(`${API_BASE_URL}/connection/test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -161,7 +163,7 @@ export const ConnectionModal = ({ isOpen, onClose, onConnect }) => {
         await disconnect();
       }
 
-      const response = await fetch('http://localhost:4000/api/connection/create', {
+      const response = await fetch(`${API_BASE_URL}/connection/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
