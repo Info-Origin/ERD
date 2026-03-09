@@ -4,7 +4,7 @@ import './Modal.css';
 import './ExportPDFModal.css';
 
 export const ExportPDFModal = ({ isOpen, onClose, onExport, schemaName }) => {
-  const { showNotification } = useApp();
+  const { showNotification, erdData } = useApp();
   const [exportOptions, setExportOptions] = useState({
     quality: 'high',
     format: 'pdf'
@@ -13,6 +13,10 @@ export const ExportPDFModal = ({ isOpen, onClose, onExport, schemaName }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [exportStep, setExportStep] = useState('');
+
+  // Calculate table count for warning
+  const tableCount = erdData?.tables ? Object.keys(erdData.tables).length : 0;
+  const showLargeDiagramWarning = tableCount >= 100;
 
   if (!isOpen) return null;
 
@@ -100,7 +104,23 @@ export const ExportPDFModal = ({ isOpen, onClose, onExport, schemaName }) => {
                 <p>
                   <strong>Schema:</strong> {schemaName || 'Unknown'}
                 </p>
+                <p>
+                  <strong>Tables:</strong> {tableCount}
+                </p>
               </div>
+
+              {/* Warning for large diagrams */}
+              {showLargeDiagramWarning && (
+                <div className="export-warning">
+                  <div className="export-warning-icon">⚠️</div>
+                  <div className="export-warning-content">
+                    <strong>Large Diagram Detected ({tableCount} tables)</strong>
+                    <p>
+                      Export may take 30-60 seconds. If browser alert shows, please click Wait button to allow the export to complete.
+                    </p>
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <div className="export-progress">

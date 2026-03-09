@@ -228,3 +228,50 @@
   box-shadow: none;
   transform: none;
 }
+
+/* Warning message for large diagrams */
+.export-warning {
+  display: flex;
+  gap: 6px;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-top: 8px;
+  animation: fadeIn 0.3s ease;
+}
+
+.export-warning-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  line-height: 1.1;
+}
+
+.export-warning-content {
+  flex: 1;
+}
+
+.export-warning-content strong {
+  display: inline;
+  color: #92400e;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.export-warning-content p {
+  margin: 0;
+  font-size: 0.68rem;
+  color: #78350f;
+  line-height: 1.2;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
