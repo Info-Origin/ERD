@@ -20,3 +20,8 @@
   padding: 1rem 1.5rem;
   border-top: 1px solid var(--border-color);
 }
+
+.save-confirmation-modal .modal-footer button,
+.save-confirmation-modal .modal-footer .btn {
+  cursor: pointer !important;
+}
