@@ -47,8 +47,6 @@ class LockService {
         [schemaName, tableName, sessionId, userDisplayName]
       );
 
-      console.log(`🔒 Lock acquired: ${schemaName}.${tableName} by ${userDisplayName}`);
-
       return {
         success: true,
         lock: {
@@ -90,8 +88,6 @@ class LockService {
         'DELETE FROM table_locks WHERE schema_name = ? AND table_name = ? AND locked_by = ?',
         [schemaName, tableName, sessionId]
       );
-
-      console.log(`🔓 Lock released: ${schemaName}.${tableName} by ${locks[0].user_display_name}`);
 
       return {
         success: true,
