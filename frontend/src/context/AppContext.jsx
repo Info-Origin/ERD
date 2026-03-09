@@ -336,8 +336,8 @@ export const AppProvider = ({ children }) => {
             // Get the actual timestamp from persistence DB after saving
             const dbTimestamp = await persistenceService.getVirtualSchemaTimestamp(schemaToRefresh);
             
-            if (dbTimestamp && virtualSchema.setLastSavedTimestamp) {
-              virtualSchema.setLastSavedTimestamp(dbTimestamp);
+            if (dbTimestamp && virtualSchema.updateLastSavedTimestamp) {
+              virtualSchema.updateLastSavedTimestamp(dbTimestamp);
             }
             
             // Clear unsaved changes flag

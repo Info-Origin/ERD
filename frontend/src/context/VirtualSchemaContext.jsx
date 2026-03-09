@@ -61,6 +61,7 @@ export const VirtualSchemaProvider = ({ children }) => {
   const [connectionId, setConnectionId] = useState(null); // Track current connection ID
   const historyIndexRef = useRef(-1);
   const historyRef = useRef([]);
+  const lastSavedTimestampRef = useRef(null); // CRITICAL: Ref to avoid stale closure in callbacks
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -70,6 +71,18 @@ export const VirtualSchemaProvider = ({ children }) => {
   useEffect(() => {
     historyRef.current = history;
   }, [history]);
+
+  // CRITICAL: Keep lastSavedTimestamp ref in sync
+  useEffect(() => {
+    lastSavedTimestampRef.current = lastSavedTimestamp;
+  }, [lastSavedTimestamp]);
+
+  // CRITICAL: Function to update timestamp (both state and ref immediately)
+  // This avoids the delay from useEffect and prevents stale closure issues
+  const updateLastSavedTimestamp = useCallback((timestamp) => {
+    setLastSavedTimestamp(timestamp);
+    lastSavedTimestampRef.current = timestamp; // Update ref immediately
+  }, []);
 
   // REMOVED: Auto-save to database when working schema changes
   // Now using manual save button instead
@@ -978,19 +991,21 @@ export const VirtualSchemaProvider = ({ children }) => {
     }
 
     try {
+      // CRITICAL: Use ref to get latest timestamp (avoid stale closure)
+      const currentTimestamp = lastSavedTimestampRef.current;
+      
       // Check for conflicts before saving
-      const hasNewer = await checkForNewerChangesFn(currentSchemaName, lastSavedTimestamp);
+      const hasNewer = await checkForNewerChangesFn(currentSchemaName, currentTimestamp);
       
       if (hasNewer) {
         // Another user has saved changes - conflict detected
-        console.warn('⚠️ Conflict detected: Another user has saved changes');
         return { success: false, reason: 'conflict', hasNewerChanges: true };
       }
 
       // No conflict, proceed with save
       await saveToStorage(currentSchemaName, workingSchema);
       const timestamp = Date.now();
-      setLastSavedTimestamp(timestamp);
+      updateLastSavedTimestamp(timestamp); // Update both state and ref immediately
       setHasUnsavedChanges(false);
       
       // CRITICAL: Clear undo/redo history after successful save
@@ -1006,7 +1021,7 @@ export const VirtualSchemaProvider = ({ children }) => {
       console.error('Error saving to persistence:', error);
       return { success: false, reason: 'error', error };
     }
-  }, [workingSchema, currentSchemaName, hasUnsavedChanges, lastSavedTimestamp]);
+  }, [workingSchema, currentSchemaName, hasUnsavedChanges]);
 
   // NEW: Refresh from persistence DB
   const refreshFromPersistence = useCallback(async () => {
@@ -1058,16 +1073,19 @@ export const VirtualSchemaProvider = ({ children }) => {
 
   // NEW: Check if persistence DB has newer changes than current timestamp
   const checkForNewerChanges = useCallback(async () => {
-    if (!currentSchemaName || !lastSavedTimestamp) return false;
+    // CRITICAL: Use ref to get latest timestamp (avoid stale closure)
+    const currentTimestamp = lastSavedTimestampRef.current;
+    
+    if (!currentSchemaName || !currentTimestamp) return false;
 
     try {
-      const hasNewer = await checkForNewerChangesFn(currentSchemaName, lastSavedTimestamp);
+      const hasNewer = await checkForNewerChangesFn(currentSchemaName, currentTimestamp);
       return hasNewer;
     } catch (error) {
       console.warn('Error checking for newer changes:', error);
       return false;
     }
-  }, [currentSchemaName, lastSavedTimestamp]);
+  }, [currentSchemaName]);
 
   // NEW: Reset unsaved changes - discard all UI changes since last save
   const resetUnsavedChanges = useCallback(async () => {
@@ -2136,6 +2154,7 @@ export const VirtualSchemaProvider = ({ children }) => {
     setHasUnsavedChanges, // NEW: Expose setter for unsaved changes flag
     lastSavedTimestamp, // NEW: Expose last saved timestamp
     setLastSavedTimestamp, // NEW: Expose setter for timestamp updates
+    updateLastSavedTimestamp, // CRITICAL: Update both state and ref immediately
     isSwitchingSchema,
     canUndo: historyIndex > 0,
     canRedo: historyIndex < history.length - 1,
