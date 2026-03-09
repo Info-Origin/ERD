@@ -166,14 +166,12 @@ export const VirtualSchemaProvider = ({ children }) => {
               if (existedInBaseline) {
                 // Column existed in baseline but not in current real DB - it was deleted/renamed
                 // Don't add to merged schema (respect real DB changes)
-                console.log(`🗑️ Removing column ${tableName}.${columnName} - deleted from real DB`);
               } else {
                 // CRITICAL FIX: Check if this is an FK column that was added after baseline
                 // If column has FK flag but doesn't exist in real DB or baseline, it was likely
                 // an FK column added to actual DB after baseline, then deleted
                 // Don't keep it in virtual schema
                 if (virtualColumn.fk) {
-                  console.log(`🗑️ Removing FK column ${tableName}.${columnName} - was added to actual DB after baseline, then deleted`);
                   // Don't add to merged schema
                 } else {
                   // Edge case: column in virtual but not in baseline or real DB, and not FK
@@ -662,7 +660,6 @@ export const VirtualSchemaProvider = ({ children }) => {
           baselineColumns.forEach(columnName => {
             if (!realColumns.includes(columnName)) {
               // Column exists in baseline but not in real DB - remove it
-              console.log(`🧹 Cleaning baseline: removing ${tableName}.${columnName}`);
               delete updatedBaseline.tables[tableName].columns[columnName];
               baselineNeedsUpdate = true;
             }

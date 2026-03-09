@@ -37,16 +37,13 @@ export const useERD = (schemaName) => {
       
       // CRITICAL: Always try persistence DB first (unless force refresh)
       if (!forceRefresh) {
-        console.log(`🔍 useERD: Checking persistence DB for "${schemaName}"`);
         const persistedData = await persistenceService.loadVirtualSchema(schemaName);
         
         if (persistedData) {
-          console.log(`✅ useERD: Using persistence DB for "${schemaName}" (no real DB fetch)`);
           data = persistedData;
         } else {
           // Schema not found in persistence DB
           // This means schemas haven't been loaded yet OR schema doesn't exist
-          console.log(`❌ useERD: Schema "${schemaName}" not found in persistence DB`);
           throw new Error(`Schema "${schemaName}" not found. Please load schemas first.`);
         }
       } else {

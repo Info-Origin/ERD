@@ -211,7 +211,6 @@ export const AppProvider = ({ children }) => {
         
         if (savedSchemas && savedSchemas.length > 0) {
           // Schemas exist in persistence DB - load from cache (NO real DB query)
-          console.log('✅ Found saved schemas in persistence DB, loading from cache');
           
           // Convert saved schemas to the format expected by schema explorer
           const schemaList = savedSchemas.map(s => s.schema_name);
@@ -323,7 +322,6 @@ export const AppProvider = ({ children }) => {
         // This will become the new baseline after merge
         if (virtualSchema.setOriginalSchema) {
           virtualSchema.setOriginalSchema(currentRealDB);
-          console.log('✅ Updated originalSchema to new real DB state');
         }
         
         if (virtualSchema.refreshAndMerge) {
@@ -340,7 +338,6 @@ export const AppProvider = ({ children }) => {
             
             if (dbTimestamp && virtualSchema.setLastSavedTimestamp) {
               virtualSchema.setLastSavedTimestamp(dbTimestamp);
-              console.log('✅ Updated lastSavedTimestamp after sync:', dbTimestamp);
             }
             
             // Clear unsaved changes flag
@@ -348,7 +345,6 @@ export const AppProvider = ({ children }) => {
               virtualSchema.setHasUnsavedChanges(false);
             }
             
-            console.log('✅ Sync complete - merged schema saved to persistence DB');
           }
         }
       }
