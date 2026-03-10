@@ -4,29 +4,34 @@ import './AppDropdown.css';
 
 export const AppDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedApp, setSelectedApp] = useState('Info QA (dev)'); // Default to first app
+  const [selectedApp, setSelectedApp] = useState('Info QA (dev)');
   const dropdownRef = useRef(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    // Use setTimeout to avoid immediate closure
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 0);
+
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      clearTimeout(timeoutId);
+      document.removeEventListener('click', handleClickOutside);
     };
-  }, []);
+  }, [isOpen]);
 
   const handleItemClick = (url, label) => {
     console.log(`Navigating to: ${label} - ${url}`);
-    setSelectedApp(label); // Update selected app name
-    setIsOpen(false); // Close dropdown after selection
-    // You can add actual navigation logic here
-    // For now, just open in new tab
+    setSelectedApp(label);
+    setIsOpen(false);
     window.open(url, '_blank');
   };
 
