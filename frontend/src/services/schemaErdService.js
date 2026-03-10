@@ -23,10 +23,78 @@ export const getERDData = async (schemaName) => {
 };
 
 /**
+ * Get ERD data for a schema within an application context
+ * TODO: Uncomment when application filtering is ready on backend
+ * @param {string} schemaName - Name of the schema
+ * @param {string} applicationUuid - UUID of the application
+ * @returns {Promise<Object>} ERD data
+ */
+/*
+export const getERDDataByApplication = async (schemaName, applicationUuid) => {
+  if (!schemaName || !applicationUuid) {
+    throw new Error("Schema name and application UUID are required");
+  }
+
+  try {
+    const data = await api.get(
+      `/schemas/${encodeURIComponent(schemaName)}/erd/${applicationUuid}`
+    );
+    return data;
+  } catch (error) {
+    console.error(`Failed to fetch ERD for schema "${schemaName}" in application "${applicationUuid}":`, error);
+    throw error;
+  }
+};
+*/
+
+/**
+ * Get list of applications for dropdown
+ * TODO: Uncomment when backend API is ready
+ * @returns {Promise<Array>} List of applications
+ */
+/*
+export const getApplications = async () => {
+  try {
+    const data = await api.get('/applications');
+    return data.applications || [];
+  } catch (error) {
+    console.error('Failed to fetch applications:', error);
+    throw error;
+  }
+};
+*/
+
+/**
+ * Get schemas filtered by application
+ * TODO: Uncomment when backend API is ready
+ * @param {string} applicationUuid - UUID of the application
+ * @returns {Promise<Array>} List of schema names
+ */
+/*
+export const getSchemasByApplication = async (applicationUuid) => {
+  if (!applicationUuid) {
+    throw new Error("Application UUID is required");
+  }
+
+  try {
+    const data = await api.get(`/schemas?applicationUuid=${applicationUuid}`);
+    return data.schemas || [];
+  } catch (error) {
+    console.error(`Failed to fetch schemas for application "${applicationUuid}":`, error);
+    throw error;
+  }
+};
+*/
+
+/**
  * Service object for ERD operations
  */
 const erdService = {
   getERDData,
+  // TODO: Uncomment when ready
+  // getERDDataByApplication,
+  // getApplications,
+  // getSchemasByApplication,
 };
 
 export default erdService;

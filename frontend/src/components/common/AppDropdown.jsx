@@ -36,11 +36,11 @@ export const AppDropdown = () => {
   };
 
   const dropdownItems = [
-    { label: 'Info QA (dev)', url: '/info-qa-dev' },
-    { label: 'Staffing Origin (dev)', url: '/staffing-origin-dev' },
-    { label: 'Handson App', url: '/handson-app' },
-    { label: 'Infoorigin Home', url: '/infoorigin-home' },
-    { label: 'App Builder', url: '/app-builder' }
+    { label: 'Info QA (dev)'},
+    { label: 'Staffing Origin (dev)'},
+    { label: 'Handson App'},
+    { label: 'Infoorigin Home'},
+    { label: 'App Builder'}
   ];
 
   return (
