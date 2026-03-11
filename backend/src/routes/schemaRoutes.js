@@ -28,10 +28,8 @@ const tryConnectionAuth = (req, res, next) => {
 };
 
 // APPLICATION ROUTES 
-/**
- * GET /api/applications
- * Get list of applications for dropdown
- */
+//  Get list of applications for dropdown
+ 
 /*
 router.get("/applications", tryConnectionAuth, async (req, res) => {
   try {
@@ -80,10 +78,8 @@ router.get("/applications", tryConnectionAuth, async (req, res) => {
 // Current route: Get all schemas
 router.get("/schemas", tryConnectionAuth, listSchemas);
 
-/**
- * GET /api/schemas?applicationUuid=xxx
- * Get schemas filtered by application
- */
+//Get schemas filtered by application
+
 /*
 router.get("/schemas", tryConnectionAuth, async (req, res) => {
   const { applicationUuid } = req.query;
@@ -98,10 +94,8 @@ router.get("/schemas", tryConnectionAuth, async (req, res) => {
 });
 */
 
-/**
- * GET /api/schemas/:schema/erd/:applicationUuid
- * Get ERD data for a schema within an application context
- */
+//Get ERD data for a schema within an application context
+
 /*
 router.get("/schemas/:schema/erd/:applicationUuid", tryConnectionAuth, async (req, res) => {
   try {

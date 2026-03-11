@@ -14,6 +14,26 @@
   z-index: 10; /* Tables above relationship lines */
 }
 
+/* Hide React Flow connection handles (ports) */
+.table-card .react-flow__handle {
+  opacity: 0 !important;
+  pointer-events: all !important; /* Keep clickable for connections */
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Ensure handles are still functional but invisible */
+.table-card .react-flow__handle-left,
+.table-card .react-flow__handle-right,
+.table-card .react-flow__handle-top,
+.table-card .react-flow__handle-bottom {
+  width: 8px;
+  height: 8px;
+  background: transparent !important;
+  border: none !important;
+  opacity: 0 !important;
+}
+
 .table-card-hover:hover {
   border-color: var(--primary);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
