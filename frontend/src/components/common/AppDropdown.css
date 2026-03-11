@@ -3,6 +3,10 @@
   display: inline-block;
 }
 
+.app-dropdown.open {
+  z-index: 1002;
+}
+
 .app-dropdown-trigger {
   display: flex;
   align-items: center;
@@ -58,7 +62,7 @@
   border-top: none;
   border-radius: 0 0 6px 6px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  z-index: 100;
+  z-index: 1002;
   margin-top: 0;
   overflow: hidden;
   animation: dropdownSlideDown 0.2s ease-out;
