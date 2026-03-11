@@ -226,45 +226,61 @@ export const FKComparisonModal = ({
 
   // Helper function to get all FKs for a schema side (baseline or virtual)
   const getAllFKsForSide = (tableChanges, isBaseline) => {
-    const allFKs = [];
+      const allFKs = [];
 
-    if (isBaseline) {
-      // For baseline (left side): show ALL FKs that exist in actual database
-      // Include unchanged FKs (gray) AND removed FKs (gray) - show everything from actual DB
-      tableChanges.baselineFKs.forEach(fk => {
-        allFKs.push(fk);
-      });
-    } else {
-      // For virtual (right side): show all FKs from virtual schema + removed FKs + synced FKs
-      // Include unchanged FKs (gray), added FKs (green), synced FKs (blue), and removed FKs (red)
-      tableChanges.virtualFKs.forEach(fk => {
-        // Check if this FK was added in virtual schema
-        const wasAdded = tableChanges.added.some(added => added.columnName === fk.columnName);
-        // Check if this FK was synced
-        const wasSynced = tableChanges.synced.some(synced => synced.columnName === fk.columnName);
-
-        if (wasAdded) {
-          // Show as added (green with undo button)
-          const addedFK = tableChanges.added.find(added => added.columnName === fk.columnName);
-          allFKs.push(addedFK);
-        } else if (wasSynced) {
-          // Show as synced (blue with info indicator)
-          const syncedFK = tableChanges.synced.find(synced => synced.columnName === fk.columnName);
-          allFKs.push(syncedFK);
-        } else {
-          // Show as unchanged (gray)
+      if (isBaseline) {
+        // For baseline (left side): show ALL FKs that exist in actual database
+        // Include unchanged FKs (gray) AND removed FKs (gray) - show everything from actual DB
+        tableChanges.baselineFKs.forEach(fk => {
           allFKs.push(fk);
-        }
-      });
+        });
+      } else {
+        // For virtual (right side): show FKs in specific order:
+        // 1. Unchanged FKs (gray) - actual DB FKs first
+        // 2. Synced FKs (blue) - actual DB FKs
+        // 3. Added FKs (green) - sorted alphabetically
+        // 4. Removed FKs (red)
 
-      // Add removed FKs to virtual side (right panel) with red highlighting
-      tableChanges.removed.forEach(removedFK => {
-        allFKs.push(removedFK);
-      });
+        const unchangedFKs = [];
+        const syncedFKs = [];
+        const addedFKs = [];
+
+        tableChanges.virtualFKs.forEach(fk => {
+          // Check if this FK was added in virtual schema
+          const wasAdded = tableChanges.added.some(added => added.columnName === fk.columnName);
+          // Check if this FK was synced
+          const wasSynced = tableChanges.synced.some(synced => synced.columnName === fk.columnName);
+
+          if (wasAdded) {
+            // Collect added FKs (green with undo button)
+            const addedFK = tableChanges.added.find(added => added.columnName === fk.columnName);
+            addedFKs.push(addedFK);
+          } else if (wasSynced) {
+            // Collect synced FKs (blue with info indicator)
+            const syncedFK = tableChanges.synced.find(synced => synced.columnName === fk.columnName);
+            syncedFKs.push(syncedFK);
+          } else {
+            // Collect unchanged FKs (gray)
+            unchangedFKs.push(fk);
+          }
+        });
+
+        // Sort added FKs alphabetically by column name
+        addedFKs.sort((a, b) => a.columnName.localeCompare(b.columnName));
+
+        // Add in the correct order: unchanged -> synced -> added (sorted) -> removed
+        allFKs.push(...unchangedFKs);
+        allFKs.push(...syncedFKs);
+        allFKs.push(...addedFKs);
+
+        // Add removed FKs to virtual side (right panel) with red highlighting
+        tableChanges.removed.forEach(removedFK => {
+          allFKs.push(removedFK);
+        });
+      }
+
+      return allFKs;
     }
-
-    return allFKs;
-  };
 
   return (
     <>
