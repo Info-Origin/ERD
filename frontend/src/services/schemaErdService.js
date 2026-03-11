@@ -24,10 +24,6 @@ export const getERDData = async (schemaName) => {
 
 /**
  * Get ERD data for a schema within an application context
- * TODO: Uncomment when application filtering is ready on backend
- * @param {string} schemaName - Name of the schema
- * @param {string} applicationUuid - UUID of the application
- * @returns {Promise<Object>} ERD data
  */
 /*
 export const getERDDataByApplication = async (schemaName, applicationUuid) => {
@@ -49,8 +45,6 @@ export const getERDDataByApplication = async (schemaName, applicationUuid) => {
 
 /**
  * Get list of applications for dropdown
- * TODO: Uncomment when backend API is ready
- * @returns {Promise<Array>} List of applications
  */
 /*
 export const getApplications = async () => {
@@ -66,9 +60,6 @@ export const getApplications = async () => {
 
 /**
  * Get schemas filtered by application
- * TODO: Uncomment when backend API is ready
- * @param {string} applicationUuid - UUID of the application
- * @returns {Promise<Array>} List of schema names
  */
 /*
 export const getSchemasByApplication = async (applicationUuid) => {
@@ -91,7 +82,7 @@ export const getSchemasByApplication = async (applicationUuid) => {
  */
 const erdService = {
   getERDData,
-  // TODO: Uncomment when ready
+  // Ready When:
   // getERDDataByApplication,
   // getApplications,
   // getSchemasByApplication,

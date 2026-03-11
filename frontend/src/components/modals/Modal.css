@@ -62,6 +62,13 @@
   max-width: 700px;
 }
 
+/* Confirmation modal - keep compact on all screen sizes */
+.modal-content.confirmation-modal {
+  max-width: 480px !important;
+  width: 90% !important;
+  min-width: 320px !important;
+}
+
 /* Tablet responsive (768px - 1024px) */
 @media (max-width: 1024px) {
   .modal-content {
@@ -74,6 +81,13 @@
   .modal-wide {
     width: 90vw;
     max-width: 90vw;
+  }
+  
+  /* Override for confirmation modal on tablets */
+  .modal-content.confirmation-modal {
+    width: 480px !important;
+    max-width: 90vw !important;
+    min-width: 320px !important;
   }
 }
 
