@@ -61,7 +61,6 @@ export const VirtualSchemaProvider = ({ children }) => {
   const [connectionId, setConnectionId] = useState(null); // Track current connection ID
   const historyIndexRef = useRef(-1);
   const historyRef = useRef([]);
-  const lastSavedTimestampRef = useRef(null); // CRITICAL: Ref to avoid stale closure in callbacks
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -71,18 +70,6 @@ export const VirtualSchemaProvider = ({ children }) => {
   useEffect(() => {
     historyRef.current = history;
   }, [history]);
-
-  // CRITICAL: Keep lastSavedTimestamp ref in sync
-  useEffect(() => {
-    lastSavedTimestampRef.current = lastSavedTimestamp;
-  }, [lastSavedTimestamp]);
-
-  // CRITICAL: Function to update timestamp (both state and ref immediately)
-  // This avoids the delay from useEffect and prevents stale closure issues
-  const updateLastSavedTimestamp = useCallback((timestamp) => {
-    setLastSavedTimestamp(timestamp);
-    lastSavedTimestampRef.current = timestamp; // Update ref immediately
-  }, []);
 
   // REMOVED: Auto-save to database when working schema changes
   // Now using manual save button instead
@@ -180,19 +167,16 @@ export const VirtualSchemaProvider = ({ children }) => {
                 // Column existed in baseline but not in current real DB - it was deleted/renamed
                 // Don't add to merged schema (respect real DB changes)
               } else {
-                // CRITICAL FIX: Column doesn't exist in baseline, real DB, and is not user-created
-                // This means it was added to real DB AFTER baseline, then deleted
-                // OR it's a leftover from a previous state that should be cleaned up
-                // Check if it's an FK column or regular column
+                // CRITICAL FIX: Check if this is an FK column that was added after baseline
+                // If column has FK flag but doesn't exist in real DB or baseline, it was likely
+                // an FK column added to actual DB after baseline, then deleted
+                // Don't keep it in virtual schema
                 if (virtualColumn.fk) {
-                  // FK column - don't add (already handled by FK removal logic)
-                } else {
-                  // CRITICAL FIX: Regular column that doesn't exist anywhere
-                  // This is likely a deleted column or renamed column (old name)
-                  // Don't keep it - respect real DB state
-                  // Only exception: if column has other virtual modifications we want to preserve
-                  // But since it doesn't exist in real DB anymore, there's nothing to preserve
                   // Don't add to merged schema
+                } else {
+                  // Edge case: column in virtual but not in baseline or real DB, and not FK
+                  // This shouldn't happen, but keep it to be safe
+                  merged.tables[tableName].columns[columnName] = virtualColumn;
                 }
               }
             }
@@ -205,9 +189,14 @@ export const VirtualSchemaProvider = ({ children }) => {
         if (originalSchema?.tables?.[tableName]) {
           // Table existed in baseline but not in current real DB - it was DELETED
           // Don't add to merged schema (real DB has priority)
+          console.log(`🗑️ Removing table ${tableName} - deleted from real DB`);
+          console.log('  - Table was in baseline:', !!originalSchema?.tables?.[tableName]);
+          console.log('  - Table is in real DB:', !!realSchema.tables[tableName]);
+          console.log('  - Table is in virtual:', !!virtualSchema.tables[tableName]);
         } else {
           // Table never existed in real DB - it's user-added (virtual only)
           // Keep it in merged schema
+          console.log(`✅ Keeping user-added table ${tableName} - never existed in real DB`);
           merged.tables[tableName] = virtualTable;
         }
       }
@@ -703,12 +692,15 @@ export const VirtualSchemaProvider = ({ children }) => {
       );
       
       if (deletedTables.length > 0) {
+        console.log('🧹 Cleaning up relationships for deleted tables:', deletedTables);
+        
         // Remove relationships that reference deleted tables
         mergedSchema.relationships = (mergedSchema.relationships || []).filter(rel => {
           const fromTableDeleted = deletedTables.includes(rel.fromTable);
           const toTableDeleted = deletedTables.includes(rel.toTable);
           
           if (fromTableDeleted || toTableDeleted) {
+            console.log(`  - Removing relationship: ${rel.fromTable}.${rel.fromColumn} → ${rel.toTable}.${rel.toColumn}`);
             return false;
           }
           
@@ -718,6 +710,7 @@ export const VirtualSchemaProvider = ({ children }) => {
         // CRITICAL: Remove deleted tables from the merged schema as well
         deletedTables.forEach(tableName => {
           if (mergedSchema.tables[tableName]) {
+            console.log(`  - Removing table from merged schema: ${tableName}`);
             delete mergedSchema.tables[tableName];
           }
         });
@@ -733,6 +726,7 @@ export const VirtualSchemaProvider = ({ children }) => {
         // CRITICAL: Save the cleaned schema to database
         // This is the KEY fix - we must save the cleaned schema so when table is recreated,
         // the old relationships don't come back
+        console.log('💾 Saving cleaned schema to database (without deleted tables and their relationships)');
         await saveToStorage(currentSchemaName, mergedSchema);
       }
       
@@ -984,21 +978,19 @@ export const VirtualSchemaProvider = ({ children }) => {
     }
 
     try {
-      // CRITICAL: Use ref to get latest timestamp (avoid stale closure)
-      const currentTimestamp = lastSavedTimestampRef.current;
-      
       // Check for conflicts before saving
-      const hasNewer = await checkForNewerChangesFn(currentSchemaName, currentTimestamp);
+      const hasNewer = await checkForNewerChangesFn(currentSchemaName, lastSavedTimestamp);
       
       if (hasNewer) {
         // Another user has saved changes - conflict detected
+        console.warn('⚠️ Conflict detected: Another user has saved changes');
         return { success: false, reason: 'conflict', hasNewerChanges: true };
       }
 
       // No conflict, proceed with save
       await saveToStorage(currentSchemaName, workingSchema);
       const timestamp = Date.now();
-      updateLastSavedTimestamp(timestamp); // Update both state and ref immediately
+      setLastSavedTimestamp(timestamp);
       setHasUnsavedChanges(false);
       
       // CRITICAL: Clear undo/redo history after successful save
@@ -1014,7 +1006,7 @@ export const VirtualSchemaProvider = ({ children }) => {
       console.error('Error saving to persistence:', error);
       return { success: false, reason: 'error', error };
     }
-  }, [workingSchema, currentSchemaName, hasUnsavedChanges]);
+  }, [workingSchema, currentSchemaName, hasUnsavedChanges, lastSavedTimestamp]);
 
   // NEW: Refresh from persistence DB
   const refreshFromPersistence = useCallback(async () => {
@@ -1066,19 +1058,16 @@ export const VirtualSchemaProvider = ({ children }) => {
 
   // NEW: Check if persistence DB has newer changes than current timestamp
   const checkForNewerChanges = useCallback(async () => {
-    // CRITICAL: Use ref to get latest timestamp (avoid stale closure)
-    const currentTimestamp = lastSavedTimestampRef.current;
-    
-    if (!currentSchemaName || !currentTimestamp) return false;
+    if (!currentSchemaName || !lastSavedTimestamp) return false;
 
     try {
-      const hasNewer = await checkForNewerChangesFn(currentSchemaName, currentTimestamp);
+      const hasNewer = await checkForNewerChangesFn(currentSchemaName, lastSavedTimestamp);
       return hasNewer;
     } catch (error) {
       console.warn('Error checking for newer changes:', error);
       return false;
     }
-  }, [currentSchemaName]);
+  }, [currentSchemaName, lastSavedTimestamp]);
 
   // NEW: Reset unsaved changes - discard all UI changes since last save
   const resetUnsavedChanges = useCallback(async () => {
@@ -2147,7 +2136,6 @@ export const VirtualSchemaProvider = ({ children }) => {
     setHasUnsavedChanges, // NEW: Expose setter for unsaved changes flag
     lastSavedTimestamp, // NEW: Expose last saved timestamp
     setLastSavedTimestamp, // NEW: Expose setter for timestamp updates
-    updateLastSavedTimestamp, // CRITICAL: Update both state and ref immediately
     isSwitchingSchema,
     canUndo: historyIndex > 0,
     canRedo: historyIndex < history.length - 1,
