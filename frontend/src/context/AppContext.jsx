@@ -86,10 +86,29 @@ export const AppProvider = ({ children }) => {
   });
 
   // NEW: Selected application state
-  const [selectedApplication, setSelectedApplication] = useState({
-    uuid: 'f487663908ebf11eabb6112c1e641f7d9', // Default to InfoQA
-    label: 'Info QA (dev)'
+  const [selectedApplication, setSelectedApplication] = useState(() => {
+    // Load from localStorage on initialization
+    const saved = localStorage.getItem('reverseERD_selectedApplication');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse saved application:', e);
+      }
+    }
+    // Default to InfoQA
+    return {
+      uuid: 'f487663908ebf11eabb6112c1e641f7d9',
+      label: 'Info QA (dev)'
+    };
   });
+
+  // Save selected application to localStorage whenever it changes
+  useEffect(() => {
+    if (selectedApplication) {
+      localStorage.setItem('reverseERD_selectedApplication', JSON.stringify(selectedApplication));
+    }
+  }, [selectedApplication]);
 
   // Notification system (simple state-based notifications)
   const [notifications, setNotifications] = useState([]);
@@ -221,16 +240,21 @@ export const AppProvider = ({ children }) => {
           // Convert saved schemas to the format expected by schema explorer
           const schemaList = savedSchemas.map(s => s.schema_name);
           
-          // Set schemas directly without fetching from real DB
-          setSchemasDirectly(schemaList);
+          // CRITICAL FIX: Filter schemas by selected application
+          // This ensures browser refresh shows correct schemas for the application
+          const schemaService = (await import('../services/schemaService')).default;
+          const filteredSchemas = await schemaService.getSchemas(selectedApplication.uuid);
+          
+          // Set filtered schemas
+          setSchemasDirectly(filteredSchemas);
           
           // Check if there's a last selected schema in localStorage
           const lastSelectedSchema = localStorage.getItem('reverseERD_lastSelectedSchema');
           
           // Auto-select the last selected schema, or first schema if none saved
-          const schemaToSelect = (lastSelectedSchema && schemaList.includes(lastSelectedSchema)) 
+          const schemaToSelect = (lastSelectedSchema && filteredSchemas.includes(lastSelectedSchema)) 
             ? lastSelectedSchema 
-            : savedSchemas[0]?.schema_name;
+            : filteredSchemas[0]; // Use first filtered schema
           
           if (schemaToSelect) {
             setTimeout(() => {
@@ -246,7 +270,7 @@ export const AppProvider = ({ children }) => {
     };
 
     initializeApp();
-  }, []); // Run only once on mount
+  }, [selectedApplication.uuid]); // Re-run when application changes
 
   // ==================== DATABASE CHANGES DETECTION ====================
   // MUST BE DEFINED EARLY - Used by other functions below
