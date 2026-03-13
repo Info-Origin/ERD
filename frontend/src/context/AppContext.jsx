@@ -85,6 +85,12 @@ export const AppProvider = ({ children }) => {
     isOpen: false
   });
 
+  // NEW: Selected application state
+  const [selectedApplication, setSelectedApplication] = useState({
+    uuid: 'f487663908ebf11eabb6112c1e641f7d9', // Default to InfoQA
+    label: 'Info QA (dev)'
+  });
+
   // Notification system (simple state-based notifications)
   const [notifications, setNotifications] = useState([]);
 
@@ -1019,7 +1025,44 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  // ==================== RELOAD SCHEMAS FOR APPLICATION ====================
+  const reloadSchemasForApplication = useCallback(async (applicationUuid) => {
+    try {
+      console.log(`🔄 Reloading schemas for application: ${applicationUuid}`);
+      
+      // Fetch schemas filtered by application
+      const schemaService = (await import('../services/schemaService')).default;
+      const schemaList = await schemaService.getSchemas(applicationUuid);
+      
+      console.log(`📊 Found ${schemaList.length} schemas for this application`);
+      
+      // Update schemas list
+      setSchemasDirectly(schemaList);
+      
+      // Auto-select first schema if available
+      if (schemaList.length > 0) {
+        setTimeout(() => {
+          originalSelectSchema(schemaList[0]);
+        }, 100);
+      } else {
+        // No schemas for this application
+        showNotification('No schemas found for this application', 'info');
+      }
+      
+      return { success: true, schemas: schemaList };
+    } catch (error) {
+      console.error('Error reloading schemas:', error);
+      showNotification('Failed to reload schemas', 'error');
+      return { success: false, error: error.message };
+    }
+  }, [setSchemasDirectly, originalSelectSchema, showNotification]);
+
   const value = {
+    // Application
+    selectedApplication,
+    setSelectedApplication,
+    reloadSchemasForApplication,
+    
     // Schemas
     schemas,
     schemasLoading,

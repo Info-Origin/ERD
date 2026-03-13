@@ -3,14 +3,17 @@ import { getSchemas as getDynamicSchemas, getSchemaErd as getDynamicSchemaErd } 
 
 export const listSchemas = async (req, res, next) => {
   try {
+    // Get application UUID from query parameter
+    const { applicationUuid } = req.query;
+    
     // Check if using dynamic connection
     if (req.connectionId) {
-      const schemas = await getDynamicSchemas(req.connectionId);
+      const schemas = await getDynamicSchemas(req.connectionId, applicationUuid);
       return res.json({ schemas });
     }
     
     // Fallback to default .env connection
-    const schemas = await getSchemas();
+    const schemas = await getSchemas(applicationUuid);
     res.json({ schemas });
   } catch (err) {
     next(err);

@@ -1,13 +1,49 @@
 import pool from "../config/db.js";
 import { buildSchemaModel } from "../utils/erdMapper.js";
 
-export const getSchemas = async () => {
-  const query = `
-    SELECT SCHEMA_NAME AS schema_name
-    FROM information_schema.SCHEMATA
-    WHERE SCHEMA_NAME NOT IN ('information_schema','mysql','performance_schema','sys')
-    ORDER BY SCHEMA_NAME;
-  `;
+export const getSchemas = async (AE_APPLICATION_UUID_ERD) => {
+  let query = '';
+  
+  if (AE_APPLICATION_UUID_ERD === 'f487663908ebf11eabb6112c1e641f7d9') {
+    // InfoQA
+    console.log('Using InfoQA schemas');
+    query = `
+      SELECT SCHEMA_NAME AS schema_name
+      FROM information_schema.SCHEMATA
+      WHERE SCHEMA_NAME IN (
+        'featuremanagement_app',
+        'featuremanagement_app_audit',
+        'info_authorization',
+        'info_tenant',
+        'info_tenant_audit',
+        'infoorigin_home_md',
+        'infoorigin_home_md_audit'
+      )
+      ORDER BY SCHEMA_NAME;
+    `;
+  } else if (AE_APPLICATION_UUID_ERD === 'zb9952b18945111eabb611c1e641f7d9') {
+    // Staffing Origin
+    console.log('Using Staffing Origin schemas');
+    query = `
+      SELECT SCHEMA_NAME AS schema_name
+      FROM information_schema.SCHEMATA
+      WHERE SCHEMA_NAME IN (
+        'staffing_origin_app',
+        'staffing_origin_app_audit'
+      )
+      ORDER BY SCHEMA_NAME;
+    `;
+  } else {
+    // Default: all schemas
+    console.log('Using all schemas');
+    query = `
+      SELECT SCHEMA_NAME AS schema_name
+      FROM information_schema.SCHEMATA
+      WHERE SCHEMA_NAME NOT IN ('information_schema','mysql','performance_schema','sys')
+      ORDER BY SCHEMA_NAME;
+    `;
+  }
+  
   const [rows] = await pool.query(query);
   return rows.map((r) => r.schema_name);
 };

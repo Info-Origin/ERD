@@ -75,7 +75,7 @@ router.get("/applications", tryConnectionAuth, async (req, res) => {
 
 // ==================== SCHEMA ROUTES ====================
 
-// Current route: Get all schemas
+// Get all schemas (with optional application filter)
 router.get("/schemas", tryConnectionAuth, listSchemas);
 
 //Get schemas filtered by application
