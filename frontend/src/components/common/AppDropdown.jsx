@@ -46,18 +46,6 @@ export const AppDropdown = () => {
     { 
       uuid: 'zb9952b18945111eabb611c1e641f7d9',
       label: 'Staffing Origin (dev)'
-    },
-    { 
-      uuid: '6dd8278a-963c-453d-84c5-eca06c4ff221',
-      label: 'Handson App'
-    },
-    { 
-      uuid: '20d01c24-a07b-11ed-8438-f7be46f306d0',
-      label: 'Infoorigin Home'
-    },
-    { 
-      uuid: 'bfb59e2-4927-11ed-be6d-0a68df95ca6d',
-      label: 'App Builder'
     }
   ];
 
