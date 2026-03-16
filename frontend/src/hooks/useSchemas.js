@@ -34,6 +34,12 @@ export const useSchemas = (autoFetch = false) => {
     setHasLoaded(true);
   };
 
+  // NEW: Reset hasLoaded to false (to show "Load Schemas" button again)
+  const resetHasLoaded = () => {
+    setSchemas([]);
+    setHasLoaded(false);
+  };
+
   useEffect(() => {
     if (autoFetch) {
       fetchSchemas();
@@ -46,7 +52,8 @@ export const useSchemas = (autoFetch = false) => {
     error,
     hasLoaded,
     refetch: fetchSchemas,
-    setSchemas: setSchemasDirectly, // NEW: Expose setter for manual schema list updates
+    setSchemas: setSchemasDirectly,
+    resetHasLoaded, // NEW: Reset to show "Load Schemas" button
   };
 };
 

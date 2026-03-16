@@ -87,8 +87,8 @@ export const AppProvider = ({ children }) => {
 
   // NEW: Selected application state
   const [selectedApplication, setSelectedApplication] = useState(() => {
-    // Load from localStorage on initialization
-    const saved = localStorage.getItem('reverseERD_selectedApplication');
+    // Load from sessionStorage on initialization
+    const saved = sessionStorage.getItem('reverseERD_selectedApplication');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -103,10 +103,10 @@ export const AppProvider = ({ children }) => {
     };
   });
 
-  // Save selected application to localStorage whenever it changes
+  // Save selected application to sessionStorage whenever it changes
   useEffect(() => {
     if (selectedApplication) {
-      localStorage.setItem('reverseERD_selectedApplication', JSON.stringify(selectedApplication));
+      sessionStorage.setItem('reverseERD_selectedApplication', JSON.stringify(selectedApplication));
     }
   }, [selectedApplication]);
 
@@ -146,8 +146,9 @@ export const AppProvider = ({ children }) => {
     error: schemasError,
     hasLoaded: schemasHasLoaded,
     refetch: refetchSchemas,
-    setSchemas: setSchemasDirectly, // NEW: Manual schema list setter
-  } = useSchemas(false); // Don't auto-fetch on mount
+    setSchemas: setSchemasDirectly,
+    resetHasLoaded: resetSchemasHasLoaded,
+  } = useSchemas(false);
   const {
     erdData,
     loading: erdLoading,
@@ -159,24 +160,18 @@ export const AppProvider = ({ children }) => {
   const virtualSchema = useVirtualSchema();
 
   // ==================== LOAD ALL SCHEMAS (First Time) ====================
-  // This function loads ALL schemas from real DB and saves them to persistence DB
+  // This function loads schemas for the SELECTED APPLICATION from real DB and saves them to persistence DB
   const loadAllSchemasFirstTime = useCallback(async () => {
     try {
-      console.log('🔄 Loading all schemas from real DB for first time...');
+      console.log(`🔄 Loading schemas for application: ${selectedApplication.label}...`);
       
-      // Step 1: Fetch schema list from real DB
-      await refetchSchemas();
-      
-      // Wait for schemas to be populated
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Step 2: Get the schema list
+      // Step 1: Get the schema list filtered by selected application
       const schemaService = (await import('../services/schemaService')).default;
-      const schemaList = await schemaService.getSchemas();
+      const schemaList = await schemaService.getSchemas(selectedApplication.uuid);
       
-      console.log(`📊 Found ${schemaList.length} schemas, saving all to persistence DB...`);
+      console.log(`📊 Found ${schemaList.length} schemas for ${selectedApplication.label}, saving to persistence DB...`);
       
-      // Step 3: For each schema, fetch ERD data and save to persistence DB
+      // Step 2: For each schema, fetch ERD data and save to persistence DB
       const erdService = (await import('../services/schemaErdService')).default;
       const { saveBaselineSchema } = await import('../utils/persistenceAdapter');
       const persistenceService = (await import('../services/persistenceService')).default;
@@ -207,12 +202,11 @@ export const AppProvider = ({ children }) => {
       
       console.log(`✅ Loaded ${successCount}/${schemaList.length} schemas (${failCount} failed)`);
       
-      // Step 4: Update schemas state so app knows schemas are loaded
+      // Step 3: Update schemas state so app knows schemas are loaded
       setSchemasDirectly(schemaList);
       
-      // Step 5: Wait for React to process state updates, then auto-select first schema
+      // Step 4: Auto-select first schema
       if (schemaList.length > 0) {
-        // Use longer delay to ensure all state updates are processed
         await new Promise(resolve => setTimeout(resolve, 500));
         console.log(`🎯 Auto-selecting first schema: ${schemaList[0]}`);
         originalSelectSchema(schemaList[0]);
@@ -220,41 +214,39 @@ export const AppProvider = ({ children }) => {
       
       return { success: true, total: schemaList.length, successCount, failCount };
     } catch (error) {
-      console.error('❌ Error loading all schemas:', error);
+      console.error('❌ Error loading schemas:', error);
       throw error;
     }
-  }, [refetchSchemas, originalSelectSchema, connectionId, setSchemasDirectly]);
-
+  }, [selectedApplication, connectionId, setSchemasDirectly, originalSelectSchema]);
+      
   // ==================== INITIALIZATION ====================
   // Check for saved schemas on mount and auto-load if found
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Check if there are any saved schemas in persistence DB
+        // Check if there are any saved schemas in persistence DB for the selected application
         const persistenceService = (await import('../services/persistenceService')).default;
-        const savedSchemas = await persistenceService.getSavedSchemas();
+        const schemaService = (await import('../services/schemaService')).default;
         
-        if (savedSchemas && savedSchemas.length > 0) {
-          // Schemas exist in persistence DB - load from cache (NO real DB query)
+        // Get schemas that SHOULD exist for this application
+        const appSchemas = await schemaService.getSchemas(selectedApplication.uuid);
+        
+        // Check if ANY of this application's schemas are saved in persistence DB
+        const savedSchemas = await persistenceService.getSavedSchemas();
+        const savedSchemaNames = savedSchemas.map(s => s.schema_name);
+        const appSchemasInDB = appSchemas.filter(s => savedSchemaNames.includes(s));
+        
+        if (appSchemasInDB.length > 0) {
+          // This application's schemas exist in persistence DB - load them
+          setSchemasDirectly(appSchemas.filter(s => savedSchemaNames.includes(s)));
           
-          // Convert saved schemas to the format expected by schema explorer
-          const schemaList = savedSchemas.map(s => s.schema_name);
-          
-          // CRITICAL FIX: Filter schemas by selected application
-          // This ensures browser refresh shows correct schemas for the application
-          const schemaService = (await import('../services/schemaService')).default;
-          const filteredSchemas = await schemaService.getSchemas(selectedApplication.uuid);
-          
-          // Set filtered schemas
-          setSchemasDirectly(filteredSchemas);
-          
-          // Check if there's a last selected schema in localStorage
-          const lastSelectedSchema = localStorage.getItem('reverseERD_lastSelectedSchema');
+          // Check if there's a last selected schema in sessionStorage
+          const lastSelectedSchema = sessionStorage.getItem('reverseERD_lastSelectedSchema');
           
           // Auto-select the last selected schema, or first schema if none saved
-          const schemaToSelect = (lastSelectedSchema && filteredSchemas.includes(lastSelectedSchema)) 
+          const schemaToSelect = (lastSelectedSchema && appSchemasInDB.includes(lastSelectedSchema)) 
             ? lastSelectedSchema 
-            : filteredSchemas[0]; // Use first filtered schema
+            : appSchemasInDB[0];
           
           if (schemaToSelect) {
             setTimeout(() => {
@@ -262,7 +254,9 @@ export const AppProvider = ({ children }) => {
             }, 100);
           }
         } else {
-          console.log('ℹ️ No saved schemas found, showing "Load Schemas" button');
+          // No schemas for this application in persistence DB
+          // DO NOT call setSchemasDirectly - keep hasLoaded = false so "Load Schemas" button shows
+          console.log(`ℹ️ No saved schemas for ${selectedApplication.label}, showing "Load Schemas" button`);
         }
       } catch (error) {
         console.error('Error initializing app:', error);
@@ -1054,32 +1048,34 @@ export const AppProvider = ({ children }) => {
     try {
       console.log(`🔄 Reloading schemas for application: ${applicationUuid}`);
       
-      // Fetch schemas filtered by application
+      // Check persistence DB for this application's schemas
       const schemaService = (await import('../services/schemaService')).default;
-      const schemaList = await schemaService.getSchemas(applicationUuid);
+      const persistenceService = (await import('../services/persistenceService')).default;
       
-      console.log(`📊 Found ${schemaList.length} schemas for this application`);
+      const appSchemas = await schemaService.getSchemas(applicationUuid);
+      const savedSchemas = await persistenceService.getSavedSchemas();
+      const savedSchemaNames = savedSchemas.map(s => s.schema_name);
+      const appSchemasInDB = appSchemas.filter(s => savedSchemaNames.includes(s));
       
-      // Update schemas list
-      setSchemasDirectly(schemaList);
-      
-      // Auto-select first schema if available
-      if (schemaList.length > 0) {
+      if (appSchemasInDB.length > 0) {
+        // Schemas exist - load them
+        setSchemasDirectly(appSchemasInDB);
         setTimeout(() => {
-          originalSelectSchema(schemaList[0]);
+          originalSelectSchema(appSchemasInDB[0]);
         }, 100);
       } else {
-        // No schemas for this application
-        showNotification('No schemas found for this application', 'info');
+        // No schemas for this application - show "Load Schemas" button
+        console.log(`ℹ️ No saved schemas for this application, showing "Load Schemas" button`);
+        resetSchemasHasLoaded(); // This sets hasLoaded = false → shows "Load Schemas" button
       }
       
-      return { success: true, schemas: schemaList };
+      return { success: true };
     } catch (error) {
       console.error('Error reloading schemas:', error);
       showNotification('Failed to reload schemas', 'error');
       return { success: false, error: error.message };
     }
-  }, [setSchemasDirectly, originalSelectSchema, showNotification]);
+  }, [setSchemasDirectly, resetSchemasHasLoaded, originalSelectSchema, showNotification]);
 
   const value = {
     // Application
