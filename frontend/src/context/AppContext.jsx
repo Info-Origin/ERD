@@ -1048,6 +1048,9 @@ export const AppProvider = ({ children }) => {
     try {
       console.log(`🔄 Reloading schemas for application: ${applicationUuid}`);
       
+      // Clear current selection immediately so previous app's schema/tree disappears
+      clearSelection();
+
       // Check persistence DB for this application's schemas
       const schemaService = (await import('../services/schemaService')).default;
       const persistenceService = (await import('../services/persistenceService')).default;
@@ -1075,7 +1078,7 @@ export const AppProvider = ({ children }) => {
       showNotification('Failed to reload schemas', 'error');
       return { success: false, error: error.message };
     }
-  }, [setSchemasDirectly, resetSchemasHasLoaded, originalSelectSchema, showNotification]);
+  }, [setSchemasDirectly, resetSchemasHasLoaded, originalSelectSchema, clearSelection, showNotification]);
 
   const value = {
     // Application
