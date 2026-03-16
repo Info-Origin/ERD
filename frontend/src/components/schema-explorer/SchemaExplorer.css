@@ -384,3 +384,153 @@
   cursor: not-allowed;
   transform: none !important;
 }
+
+/* ==================== SCHEMA LOCK STYLES ==================== */
+
+.schema-item-locked {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.schema-item-locked:hover {
+  background-color: var(--bg-secondary);
+}
+
+.schema-lock-icon {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-size: 13px;
+}
+
+.schema-lock-icon--mine {
+  color: var(--primary);
+}
+
+.schema-lock-icon--other {
+  color: var(--danger, #e53e3e);
+}
+
+/* Right-click context menu */
+.schema-context-menu {
+  position: fixed;
+  z-index: 99999;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  min-width: 160px;
+  overflow: hidden;
+  animation: contextMenuFadeIn 0.1s ease-out;
+}
+
+@keyframes contextMenuFadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.schema-context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  text-align: left;
+  transition: background-color 0.15s;
+}
+
+.schema-context-menu-item:hover {
+  background-color: var(--bg-hover);
+}
+
+.schema-context-menu-item--disabled {
+  color: var(--text-tertiary);
+  cursor: default;
+  font-size: 0.875rem;
+}
+
+.schema-context-menu-item--disabled:hover {
+  background-color: transparent;
+}
+
+/* Lock confirmation modal */
+.schema-lock-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+}
+
+.schema-lock-modal {
+  background: var(--bg-primary);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  padding: 28px 28px 20px;
+  max-width: 380px;
+  width: 90%;
+  text-align: center;
+  animation: confirmationSlideIn 0.15s ease-out;
+}
+
+.schema-lock-modal-icon {
+  font-size: 2.2rem;
+  margin-bottom: 12px;
+}
+
+.schema-lock-modal h3 {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.schema-lock-modal p {
+  margin: 0 0 20px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.schema-lock-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.schema-lock-modal-actions .btn-secondary,
+.schema-lock-modal-actions .btn-primary {
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  min-width: 90px;
+}
+
+.schema-lock-modal-actions .btn-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.schema-lock-modal-actions .btn-secondary:hover {
+  background: var(--bg-hover);
+}
+
+.schema-lock-modal-actions .btn-primary {
+  background: var(--primary);
+  color: white;
+}
+
+.schema-lock-modal-actions .btn-primary:hover {
+  background: var(--primary-hover);
+}

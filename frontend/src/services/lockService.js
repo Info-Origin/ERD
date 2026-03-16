@@ -1,124 +1,58 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4001/api';
 
 /**
- * Lock Service - Frontend API for table locking
+ * Lock Service - Frontend API for schema-level locking
  */
 class LockService {
-  /**
-   * Get session ID (generate if doesn't exist)
-   */
   getSessionId() {
     let sessionId = localStorage.getItem('reverseERD_sessionId');
     if (!sessionId) {
-      sessionId = this.generateSessionId();
+      sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       localStorage.setItem('reverseERD_sessionId', sessionId);
     }
     return sessionId;
   }
 
-  /**
-   * Generate unique session ID
-   */
-  generateSessionId() {
-    return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  async acquireLock(schemaName) {
+    const sessionId = this.getSessionId();
+    const response = await fetch(`${API_BASE_URL}/locks/acquire`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ schemaName, sessionId })
+    });
+    return response.json();
   }
 
-  /**
-   * Acquire lock on a table
-   */
-  async acquireLock(schemaName, tableName) {
-    try {
-      const sessionId = this.getSessionId();
-      
-      const response = await fetch(`${API_BASE_URL}/locks/acquire`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          schemaName,
-          tableName,
-          sessionId
-        })
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        return data; // Return error response
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Error acquiring lock:', error);
-      throw error;
-    }
+  async releaseLock(schemaName) {
+    const sessionId = this.getSessionId();
+    const response = await fetch(`${API_BASE_URL}/locks/release`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ schemaName, sessionId })
+    });
+    return response.json();
   }
 
-  /**
-   * Release lock on a table
-   */
-  async releaseLock(schemaName, tableName) {
-    try {
-      const sessionId = this.getSessionId();
-      
-      const response = await fetch(`${API_BASE_URL}/locks/release`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          schemaName,
-          tableName,
-          sessionId
-        })
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        return data;
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Error releasing lock:', error);
-      throw error;
-    }
+  async getLockStatus(schemaName) {
+    const response = await fetch(
+      `${API_BASE_URL}/locks/status/${encodeURIComponent(schemaName)}`
+    );
+    return response.json();
   }
 
-  /**
-   * Get lock status for a specific table
-   */
-  async getLockStatus(schemaName, tableName) {
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/locks/status/${encodeURIComponent(schemaName)}/${encodeURIComponent(tableName)}`
-      );
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('Error getting lock status:', error);
-      throw error;
-    }
+  async getBulkLockStatus(schemaNames) {
+    const response = await fetch(`${API_BASE_URL}/locks/bulk-status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ schemaNames })
+    });
+    const data = await response.json();
+    return data.locks || {};
   }
 
-  /**
-   * Get all locks for a schema
-   */
-  async getSchemaLocks(schemaName) {
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/locks/schema/${encodeURIComponent(schemaName)}`
-      );
-
-      const data = await response.json();
-      return data.locks || [];
-    } catch (error) {
-      console.error('Error getting schema locks:', error);
-      throw error;
-    }
+  isLockedByMe(lockStatus) {
+    if (!lockStatus?.isLocked) return false;
+    return lockStatus.lockedBy === this.getSessionId();
   }
 }
 

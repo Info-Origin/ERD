@@ -4,6 +4,7 @@ import { useERD } from "../hooks/useERD";
 import { useSelection } from "../hooks/useSelection";
 import { useDebounce } from "../hooks/useDebounce";
 import { useVirtualSchema } from "./VirtualSchemaContext";
+import { useSchemaLocks } from "../hooks/useSchemaLocks";
 import { revertFKChange } from "../utils/fkComparison";
 import { detectCircularDependencies } from "../utils/circularDependencyDetector";
 
@@ -149,6 +150,17 @@ export const AppProvider = ({ children }) => {
     setSchemas: setSchemasDirectly,
     resetHasLoaded: resetSchemasHasLoaded,
   } = useSchemas(false);
+
+  // Schema-level locking
+  const {
+    schemaLocks,
+    acquireLock: acquireSchemaLock,
+    releaseLock: releaseSchemaLock,
+    isLockedByMe: isSchemaLockedByMe,
+    isLockedByOther: isSchemaLockedByOther,
+    refreshLocks
+  } = useSchemaLocks(schemas);
+
   const {
     erdData,
     loading: erdLoading,
@@ -432,13 +444,19 @@ export const AppProvider = ({ children }) => {
   // Shared Edit Table Modal functions
   // Open modal directly without database change check
   const openEditTableModal = useCallback((tableName, schemaName) => {
+    // Block editing if schema is locked by another user
+    if (isSchemaLockedByOther(schemaName || selectedSchema)) {
+      const lockInfo = schemaLocks[schemaName || selectedSchema];
+      showNotification(`Schema is locked by ${lockInfo?.userDisplayName || 'another user'}`, 'error');
+      return;
+    }
     setSharedEditTableModal({
       isOpen: true,
       tableName,
       schemaName
     });
     setIsAnyModalOpen(true);
-  }, []);
+  }, [isSchemaLockedByOther, schemaLocks, selectedSchema, showNotification]);
 
   const closeEditTableModal = () => {
     setSharedEditTableModal({
@@ -701,20 +719,24 @@ export const AppProvider = ({ children }) => {
   
   // SCENARIO 4: Save Changes - Check for database changes before saving
   const saveChangesWithDatabaseCheck = useCallback(async () => {
+    // Block saving if schema is locked by another user
+    if (isSchemaLockedByOther(selectedSchema)) {
+      const lockInfo = schemaLocks[selectedSchema];
+      showNotification(`Schema is locked by ${lockInfo?.userDisplayName || 'another user'} — cannot save`, 'error');
+      return { success: false, reason: 'schema_locked' };
+    }
+
     // Check for database changes before saving
     const hasDbChanges = await checkForDatabaseChanges(() => {
-      // After database refresh, proceed with save
       actuallySaveChanges();
     });
-    
-    // If database changes modal is shown, stop here
+
     if (hasDbChanges) {
       return { success: false, reason: 'database_changes_detected' };
     }
-    
-    // No database changes, save directly
+
     return await actuallySaveChanges();
-  }, [checkForDatabaseChanges]);
+  }, [checkForDatabaseChanges, isSchemaLockedByOther, schemaLocks, selectedSchema, showNotification]);
 
   // Helper function to actually save changes
   const actuallySaveChanges = useCallback(async () => {
@@ -1106,6 +1128,14 @@ export const AppProvider = ({ children }) => {
     loadAllSchemasFirstTime, // NEW: Load all schemas from real DB and save to persistence DB
     isLoadingAllSchemas,
     loadingProgress,
+
+    // Schema Locks
+    schemaLocks,
+    acquireSchemaLock,
+    releaseSchemaLock,
+    isSchemaLockedByMe,
+    isSchemaLockedByOther,
+    refreshLocks,
 
     // ERD Data (with race condition protection during schema switching)
     erdData: (() => {

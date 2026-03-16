@@ -1,50 +1,44 @@
 import persistencePool from '../config/persistenceDb.js';
 
 /**
- * Lock Service - Manages table locks for multi-user collaboration
+ * Lock Service - Manages schema-level locks for multi-user collaboration
  */
 class LockService {
   /**
-   * Acquire lock on a table
+   * Acquire lock on a schema
    */
-  async acquireLock(schemaName, tableName, sessionId) {
+  async acquireLock(schemaName, sessionId) {
     try {
-      // Check if table is already locked
       const [existingLocks] = await persistencePool.execute(
-        'SELECT * FROM table_locks WHERE schema_name = ? AND table_name = ?',
-        [schemaName, tableName]
+        'SELECT * FROM schema_locks WHERE schema_name = ?',
+        [schemaName]
       );
 
       if (existingLocks.length > 0) {
         const existingLock = existingLocks[0];
-        
-        // Check if locked by same user (different tab)
+
         if (existingLock.locked_by === sessionId) {
           return {
             success: false,
             reason: 'already_locked_by_you',
-            message: 'You already have this table locked in another tab'
+            message: 'You already have this schema locked'
           };
         }
-        
-        // Active lock by another user
+
         return {
           success: false,
           reason: 'locked',
           lockedBy: existingLock.user_display_name,
           lockedAt: existingLock.locked_at,
-          message: `Table is locked by ${existingLock.user_display_name}`
+          message: `Schema is locked by ${existingLock.user_display_name}`
         };
       }
 
-      // Generate user display name
       const userDisplayName = await this.generateUserDisplayName(sessionId);
 
-      // Acquire lock
       const [result] = await persistencePool.execute(
-        `INSERT INTO table_locks (schema_name, table_name, locked_by, user_display_name) 
-         VALUES (?, ?, ?, ?)`,
-        [schemaName, tableName, sessionId, userDisplayName]
+        `INSERT INTO schema_locks (schema_name, locked_by, user_display_name) VALUES (?, ?, ?)`,
+        [schemaName, sessionId, userDisplayName]
       );
 
       return {
@@ -52,27 +46,25 @@ class LockService {
         lock: {
           id: result.insertId,
           schemaName,
-          tableName,
           lockedBy: sessionId,
           userDisplayName,
           lockedAt: new Date()
         }
       };
     } catch (error) {
-      console.error('Error acquiring lock:', error);
+      console.error('Error acquiring schema lock:', error);
       throw error;
     }
   }
 
   /**
-   * Release lock on a table
+   * Release lock on a schema
    */
-  async releaseLock(schemaName, tableName, sessionId) {
+  async releaseLock(schemaName, sessionId) {
     try {
-      // Verify ownership
       const [locks] = await persistencePool.execute(
-        'SELECT * FROM table_locks WHERE schema_name = ? AND table_name = ? AND locked_by = ?',
-        [schemaName, tableName, sessionId]
+        'SELECT * FROM schema_locks WHERE schema_name = ? AND locked_by = ?',
+        [schemaName, sessionId]
       );
 
       if (locks.length === 0) {
@@ -83,36 +75,30 @@ class LockService {
         };
       }
 
-      // Release lock
       await persistencePool.execute(
-        'DELETE FROM table_locks WHERE schema_name = ? AND table_name = ? AND locked_by = ?',
-        [schemaName, tableName, sessionId]
+        'DELETE FROM schema_locks WHERE schema_name = ? AND locked_by = ?',
+        [schemaName, sessionId]
       );
 
-      return {
-        success: true,
-        message: 'Lock released'
-      };
+      return { success: true, message: 'Lock released' };
     } catch (error) {
-      console.error('Error releasing lock:', error);
+      console.error('Error releasing schema lock:', error);
       throw error;
     }
   }
 
   /**
-   * Get lock status for a specific table
+   * Get lock status for a schema
    */
-  async getLockStatus(schemaName, tableName) {
+  async getLockStatus(schemaName) {
     try {
       const [locks] = await persistencePool.execute(
-        'SELECT * FROM table_locks WHERE schema_name = ? AND table_name = ?',
-        [schemaName, tableName]
+        'SELECT * FROM schema_locks WHERE schema_name = ?',
+        [schemaName]
       );
 
       if (locks.length === 0) {
-        return {
-          isLocked: false
-        };
+        return { isLocked: false };
       }
 
       const lock = locks[0];
@@ -120,34 +106,40 @@ class LockService {
         isLocked: true,
         lockedBy: lock.locked_by,
         userDisplayName: lock.user_display_name,
-        lockedAt: lock.locked_at,
-        lastHeartbeat: lock.last_heartbeat
+        lockedAt: lock.locked_at
       };
     } catch (error) {
-      console.error('Error getting lock status:', error);
+      console.error('Error getting schema lock status:', error);
       throw error;
     }
   }
 
   /**
-   * Get all locks for a schema
+   * Get lock status for multiple schemas at once
    */
-  async getSchemaLocks(schemaName) {
+  async getBulkLockStatus(schemaNames) {
     try {
+      if (!schemaNames || schemaNames.length === 0) return {};
+
+      const placeholders = schemaNames.map(() => '?').join(',');
       const [locks] = await persistencePool.execute(
-        'SELECT * FROM table_locks WHERE schema_name = ? ORDER BY locked_at DESC',
-        [schemaName]
+        `SELECT * FROM schema_locks WHERE schema_name IN (${placeholders})`,
+        schemaNames
       );
 
-      return locks.map(lock => ({
-        tableName: lock.table_name,
-        lockedBy: lock.locked_by,
-        userDisplayName: lock.user_display_name,
-        lockedAt: lock.locked_at,
-        lastHeartbeat: lock.last_heartbeat
-      }));
+      const result = {};
+      locks.forEach(lock => {
+        result[lock.schema_name] = {
+          isLocked: true,
+          lockedBy: lock.locked_by,
+          userDisplayName: lock.user_display_name,
+          lockedAt: lock.locked_at
+        };
+      });
+
+      return result;
     } catch (error) {
-      console.error('Error getting schema locks:', error);
+      console.error('Error getting bulk lock status:', error);
       throw error;
     }
   }
@@ -157,9 +149,8 @@ class LockService {
    */
   async generateUserDisplayName(sessionId) {
     try {
-      // Check if this session already has a display name
       const [existing] = await persistencePool.execute(
-        'SELECT user_display_name FROM table_locks WHERE locked_by = ? LIMIT 1',
+        'SELECT user_display_name FROM schema_locks WHERE locked_by = ? LIMIT 1',
         [sessionId]
       );
 
@@ -167,23 +158,17 @@ class LockService {
         return existing[0].user_display_name;
       }
 
-      // Get all existing display names
       const [allNames] = await persistencePool.execute(
-        'SELECT DISTINCT user_display_name FROM table_locks ORDER BY user_display_name'
+        'SELECT DISTINCT user_display_name FROM schema_locks ORDER BY user_display_name'
       );
 
       const usedNames = allNames.map(row => row.user_display_name);
-
-      // Find next available letter
       const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
       for (let letter of alphabet) {
         const name = `User ${letter}`;
-        if (!usedNames.includes(name)) {
-          return name;
-        }
+        if (!usedNames.includes(name)) return name;
       }
 
-      // If all letters used, use numbers
       return `User ${Date.now()}`;
     } catch (error) {
       console.error('Error generating user display name:', error);

@@ -1,4 +1,4 @@
-import { memo, useState, useEffect, useRef } from "react";
+import { memo, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Handle, Position } from "@xyflow/react";
 import {
@@ -6,8 +6,6 @@ import {
   FiKey,
   FiLink,
   FiSettings,
-  FiLock,
-  FiUnlock,
 } from "react-icons/fi";
 import { Badge } from "../common/Badge";
 import { BADGE_VARIANTS } from "../../utils/constants";
@@ -15,7 +13,6 @@ import { formatDataTypeForDisplay, getFullDataType } from "../../utils/dataTypeF
 import { useApp } from "../../context/AppContext";
 import { calculatePortPosition } from "../../utils/smartPortDistribution";
 import { clsx } from "clsx";
-import lockService from "../../services/lockService";
 import "./TableCard.css";
 
 export const TableCard = memo(({ data }) => {
@@ -47,22 +44,6 @@ export const TableCard = memo(({ data }) => {
 
   // State for self-join hover highlighting
   const [selfJoinHover, setSelfJoinHover] = useState(false);
-  
-  // Lock state (from backend)
-  const [lockState, setLockState] = useState({
-    isLocked: false,
-    lockedBy: null, // session ID
-    userDisplayName: null, // 'User A', 'User B', etc.
-  });
-  
-  // Confirmation modal state for lock/unlock
-  const [lockConfirmModal, setLockConfirmModal] = useState({
-    isOpen: false,
-    action: null, // 'lock' or 'unlock'
-  });
-  
-  // Get current session ID
-  const mySessionId = lockService.getSessionId();
 
   // Check if this table has self-referencing relationships
   const hasSelfJoin = () => {
@@ -293,136 +274,9 @@ export const TableCard = memo(({ data }) => {
   };
 
   const handleEditTable = () => {
-    // Check if table is locked by someone else
-    if (lockState.isLocked && lockState.lockedBy !== mySessionId) {
-      showNotification(
-        `Table "${tableName}" is locked by ${lockState.userDisplayName}`,
-        'warning'
-      );
-      handleCloseContextMenu();
-      return;
-    }
-    
-    // Use shared modal from AppContext for constraint editing only
     openEditTableModal(tableName, erdData?.schemaName || 'Unknown Schema');
     handleCloseContextMenu();
   };
-  
-  // Show confirmation modal for lock/unlock
-  const handleLockTable = () => {
-    handleCloseContextMenu();
-    
-    if (lockState.isLocked && lockState.lockedBy === mySessionId) {
-      // Show unlock confirmation
-      setLockConfirmModal({ isOpen: true, action: 'unlock' });
-    } else if (!lockState.isLocked) {
-      // Show lock confirmation
-      setLockConfirmModal({ isOpen: true, action: 'lock' });
-    }
-  };
-  
-  // Confirm lock/unlock action
-  const confirmLockAction = async () => {
-    if (lockConfirmModal.action === 'lock') {
-      // Acquire lock
-      try {
-        const result = await lockService.acquireLock(erdData?.schemaName, tableName);
-        
-        if (result.success) {
-          setLockState({
-            isLocked: true,
-            lockedBy: mySessionId,
-            userDisplayName: result.lock.userDisplayName
-          });
-          showNotification(`Table "${tableName}" locked`, 'success');
-        } else {
-          // Lock failed
-          if (result.reason === 'already_locked_by_you') {
-            showNotification(result.message, 'warning');
-          } else if (result.reason === 'locked') {
-            showNotification(`Table is locked by ${result.lockedBy}`, 'warning');
-          } else {
-            showNotification('Failed to acquire lock', 'error');
-          }
-        }
-      } catch (error) {
-        console.error('Error acquiring lock:', error);
-        showNotification('Failed to acquire lock', 'error');
-      }
-    } else if (lockConfirmModal.action === 'unlock') {
-      // Release lock
-      try {
-        const result = await lockService.releaseLock(erdData?.schemaName, tableName);
-        
-        if (result.success) {
-          setLockState({ isLocked: false, lockedBy: null, userDisplayName: null });
-          showNotification(`Table "${tableName}" unlocked`, 'success');
-        } else {
-          showNotification('Failed to release lock', 'error');
-        }
-      } catch (error) {
-        console.error('Error releasing lock:', error);
-        showNotification('Failed to release lock', 'error');
-      }
-    }
-    
-    setLockConfirmModal({ isOpen: false, action: null });
-  };
-  
-  // Cancel lock/unlock action
-  const cancelLockAction = () => {
-    setLockConfirmModal({ isOpen: false, action: null });
-  };
-  
-  // Load lock status on mount and when schema/table changes
-  useEffect(() => {
-    const loadLockStatus = async () => {
-      if (!erdData?.schemaName || !tableName) return;
-      
-      try {
-        const status = await lockService.getLockStatus(erdData.schemaName, tableName);
-        
-        if (status.isLocked) {
-          setLockState({
-            isLocked: true,
-            lockedBy: status.lockedBy,
-            userDisplayName: status.userDisplayName
-          });
-        } else {
-          setLockState({ isLocked: false, lockedBy: null, userDisplayName: null });
-        }
-      } catch (error) {
-        console.error('Error loading lock status:', error);
-      }
-    };
-    
-    loadLockStatus();
-  }, [erdData?.schemaName, tableName]);
-  
-  // Poll for lock status changes (every 5 seconds)
-  useEffect(() => {
-    if (!erdData?.schemaName || !tableName) return;
-    
-    const pollInterval = setInterval(async () => {
-      try {
-        const status = await lockService.getLockStatus(erdData.schemaName, tableName);
-        
-        // Only update if lock status changed
-        if (status.isLocked !== lockState.isLocked || 
-            status.lockedBy !== lockState.lockedBy) {
-          setLockState({
-            isLocked: status.isLocked,
-            lockedBy: status.lockedBy || null,
-            userDisplayName: status.userDisplayName || null
-          });
-        }
-      } catch (error) {
-        console.error('Error polling lock status:', error);
-      }
-    }, 5000); // 5 seconds
-    
-    return () => clearInterval(pollInterval);
-  }, [erdData?.schemaName, tableName, lockState.isLocked, lockState.lockedBy]);
 
   // REMOVED: All structure editing handlers
   // - toggleEditMode, handleTableNameDoubleClick, handleTableNameSave, handleTableNameCancel, handleTableNameKeyDown

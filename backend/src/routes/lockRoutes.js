@@ -5,20 +5,20 @@ const router = express.Router();
 
 /**
  * POST /api/locks/acquire
- * Acquire lock on a table
+ * Acquire lock on a schema
  */
 router.post('/acquire', async (req, res) => {
   try {
-    const { schemaName, tableName, sessionId } = req.body;
+    const { schemaName, sessionId } = req.body;
 
-    if (!schemaName || !tableName || !sessionId) {
+    if (!schemaName || !sessionId) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields: schemaName, tableName, sessionId'
+        message: 'Missing required fields: schemaName, sessionId'
       });
     }
 
-    const result = await lockService.acquireLock(schemaName, tableName, sessionId);
+    const result = await lockService.acquireLock(schemaName, sessionId);
 
     if (!result.success) {
       return res.status(409).json(result);
@@ -27,29 +27,26 @@ router.post('/acquire', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error in acquire lock route:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
 /**
  * POST /api/locks/release
- * Release lock on a table
+ * Release lock on a schema
  */
 router.post('/release', async (req, res) => {
   try {
-    const { schemaName, tableName, sessionId } = req.body;
+    const { schemaName, sessionId } = req.body;
 
-    if (!schemaName || !tableName || !sessionId) {
+    if (!schemaName || !sessionId) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields: schemaName, tableName, sessionId'
+        message: 'Missing required fields: schemaName, sessionId'
       });
     }
 
-    const result = await lockService.releaseLock(schemaName, tableName, sessionId);
+    const result = await lockService.releaseLock(schemaName, sessionId);
 
     if (!result.success) {
       return res.status(403).json(result);
@@ -58,48 +55,45 @@ router.post('/release', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error in release lock route:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
 /**
- * GET /api/locks/status/:schema/:table
- * Get lock status for a specific table
+ * GET /api/locks/status/:schema
+ * Get lock status for a schema
  */
-router.get('/status/:schema/:table', async (req, res) => {
+router.get('/status/:schema', async (req, res) => {
   try {
-    const { schema, table } = req.params;
-
-    const result = await lockService.getLockStatus(schema, table);
+    const { schema } = req.params;
+    const result = await lockService.getLockStatus(schema);
     res.json(result);
   } catch (error) {
     console.error('Error in get lock status route:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
 /**
- * GET /api/locks/schema/:schema
- * Get all locks for a schema
+ * POST /api/locks/bulk-status
+ * Get lock status for multiple schemas at once
  */
-router.get('/schema/:schema', async (req, res) => {
+router.post('/bulk-status', async (req, res) => {
   try {
-    const { schema } = req.params;
+    const { schemaNames } = req.body;
 
-    const locks = await lockService.getSchemaLocks(schema);
-    res.json({ locks });
+    if (!schemaNames || !Array.isArray(schemaNames)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required field: schemaNames (array)'
+      });
+    }
+
+    const result = await lockService.getBulkLockStatus(schemaNames);
+    res.json({ locks: result });
   } catch (error) {
-    console.error('Error in get schema locks route:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    console.error('Error in bulk lock status route:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
