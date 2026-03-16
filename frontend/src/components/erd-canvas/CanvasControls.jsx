@@ -12,7 +12,8 @@ export const CanvasControls = ({ isCollapsed }) => {
     showNotification, 
     openExportPDFModal, 
     showOutOfSyncModal,
-    saveChangesWithDatabaseCheck // SCENARIO 4: Use new save function with DB check
+    saveChangesWithDatabaseCheck, // SCENARIO 4: Use new save function with DB check
+    checkForDatabaseChanges // For sync button
   } = useApp();
   const { 
     originalSchema, 
@@ -47,6 +48,21 @@ export const CanvasControls = ({ isCollapsed }) => {
       return;
     }
     openExportPDFModal?.();
+  };
+
+  const handleSyncClick = async () => {
+    if (!selectedSchema) {
+      showNotification?.("Please select a schema first", "warning");
+      return;
+    }
+    
+    // Check for database changes and show sync modal
+    const hasChanges = await checkForDatabaseChanges?.();
+    
+    // If no changes detected, show notification
+    if (hasChanges === false) {
+      showNotification?.("No changes to sync. Database is up to date.", "info");
+    }
   };
 
   const handleSaveClick = () => {
@@ -155,6 +171,23 @@ export const CanvasControls = ({ isCollapsed }) => {
             <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
           <span className="export-button-text">Export ERD</span>
+        </button>
+
+        {/* Sync Button */}
+        <button
+          className="canvas-control-button sync-button"
+          title="Sync with actual database"
+          onClick={handleSyncClick}
+          disabled={!selectedSchema}
+        >
+          <img 
+            src="/sync.png" 
+            alt="Sync" 
+            width="16" 
+            height="16"
+            style={{ filter: !selectedSchema ? 'grayscale(100%) opacity(0.5)' : 'none' }}
+          />
+          <span className="sync-button-text">Pull Changes</span>
         </button>
       </div>
 

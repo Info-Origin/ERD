@@ -159,26 +159,9 @@ export const VirtualSchemaProvider = ({ children }) => {
               // Column was explicitly created by user in UI - keep it
               merged.tables[tableName].columns[columnName] = virtualColumn;
             } else {
-              // Column came from real DB originally but is now deleted
-              // Check baseline to confirm
-              const existedInBaseline = originalSchema?.tables?.[tableName]?.columns?.[columnName];
-              
-              if (existedInBaseline) {
-                // Column existed in baseline but not in current real DB - it was deleted/renamed
-                // Don't add to merged schema (respect real DB changes)
-              } else {
-                // CRITICAL FIX: Check if this is an FK column that was added after baseline
-                // If column has FK flag but doesn't exist in real DB or baseline, it was likely
-                // an FK column added to actual DB after baseline, then deleted
-                // Don't keep it in virtual schema
-                if (virtualColumn.fk) {
-                  // Don't add to merged schema
-                } else {
-                  // Edge case: column in virtual but not in baseline or real DB, and not FK
-                  // This shouldn't happen, but keep it to be safe
-                  merged.tables[tableName].columns[columnName] = virtualColumn;
-                }
-              }
+              // Column came from real DB originally but is now deleted from real DB
+              // Since it's not user-created, always respect real DB - don't keep it
+              // (covers both: existed in old baseline and was dropped, or was added after baseline and then dropped)
             }
           }
         });
@@ -673,9 +656,48 @@ export const VirtualSchemaProvider = ({ children }) => {
               baselineNeedsUpdate = true;
             }
           });
+
+          // CRITICAL FIX: Sync constraint flags (pk, unique, nullable) for existing columns
+          // Without this, constraint changes in real DB keep re-triggering the modal on every sync
+          baselineColumns.forEach(columnName => {
+            if (realColumns.includes(columnName)) {
+              const baselineCol = updatedBaseline.tables[tableName].columns[columnName];
+              const realCol = realTable.columns[columnName];
+              if (
+                baselineCol.pk !== realCol.pk ||
+                baselineCol.unique !== realCol.unique ||
+                baselineCol.nullable !== realCol.nullable
+              ) {
+                updatedBaseline.tables[tableName].columns[columnName] = {
+                  ...baselineCol,
+                  pk: realCol.pk,
+                  unique: realCol.unique,
+                  nullable: realCol.nullable
+                };
+                baselineNeedsUpdate = true;
+              }
+            }
+          });
         }
       });
       
+      // CRITICAL FIX: Sync relationships in baseline with real DB relationships
+      // Without this, new/deleted FKs in real DB keep re-triggering the modal on every sync
+      const baselineRelKeys = new Set(
+        (updatedBaseline.relationships || []).map(r => `${r.fromTable}.${r.fromColumn}->${r.toTable}.${r.toColumn}`)
+      );
+      const realRelKeys = new Set(
+        (newRealSchema.relationships || []).map(r => `${r.fromTable}.${r.fromColumn}->${r.toTable}.${r.toColumn}`)
+      );
+      const relsNeedUpdate =
+        [...realRelKeys].some(k => !baselineRelKeys.has(k)) ||
+        [...baselineRelKeys].some(k => !realRelKeys.has(k));
+
+      if (relsNeedUpdate) {
+        updatedBaseline.relationships = newRealSchema.relationships || [];
+        baselineNeedsUpdate = true;
+      }
+
       // Save updated baseline if changes were made
       if (baselineNeedsUpdate) {
         await saveBaselineSchema(currentSchemaName, updatedBaseline, connectionId);

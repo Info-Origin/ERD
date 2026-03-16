@@ -273,3 +273,32 @@
 .export-button-text {
   white-space: nowrap;
 }
+
+/* Sync Button Styles */
+.canvas-control-button.sync-button {
+  width: auto;
+  padding: var(--spacing-sm) var(--spacing-md);
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  background-color: var(--bg-primary);
+  border: 1px solid #8b5cf6;
+  cursor: pointer !important;
+}
+
+.canvas-control-button.sync-button:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+  border: 1px solid #8b5cf6;
+}
+
+.canvas-control-button.sync-button:disabled {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+.sync-button-text {
+  white-space: nowrap;
+}
