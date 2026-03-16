@@ -28,7 +28,7 @@ export const SchemaExplorer = ({ onToggleCollapse, isCollapsed }) => {
     showNotification,
   } = useApp();
 
-  const { isConnected, activeConnection, connect, disconnect } = useConnection();
+  const { isConnected, activeConnection, connect, disconnect, setDynamicSchemaCache } = useConnection();
 
   const [schemaListHeight, setSchemaListHeight] = useState(200);
   const [showDisconnectConfirmation, setShowDisconnectConfirmation] = useState(false);
@@ -116,9 +116,14 @@ export const SchemaExplorer = ({ onToggleCollapse, isCollapsed }) => {
     }
   };
 
-  const handleConnect = (connectionData) => {
+  const handleConnect = async (connectionData) => {
     connect(connectionData);
-    refetchSchemas();
+    // Fetch schema list from dynamic DB and auto-select first schema
+    // useERD re-runs when isDynamicConnected flips to true, so timing is handled automatically
+    const schemaList = await refetchSchemas();
+    if (schemaList && schemaList.length > 0) {
+      setTimeout(() => selectSchema(schemaList[0]), 100);
+    }
   };
 
   const handleDisconnect = async () => {
@@ -126,9 +131,10 @@ export const SchemaExplorer = ({ onToggleCollapse, isCollapsed }) => {
   };
 
   const performDisconnect = async () => {
+    // disconnect() fires 'dynamic-connection-ended' event which AppContext listens to
+    // and restores original app schemas from persistence DB
     await disconnect();
     setShowDisconnectConfirmation(false);
-    setTimeout(() => refetchSchemas(), 100);
   };
 
   const filteredSchemas = schemas.filter((schema) =>

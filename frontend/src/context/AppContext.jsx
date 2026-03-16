@@ -4,6 +4,7 @@ import { useERD } from "../hooks/useERD";
 import { useSelection } from "../hooks/useSelection";
 import { useDebounce } from "../hooks/useDebounce";
 import { useVirtualSchema } from "./VirtualSchemaContext";
+import { useConnection } from "./ConnectionContext";
 import { useSchemaLocks } from "../hooks/useSchemaLocks";
 import { revertFKChange } from "../utils/fkComparison";
 import { detectCircularDependencies } from "../utils/circularDependencyDetector";
@@ -22,14 +23,9 @@ export const AppProvider = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedRelationship, setHighlightedRelationship] = useState(null);
   
-  // Get connectionId from ConnectionContext for multi-database support
-  const ConnectionContext = createContext();
-  try {
-    const connectionContext = useContext(require('./ConnectionContext').ConnectionContext);
-    var connectionId = connectionContext?.connectionId || null;
-  } catch (e) {
-    var connectionId = null; // Fallback if ConnectionContext not available
-  }
+  // Get connectionId and dynamic connection state from ConnectionContext
+  const { isDynamicConnected } = useConnection();
+  const connectionId = null; // connectionId for multi-db baseline keys (not used for dynamic)
   
   // NEW: Hover-based relationship highlighting
   const [hoveredTable, setHoveredTable] = useState(null);
@@ -247,26 +243,33 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Check if there are any saved schemas in persistence DB for the selected application
+        // EDGE CASE 3: Browser refresh with active dynamic connection
+        // If dynamic connection is active, reload schemas from dynamic DB (not persistence DB)
+        const token = sessionStorage.getItem('db_connection_token');
+        if (token) {
+          // Dynamic connection is active - refetchSchemas will use the dynamic DB
+          // useERD will fetch from dynamic DB via isDynamicConnected flag
+          const schemaList = await refetchSchemas();
+          // Auto-select first schema after refresh
+          if (schemaList && schemaList.length > 0) {
+            setTimeout(() => originalSelectSchema(schemaList[0]), 100);
+          }
+          return;
+        }
+
+        // Normal flow: load from persistence DB
         const persistenceService = (await import('../services/persistenceService')).default;
         const schemaService = (await import('../services/schemaService')).default;
         
-        // Get schemas that SHOULD exist for this application
         const appSchemas = await schemaService.getSchemas(selectedApplication.uuid);
-        
-        // Check if ANY of this application's schemas are saved in persistence DB
         const savedSchemas = await persistenceService.getSavedSchemas();
         const savedSchemaNames = savedSchemas.map(s => s.schema_name);
         const appSchemasInDB = appSchemas.filter(s => savedSchemaNames.includes(s));
         
         if (appSchemasInDB.length > 0) {
-          // This application's schemas exist in persistence DB - load them
           setSchemasDirectly(appSchemas.filter(s => savedSchemaNames.includes(s)));
           
-          // Check if there's a last selected schema in sessionStorage
           const lastSelectedSchema = sessionStorage.getItem('reverseERD_lastSelectedSchema');
-          
-          // Auto-select the last selected schema, or first schema if none saved
           const schemaToSelect = (lastSelectedSchema && appSchemasInDB.includes(lastSelectedSchema)) 
             ? lastSelectedSchema 
             : appSchemasInDB[0];
@@ -277,8 +280,6 @@ export const AppProvider = ({ children }) => {
             }, 100);
           }
         } else {
-          // No schemas for this application in persistence DB
-          // DO NOT call setSchemasDirectly - keep hasLoaded = false so "Load Schemas" button shows
           console.log(`ℹ️ No saved schemas for ${selectedApplication.label}, showing "Load Schemas" button`);
         }
       } catch (error) {
@@ -287,7 +288,40 @@ export const AppProvider = ({ children }) => {
     };
 
     initializeApp();
-  }, [selectedApplication.uuid]); // Re-run when application changes
+  }, [selectedApplication.uuid]);
+
+  // EDGE CASE 2 & 8: Listen for dynamic connection ended (disconnect or token expiry)
+  // Restore original application schemas from persistence DB
+  useEffect(() => {
+    const handleDynamicConnectionEnded = async () => {
+      console.log('🔌 Dynamic connection ended - restoring original app schemas from persistence DB');
+      try {
+        clearSelection();
+
+        const persistenceService = (await import('../services/persistenceService')).default;
+        const schemaService = (await import('../services/schemaService')).default;
+
+        const appSchemas = await schemaService.getSchemas(selectedApplication.uuid);
+        const savedSchemas = await persistenceService.getSavedSchemas();
+        const savedSchemaNames = savedSchemas.map(s => s.schema_name);
+        const appSchemasInDB = appSchemas.filter(s => savedSchemaNames.includes(s));
+
+        if (appSchemasInDB.length > 0) {
+          setSchemasDirectly(appSchemasInDB);
+          setTimeout(() => {
+            originalSelectSchema(appSchemasInDB[0]);
+          }, 100);
+        } else {
+          resetSchemasHasLoaded();
+        }
+      } catch (error) {
+        console.error('Error restoring schemas after disconnect:', error);
+      }
+    };
+
+    window.addEventListener('dynamic-connection-ended', handleDynamicConnectionEnded);
+    return () => window.removeEventListener('dynamic-connection-ended', handleDynamicConnectionEnded);
+  }, [selectedApplication.uuid]);
 
   // ==================== DATABASE CHANGES DETECTION ====================
   // MUST BE DEFINED EARLY - Used by other functions below
@@ -444,6 +478,11 @@ export const AppProvider = ({ children }) => {
   // Shared Edit Table Modal functions
   // Open modal directly without database change check
   const openEditTableModal = useCallback((tableName, schemaName) => {
+    // EDGE CASE 6: Block editing when dynamic DB is connected (read-only)
+    if (isDynamicConnected) {
+      showNotification('Connected to a dynamic database — view only, cannot edit tables', 'error');
+      return;
+    }
     // Block editing if schema is locked by another user
     if (isSchemaLockedByOther(schemaName || selectedSchema)) {
       const lockInfo = schemaLocks[schemaName || selectedSchema];
@@ -719,6 +758,12 @@ export const AppProvider = ({ children }) => {
   
   // SCENARIO 4: Save Changes - Check for database changes before saving
   const saveChangesWithDatabaseCheck = useCallback(async () => {
+    // EDGE CASE 6: Block saving when dynamic DB is connected (read-only)
+    if (isDynamicConnected) {
+      showNotification('Connected to a dynamic database — view only, cannot save changes', 'error');
+      return { success: false, reason: 'dynamic_connection_read_only' };
+    }
+
     // Block saving if schema is locked by another user
     if (isSchemaLockedByOther(selectedSchema)) {
       const lockInfo = schemaLocks[selectedSchema];
@@ -769,7 +814,9 @@ export const AppProvider = ({ children }) => {
   // Initialize virtual schema when ERD data loads
   useEffect(() => {
     if (erdData && !erdLoading && selectedSchema) {
-      virtualSchema.initializeSchema(erdData);
+      // EDGE CASE 5: When dynamic DB is connected, skip persistence DB reads/writes
+      // Pass isDynamic flag so initializeSchema doesn't pollute persistence DB
+      virtualSchema.initializeSchema(erdData, null, !isDynamicConnected);
     }
   }, [erdData, erdLoading, selectedSchema, virtualSchema.initializeSchema]);
 
@@ -1118,6 +1165,7 @@ export const AppProvider = ({ children }) => {
     selectedApplication,
     setSelectedApplication,
     reloadSchemasForApplication,
+    isDynamicConnected, // read-only mode when dynamic DB is connected
     
     // Schemas
     schemas,

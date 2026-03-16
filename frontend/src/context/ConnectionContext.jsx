@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4001/api';
 
@@ -15,6 +15,21 @@ export const useConnection = () => {
 export const ConnectionProvider = ({ children }) => {
   const [activeConnection, setActiveConnection] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [isDynamicConnected, setIsDynamicConnected] = useState(false);
+
+  // In-memory cache: schemaName -> ERD data (cleared on disconnect/refresh)
+  // This avoids polluting persistence DB with another company's DB schemas
+  const dynamicSchemaCacheRef = useRef({});
+
+  const getDynamicSchemaCache = () => dynamicSchemaCacheRef.current;
+
+  const setDynamicSchemaCache = (schemaName, data) => {
+    dynamicSchemaCacheRef.current[schemaName] = data;
+  };
+
+  const clearDynamicSchemaCache = () => {
+    dynamicSchemaCacheRef.current = {};
+  };
 
   // Load connection from sessionStorage on mount
   useEffect(() => {
@@ -27,6 +42,7 @@ export const ConnectionProvider = ({ children }) => {
         info: JSON.parse(info)
       });
       setIsConnected(true);
+      setIsDynamicConnected(true);
     }
 
     // Listen for connection expired events
@@ -34,8 +50,14 @@ export const ConnectionProvider = ({ children }) => {
       console.warn('Connection expired:', event.detail?.message);
       setActiveConnection(null);
       setIsConnected(false);
+      setIsDynamicConnected(false);
+      clearDynamicSchemaCache();
       sessionStorage.removeItem('db_connection_token');
       sessionStorage.removeItem('db_connection_info');
+      // Clear last selected schema so disconnect restores original app schemas
+      sessionStorage.removeItem('reverseERD_lastSelectedSchema');
+      // Notify app to restore original schemas
+      window.dispatchEvent(new CustomEvent('dynamic-connection-ended'));
     };
 
     window.addEventListener('connection-expired', handleConnectionExpired);
@@ -54,19 +76,26 @@ export const ConnectionProvider = ({ children }) => {
       info: connectionData.connectionInfo
     });
     setIsConnected(true);
+    setIsDynamicConnected(true);
   };
 
   const disconnect = async () => {
-    // Clear token FIRST before making the disconnect API call
     const currentConnection = activeConnection;
     
-    // Clear state and storage immediately
+    // Clear cache and state immediately
+    clearDynamicSchemaCache();
     sessionStorage.removeItem('db_connection_token');
     sessionStorage.removeItem('db_connection_info');
+    // Clear last selected schema so initializeApp restores original app schemas correctly
+    sessionStorage.removeItem('reverseERD_lastSelectedSchema');
     setActiveConnection(null);
     setIsConnected(false);
+    setIsDynamicConnected(false);
+
+    // Notify app to restore original schemas
+    window.dispatchEvent(new CustomEvent('dynamic-connection-ended'));
     
-    // Then try to close the connection on backend (best effort)
+    // Best-effort backend cleanup
     if (currentConnection) {
       try {
         await fetch(`${API_BASE_URL}/connection/${currentConnection.info.connectionId}`, {
@@ -77,7 +106,6 @@ export const ConnectionProvider = ({ children }) => {
         });
       } catch (error) {
         console.error('Error disconnecting:', error);
-        // Ignore errors - connection is already cleared on frontend
       }
     }
   };
@@ -93,9 +121,13 @@ export const ConnectionProvider = ({ children }) => {
     <ConnectionContext.Provider value={{
       activeConnection,
       isConnected,
+      isDynamicConnected,
       connect,
       disconnect,
-      getAuthHeader
+      getAuthHeader,
+      getDynamicSchemaCache,
+      setDynamicSchemaCache,
+      clearDynamicSchemaCache,
     }}>
       {children}
     </ConnectionContext.Provider>

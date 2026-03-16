@@ -20,9 +20,11 @@ export const useSchemas = (autoFetch = false) => {
       const data = await schemaService.getSchemas();
       setSchemas(data);
       setHasLoaded(true);
+      return data; // Return so callers can auto-select first schema
     } catch (err) {
       setError(err.message || "Failed to load schemas");
       console.error("Error fetching schemas:", err);
+      return [];
     } finally {
       setLoading(false);
     }

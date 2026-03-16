@@ -343,6 +343,24 @@ export const VirtualSchemaProvider = ({ children }) => {
     if (connId !== null) {
       setConnectionId(connId);
     }
+
+    // EDGE CASE 5: Dynamic connection - skip ALL persistence DB reads/writes
+    // Dynamic DB schemas must NOT pollute the persistence DB
+    if (!isFromPersistenceDB) {
+      setCurrentSchemaName(schemaName);
+      setOriginalSchema(erdData);
+      const cloned = JSON.parse(JSON.stringify(erdData));
+      setWorkingSchema(cloned);
+      const newHist = [cloned];
+      setHistory(newHist);
+      historyRef.current = newHist;
+      setHistoryIndex(0);
+      historyIndexRef.current = 0;
+      setIsModified(false);
+      setHasUnsavedChanges(false);
+      setIsSwitchingSchema(false);
+      return;
+    }
     
     // If switching to a different schema, prepare new schema data first, then switch atomically
     if (currentSchemaName && currentSchemaName !== schemaName) {
