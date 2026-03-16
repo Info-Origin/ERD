@@ -59,6 +59,7 @@ export const VirtualSchemaProvider = ({ children }) => {
   const [isSwitchingSchema, setIsSwitchingSchema] = useState(false);
   const [realDbHistory, setRealDbHistory] = useState([]); // Track real DB changes over time
   const [connectionId, setConnectionId] = useState(null); // Track current connection ID
+  const [connectionPrefix, setConnectionPrefix] = useState(null); // Prefix for persistence keys (dynamic connection)
   const historyIndexRef = useRef(-1);
   const historyRef = useRef([]);
 
@@ -77,12 +78,14 @@ export const VirtualSchemaProvider = ({ children }) => {
   // Auto-save table positions (canvas layout only)
   useEffect(() => {
     if (currentSchemaName && Object.keys(tablePositions).length > 0) {
+      // Build the persistence key (prefixed for dynamic connections)
+      const key = connectionPrefix ? `${connectionPrefix}${currentSchemaName}` : currentSchemaName;
       // Save asynchronously without blocking UI
-      saveTablePositions(currentSchemaName, tablePositions).catch(err => {
+      saveTablePositions(key, tablePositions).catch(err => {
         console.warn('Failed to save table positions:', err);
       });
     }
-  }, [tablePositions, currentSchemaName]);
+  }, [tablePositions, currentSchemaName, connectionPrefix]);
 
   // Merge real database schema with virtual schema changes
   const mergeSchemas = useCallback((realSchema, virtualSchema, originalSchema = null, dbHistory = []) => {
@@ -339,28 +342,17 @@ export const VirtualSchemaProvider = ({ children }) => {
 
     const schemaName = erdData.schemaName;
     
-    // Update connectionId if provided
+    // Update connectionId and connectionPrefix if provided
     if (connId !== null) {
       setConnectionId(connId);
+      setConnectionPrefix(connId); // connId IS the prefix (e.g. "dynamic_abc123_")
+    } else {
+      // Clear prefix when not dynamic
+      setConnectionPrefix(null);
     }
 
-    // EDGE CASE 5: Dynamic connection - skip ALL persistence DB reads/writes
-    // Dynamic DB schemas must NOT pollute the persistence DB
-    if (!isFromPersistenceDB) {
-      setCurrentSchemaName(schemaName);
-      setOriginalSchema(erdData);
-      const cloned = JSON.parse(JSON.stringify(erdData));
-      setWorkingSchema(cloned);
-      const newHist = [cloned];
-      setHistory(newHist);
-      historyRef.current = newHist;
-      setHistoryIndex(0);
-      historyIndexRef.current = 0;
-      setIsModified(false);
-      setHasUnsavedChanges(false);
-      setIsSwitchingSchema(false);
-      return;
-    }
+    // Build the persistence key: prefixed for dynamic connections, plain for local
+    const persistenceKey = connId ? `${connId}${schemaName}` : schemaName;
     
     // If switching to a different schema, prepare new schema data first, then switch atomically
     if (currentSchemaName && currentSchemaName !== schemaName) {
@@ -368,7 +360,7 @@ export const VirtualSchemaProvider = ({ children }) => {
       setIsSwitchingSchema(true);
       
       // Prepare new schema data
-      const savedTablePositions = await loadTablePositions(schemaName);
+      const savedTablePositions = await loadTablePositions(persistenceKey);
       
       // Apply FK detection to schema based on relationships
       const applyFKDetection = (schema) => {
@@ -397,7 +389,7 @@ export const VirtualSchemaProvider = ({ children }) => {
       };
 
       // Prepare new working schema
-      const savedSchema = await loadFromStorage(schemaName);
+      const savedSchema = await loadFromStorage(persistenceKey);
       
       let newWorkingSchema;
       let newHistory;
@@ -454,12 +446,12 @@ export const VirtualSchemaProvider = ({ children }) => {
     // CRITICAL: Load baseline schema separately - NEVER use erdData as originalSchema
     // erdData might come from persistence DB (virtual schema) after "Load Schemas" feature
     // originalSchema must ALWAYS be the frozen baseline from real DB
-    let baselineSchema = await loadBaselineSchema(schemaName, connectionId);
+    let baselineSchema = await loadBaselineSchema(persistenceKey, connectionId);
     
     if (!baselineSchema) {
       // No baseline exists - first time loading this schema
       // In this case, erdData IS from real DB (first load), so we can use it
-      await saveBaselineSchema(schemaName, erdData, connectionId);
+      await saveBaselineSchema(persistenceKey, erdData, connectionId);
       baselineSchema = erdData;
     }
     
@@ -471,7 +463,7 @@ export const VirtualSchemaProvider = ({ children }) => {
       const currentRealTables = Object.keys(erdData.tables || {});
       
       // Load existing history from database
-      const existingHistory = await loadRealDbHistory(schemaName);
+      const existingHistory = await loadRealDbHistory(persistenceKey);
       
       // If this is a completely new schema, initialize history
       if (currentSchemaName !== schemaName) {
@@ -480,7 +472,7 @@ export const VirtualSchemaProvider = ({ children }) => {
           tables: currentRealTables,
           schema: JSON.parse(JSON.stringify(erdData))
         }];
-        await saveRealDbHistory(schemaName, newHistory);
+        await saveRealDbHistory(persistenceKey, newHistory);
         return newHistory;
       }
       
@@ -491,7 +483,7 @@ export const VirtualSchemaProvider = ({ children }) => {
           tables: currentRealTables,
           schema: JSON.parse(JSON.stringify(erdData))
         }];
-        await saveRealDbHistory(schemaName, newHistory);
+        await saveRealDbHistory(persistenceKey, newHistory);
         return newHistory;
       }
       
@@ -513,7 +505,7 @@ export const VirtualSchemaProvider = ({ children }) => {
         // Keep history manageable (last 50 entries)
         const trimmedHistory = updatedHistory.slice(-50);
         
-        await saveRealDbHistory(schemaName, trimmedHistory);
+        await saveRealDbHistory(persistenceKey, trimmedHistory);
         return trimmedHistory;
       }
       
@@ -525,7 +517,7 @@ export const VirtualSchemaProvider = ({ children }) => {
     setRealDbHistory(updatedRealDbHistory);
 
     // Load table positions from database
-    const savedTablePositions = await loadTablePositions(schemaName);
+    const savedTablePositions = await loadTablePositions(persistenceKey);
     setTablePositions(savedTablePositions);
 
     // Apply FK detection to schema based on relationships
@@ -556,11 +548,11 @@ export const VirtualSchemaProvider = ({ children }) => {
 
     // ALWAYS check database when switching schemas to get latest changes from other users
     // Even if we have no local data, other users might have saved changes
-    const localSchema = await loadFromStorage(schemaName);
-    const localTimestamp = await getStorageTimestamp(schemaName);
+    const localSchema = await loadFromStorage(persistenceKey);
+    const localTimestamp = await getStorageTimestamp(persistenceKey);
     
     // CRITICAL: Always check database for multi-user collaboration
-    let savedSchema = await loadFromDatabase(schemaName);
+    let savedSchema = await loadFromDatabase(persistenceKey);
     
     if (!savedSchema && localSchema) {
       // Database doesn't have it but localStorage does (sync failed)
@@ -572,7 +564,7 @@ export const VirtualSchemaProvider = ({ children }) => {
       // This preserves all virtual changes including isUserCreated flags
       
       // Get the timestamp from the database (not localStorage)
-      const dbTimestamp = await persistenceService.getVirtualSchemaTimestamp(schemaName);
+      const dbTimestamp = await persistenceService.getVirtualSchemaTimestamp(persistenceKey);
       
       if (dbTimestamp) {
         setLastSavedTimestamp(dbTimestamp);
@@ -616,16 +608,19 @@ export const VirtualSchemaProvider = ({ children }) => {
   const refreshAndMerge = useCallback(async (newRealSchema) => {
     if (!workingSchema || !currentSchemaName) return;
 
+    // Build persistence key using current connectionPrefix
+    const pKey = connectionPrefix ? `${connectionPrefix}${currentSchemaName}` : currentSchemaName;
+
     try {
       // CRITICAL FIX: Use the persistent baseline schema for comparison
       // This ensures that deleted tables/columns are properly detected
-      let baselineSchema = await loadBaselineSchema(currentSchemaName, connectionId);
+      let baselineSchema = await loadBaselineSchema(pKey, connectionId);
       
       if (!baselineSchema) {
         // If no baseline exists, use the current originalSchema and save it
         baselineSchema = originalSchema;
         if (baselineSchema) {
-          await saveBaselineSchema(currentSchemaName, baselineSchema, connectionId);
+          await saveBaselineSchema(pKey, baselineSchema, connectionId);
         }
       }
       
@@ -718,7 +713,7 @@ export const VirtualSchemaProvider = ({ children }) => {
 
       // Save updated baseline if changes were made
       if (baselineNeedsUpdate) {
-        await saveBaselineSchema(currentSchemaName, updatedBaseline, connectionId);
+        await saveBaselineSchema(pKey, updatedBaseline, connectionId);
         baselineSchema = updatedBaseline;
       }
       
@@ -761,13 +756,13 @@ export const VirtualSchemaProvider = ({ children }) => {
         deletedTables.forEach(tableName => {
           delete cleanedBaseline.tables[tableName];
         });
-        await saveBaselineSchema(currentSchemaName, cleanedBaseline, connectionId);
+        await saveBaselineSchema(pKey, cleanedBaseline, connectionId);
         
         // CRITICAL: Save the cleaned schema to database
         // This is the KEY fix - we must save the cleaned schema so when table is recreated,
         // the old relationships don't come back
         console.log('💾 Saving cleaned schema to database (without deleted tables and their relationships)');
-        await saveToStorage(currentSchemaName, mergedSchema);
+        await saveToStorage(pKey, mergedSchema);
       }
       
       // Apply FK detection
@@ -819,11 +814,12 @@ export const VirtualSchemaProvider = ({ children }) => {
       console.error('Error in refreshAndMerge:', error);
       throw error;
     }
-  }, [workingSchema, currentSchemaName, realDbHistory, originalSchema, mergeSchemas, recalculateIsIdentifying]);
+  }, [workingSchema, currentSchemaName, connectionPrefix, realDbHistory, originalSchema, mergeSchemas, recalculateIsIdentifying]);
 
   // Force refresh from backend (ignore localStorage)
   const forceRefreshFromBackend = useCallback(() => {
     if (originalSchema && currentSchemaName) {
+      const pKey = connectionPrefix ? `${connectionPrefix}${currentSchemaName}` : currentSchemaName;
       const clonedOriginal = JSON.parse(JSON.stringify(originalSchema));
       setWorkingSchema(clonedOriginal);
       const newHistory = [clonedOriginal];
@@ -832,9 +828,9 @@ export const VirtualSchemaProvider = ({ children }) => {
       setHistoryIndex(0);
       historyIndexRef.current = 0; // Update ref immediately
       setIsModified(false);
-      clearFromStorage(currentSchemaName);
+      clearFromStorage(pKey);
     }
-  }, [originalSchema, currentSchemaName]);
+  }, [originalSchema, currentSchemaName, connectionPrefix]);
 
   // Add to history for undo/redo
   const addToHistory = useCallback(
@@ -991,6 +987,7 @@ export const VirtualSchemaProvider = ({ children }) => {
   // Reset to original
   const resetToOriginal = useCallback(async () => {
     if (originalSchema && currentSchemaName) {
+      const pKey = connectionPrefix ? `${connectionPrefix}${currentSchemaName}` : currentSchemaName;
       // Reset working schema to match baseline (originalSchema)
       const clonedOriginal = JSON.parse(JSON.stringify(originalSchema));
       setWorkingSchema(clonedOriginal);
@@ -1003,13 +1000,12 @@ export const VirtualSchemaProvider = ({ children }) => {
       setHasUnsavedChanges(false);
       
       // Save the reset virtual schema (now matches baseline) to persistence DB
-      // This ensures the schema doesn't disappear after reset
-      await saveToStorage(currentSchemaName, clonedOriginal);
+      await saveToStorage(pKey, clonedOriginal);
       
       // Update last saved timestamp
       setLastSavedTimestamp(Date.now());
     }
-  }, [originalSchema, currentSchemaName, saveToStorage]);
+  }, [originalSchema, currentSchemaName, connectionPrefix, saveToStorage]);
 
   // NEW: Manual save function with conflict detection
   const saveChangesToPersistence = useCallback(async () => {
@@ -1017,9 +1013,12 @@ export const VirtualSchemaProvider = ({ children }) => {
       return { success: false, reason: 'no_changes' };
     }
 
+    // Build persistence key using current connectionPrefix
+    const pKey = connectionPrefix ? `${connectionPrefix}${currentSchemaName}` : currentSchemaName;
+
     try {
       // Check for conflicts before saving
-      const hasNewer = await checkForNewerChangesFn(currentSchemaName, lastSavedTimestamp);
+      const hasNewer = await checkForNewerChangesFn(pKey, lastSavedTimestamp);
       
       if (hasNewer) {
         // Another user has saved changes - conflict detected
@@ -1028,7 +1027,7 @@ export const VirtualSchemaProvider = ({ children }) => {
       }
 
       // No conflict, proceed with save
-      await saveToStorage(currentSchemaName, workingSchema);
+      await saveToStorage(pKey, workingSchema);
       const timestamp = Date.now();
       setLastSavedTimestamp(timestamp);
       setHasUnsavedChanges(false);
@@ -1046,16 +1045,18 @@ export const VirtualSchemaProvider = ({ children }) => {
       console.error('Error saving to persistence:', error);
       return { success: false, reason: 'error', error };
     }
-  }, [workingSchema, currentSchemaName, hasUnsavedChanges, lastSavedTimestamp]);
+  }, [workingSchema, currentSchemaName, connectionPrefix, hasUnsavedChanges, lastSavedTimestamp]);
 
   // NEW: Refresh from persistence DB
   const refreshFromPersistence = useCallback(async () => {
     if (!currentSchemaName || !originalSchema) return false;
 
+    const pKey = connectionPrefix ? `${connectionPrefix}${currentSchemaName}` : currentSchemaName;
+
     try {
       // CRITICAL: Load from DATABASE, not localStorage
-      const savedSchema = await loadFromDatabase(currentSchemaName);
-      const baselineSchema = await loadBaselineFromDatabase(currentSchemaName);
+      const savedSchema = await loadFromDatabase(pKey);
+      const baselineSchema = await loadBaselineFromDatabase(pKey);
       
       if (savedSchema) {
         // Merge real DB with saved virtual changes
@@ -1063,7 +1064,6 @@ export const VirtualSchemaProvider = ({ children }) => {
         setWorkingSchema(merged);
         
         // CRITICAL: Clear history - refreshed state becomes new baseline
-        // User's unsaved changes are discarded, can't undo past this point
         const newHistory = [JSON.parse(JSON.stringify(merged))];
         setHistory(newHistory);
         historyRef.current = newHistory;
@@ -1075,7 +1075,6 @@ export const VirtualSchemaProvider = ({ children }) => {
         const clonedOriginal = JSON.parse(JSON.stringify(originalSchema));
         setWorkingSchema(clonedOriginal);
         
-        // Clear history for fresh start
         const newHistory = [clonedOriginal];
         setHistory(newHistory);
         historyRef.current = newHistory;
@@ -1085,7 +1084,7 @@ export const VirtualSchemaProvider = ({ children }) => {
       }
       
       // Get the actual timestamp from the database
-      const dbTimestamp = await checkForNewerChangesFn(currentSchemaName, 0);
+      const dbTimestamp = await checkForNewerChangesFn(pKey, 0);
       const timestamp = dbTimestamp || Date.now();
       setLastSavedTimestamp(timestamp);
       setHasUnsavedChanges(false);
@@ -1094,49 +1093,49 @@ export const VirtualSchemaProvider = ({ children }) => {
       console.error('Error refreshing from persistence:', error);
       return false;
     }
-  }, [currentSchemaName, originalSchema, realDbHistory, mergeSchemas]);
+  }, [currentSchemaName, connectionPrefix, originalSchema, realDbHistory, mergeSchemas]);
 
   // NEW: Check if persistence DB has newer changes than current timestamp
   const checkForNewerChanges = useCallback(async () => {
     if (!currentSchemaName || !lastSavedTimestamp) return false;
 
+    const pKey = connectionPrefix ? `${connectionPrefix}${currentSchemaName}` : currentSchemaName;
+
     try {
-      const hasNewer = await checkForNewerChangesFn(currentSchemaName, lastSavedTimestamp);
+      const hasNewer = await checkForNewerChangesFn(pKey, lastSavedTimestamp);
       return hasNewer;
     } catch (error) {
       console.warn('Error checking for newer changes:', error);
       return false;
     }
-  }, [currentSchemaName, lastSavedTimestamp]);
+  }, [currentSchemaName, connectionPrefix, lastSavedTimestamp]);
 
   // NEW: Reset unsaved changes - discard all UI changes since last save
   const resetUnsavedChanges = useCallback(async () => {
     if (!currentSchemaName || !originalSchema) return false;
 
+    const pKey = connectionPrefix ? `${connectionPrefix}${currentSchemaName}` : currentSchemaName;
+
     try {
       // Load the last saved state from database
-      const savedSchema = await loadFromDatabase(currentSchemaName);
-      const baselineSchema = await loadBaselineFromDatabase(currentSchemaName);
+      const savedSchema = await loadFromDatabase(pKey);
+      const baselineSchema = await loadBaselineFromDatabase(pKey);
       
       if (savedSchema) {
-        // Merge real DB with saved virtual changes (last saved state)
         const merged = mergeSchemas(originalSchema, savedSchema, baselineSchema, realDbHistory);
         setWorkingSchema(merged);
         
-        // Reset history to single state (the saved state)
         const newHistory = [JSON.parse(JSON.stringify(merged))];
         setHistory(newHistory);
         historyRef.current = newHistory;
         setHistoryIndex(0);
         historyIndexRef.current = 0;
-        setIsModified(true); // Still modified from original DB, but no unsaved changes
-        setHasUnsavedChanges(false); // No unsaved changes anymore
+        setIsModified(true);
+        setHasUnsavedChanges(false);
       } else {
-        // No saved data, reset to original DB schema
         const clonedOriginal = JSON.parse(JSON.stringify(originalSchema));
         setWorkingSchema(clonedOriginal);
         
-        // Reset history to single state
         const newHistory = [clonedOriginal];
         setHistory(newHistory);
         historyRef.current = newHistory;
@@ -1151,14 +1150,15 @@ export const VirtualSchemaProvider = ({ children }) => {
       console.error('Error resetting unsaved changes:', error);
       return false;
     }
-  }, [currentSchemaName, originalSchema, realDbHistory, mergeSchemas]);
+  }, [currentSchemaName, connectionPrefix, originalSchema, realDbHistory, mergeSchemas]);
 
   // Clear virtual schema
   const clearVirtualSchema = useCallback(async () => {
     if (currentSchemaName) {
-      await clearFromStorage(currentSchemaName);
-      await clearRealDbHistory(currentSchemaName);
-      await clearBaselineSchema(currentSchemaName, connectionId);
+      const pKey = connectionPrefix ? `${connectionPrefix}${currentSchemaName}` : currentSchemaName;
+      await clearFromStorage(pKey);
+      await clearRealDbHistory(pKey);
+      await clearBaselineSchema(pKey, connectionId);
     }
     setWorkingSchema(null);
     setOriginalSchema(null);
@@ -1169,7 +1169,7 @@ export const VirtualSchemaProvider = ({ children }) => {
     setIsModified(false);
     setCurrentSchemaName(null);
     setRealDbHistory([]);
-  }, [currentSchemaName, connectionId]);
+  }, [currentSchemaName, connectionPrefix, connectionId]);
 
   // Clear ALL virtual schemas (for global refresh)
   const clearAllVirtualSchemas = useCallback(() => {

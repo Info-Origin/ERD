@@ -24,7 +24,7 @@ export const AppProvider = ({ children }) => {
   const [highlightedRelationship, setHighlightedRelationship] = useState(null);
   
   // Get connectionId and dynamic connection state from ConnectionContext
-  const { isDynamicConnected } = useConnection();
+  const { isDynamicConnected, getDynamicPrefix } = useConnection();
   const connectionId = null; // connectionId for multi-db baseline keys (not used for dynamic)
   
   // NEW: Hover-based relationship highlighting
@@ -293,13 +293,26 @@ export const AppProvider = ({ children }) => {
   // EDGE CASE 2 & 8: Listen for dynamic connection ended (disconnect or token expiry)
   // Restore original application schemas from persistence DB
   useEffect(() => {
-    const handleDynamicConnectionEnded = async () => {
+    const handleDynamicConnectionEnded = async (event) => {
       console.log('🔌 Dynamic connection ended - restoring original app schemas from persistence DB');
+      const prefix = event.detail?.prefix;
       try {
         clearSelection();
 
         const persistenceService = (await import('../services/persistenceService')).default;
         const schemaService = (await import('../services/schemaService')).default;
+
+        // Clean up all prefixed persistence DB entries for this dynamic connection
+        if (prefix) {
+          const allSchemas = await persistenceService.getSavedSchemas();
+          const dynamicSchemas = allSchemas
+            .map(s => s.schema_name)
+            .filter(name => name.startsWith(prefix));
+          await Promise.allSettled(
+            dynamicSchemas.map(name => persistenceService.clearAllForSchema(name))
+          );
+          console.log(`🧹 Cleaned up ${dynamicSchemas.length} dynamic schema entries`);
+        }
 
         const appSchemas = await schemaService.getSchemas(selectedApplication.uuid);
         const savedSchemas = await persistenceService.getSavedSchemas();
@@ -478,11 +491,6 @@ export const AppProvider = ({ children }) => {
   // Shared Edit Table Modal functions
   // Open modal directly without database change check
   const openEditTableModal = useCallback((tableName, schemaName) => {
-    // EDGE CASE 6: Block editing when dynamic DB is connected (read-only)
-    if (isDynamicConnected) {
-      showNotification('Connected to a dynamic database — view only, cannot edit tables', 'error');
-      return;
-    }
     // Block editing if schema is locked by another user
     if (isSchemaLockedByOther(schemaName || selectedSchema)) {
       const lockInfo = schemaLocks[schemaName || selectedSchema];
@@ -758,12 +766,6 @@ export const AppProvider = ({ children }) => {
   
   // SCENARIO 4: Save Changes - Check for database changes before saving
   const saveChangesWithDatabaseCheck = useCallback(async () => {
-    // EDGE CASE 6: Block saving when dynamic DB is connected (read-only)
-    if (isDynamicConnected) {
-      showNotification('Connected to a dynamic database — view only, cannot save changes', 'error');
-      return { success: false, reason: 'dynamic_connection_read_only' };
-    }
-
     // Block saving if schema is locked by another user
     if (isSchemaLockedByOther(selectedSchema)) {
       const lockInfo = schemaLocks[selectedSchema];
@@ -814,9 +816,13 @@ export const AppProvider = ({ children }) => {
   // Initialize virtual schema when ERD data loads
   useEffect(() => {
     if (erdData && !erdLoading && selectedSchema) {
-      // EDGE CASE 5: When dynamic DB is connected, skip persistence DB reads/writes
-      // Pass isDynamic flag so initializeSchema doesn't pollute persistence DB
-      virtualSchema.initializeSchema(erdData, null, !isDynamicConnected);
+      // Guard: only initialize when erdData matches the currently selected schema
+      // Prevents stale data from a previous schema briefly initializing the new one
+      if (erdData.schemaName !== selectedSchema) return;
+      // Pass original erdData (real schema name for display) + dynamic prefix as connId
+      // VirtualSchemaContext uses connId to build prefixed persistence keys internally
+      const connId = isDynamicConnected ? getDynamicPrefix() : null;
+      virtualSchema.initializeSchema(erdData, connId, true);
     }
   }, [erdData, erdLoading, selectedSchema, virtualSchema.initializeSchema]);
 

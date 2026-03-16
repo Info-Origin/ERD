@@ -48,16 +48,15 @@ export const ConnectionProvider = ({ children }) => {
     // Listen for connection expired events
     const handleConnectionExpired = (event) => {
       console.warn('Connection expired:', event.detail?.message);
+      const prefix = getDynamicPrefix();
       setActiveConnection(null);
       setIsConnected(false);
       setIsDynamicConnected(false);
       clearDynamicSchemaCache();
       sessionStorage.removeItem('db_connection_token');
       sessionStorage.removeItem('db_connection_info');
-      // Clear last selected schema so disconnect restores original app schemas
       sessionStorage.removeItem('reverseERD_lastSelectedSchema');
-      // Notify app to restore original schemas
-      window.dispatchEvent(new CustomEvent('dynamic-connection-ended'));
+      window.dispatchEvent(new CustomEvent('dynamic-connection-ended', { detail: { prefix } }));
     };
 
     window.addEventListener('connection-expired', handleConnectionExpired);
@@ -79,30 +78,34 @@ export const ConnectionProvider = ({ children }) => {
     setIsDynamicConnected(true);
   };
 
+  // Returns the prefix used for persistence DB keys for dynamic schemas
+  const getDynamicPrefix = () => {
+    const info = activeConnection?.info || JSON.parse(sessionStorage.getItem('db_connection_info') || 'null');
+    return info?.connectionId ? `dynamic_${info.connectionId}_` : null;
+  };
+
   const disconnect = async () => {
     const currentConnection = activeConnection;
-    
+    const prefix = getDynamicPrefix();
+
     // Clear cache and state immediately
     clearDynamicSchemaCache();
     sessionStorage.removeItem('db_connection_token');
     sessionStorage.removeItem('db_connection_info');
-    // Clear last selected schema so initializeApp restores original app schemas correctly
     sessionStorage.removeItem('reverseERD_lastSelectedSchema');
     setActiveConnection(null);
     setIsConnected(false);
     setIsDynamicConnected(false);
 
-    // Notify app to restore original schemas
-    window.dispatchEvent(new CustomEvent('dynamic-connection-ended'));
+    // Notify app to restore original schemas, pass prefix for cleanup
+    window.dispatchEvent(new CustomEvent('dynamic-connection-ended', { detail: { prefix } }));
     
     // Best-effort backend cleanup
     if (currentConnection) {
       try {
         await fetch(`${API_BASE_URL}/connection/${currentConnection.info.connectionId}`, {
           method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${currentConnection.token}`
-          }
+          headers: { 'Authorization': `Bearer ${currentConnection.token}` }
         });
       } catch (error) {
         console.error('Error disconnecting:', error);
@@ -125,6 +128,7 @@ export const ConnectionProvider = ({ children }) => {
       connect,
       disconnect,
       getAuthHeader,
+      getDynamicPrefix,
       getDynamicSchemaCache,
       setDynamicSchemaCache,
       clearDynamicSchemaCache,
