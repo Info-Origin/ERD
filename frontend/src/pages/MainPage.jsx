@@ -10,6 +10,7 @@ import { NewChangesAvailableModal } from "../components/modals/NewChangesAvailab
 import { UnsavedChangesModal } from "../components/modals/UnsavedChangesModal";
 import { OutOfSyncModal } from "../components/modals/OutOfSyncModal";
 import { Notification } from "../components/common/Notification";
+import { LoadingOverlay } from "../components/common/LoadingOverlay";
 import { useApp } from "../context/AppContext";
 import { useVirtualSchema } from "../context/VirtualSchemaContext";
 import { useState } from "react";
@@ -34,7 +35,9 @@ export const MainPage = () => {
     closeOutOfSyncModal,
     handleRefreshFromOutOfSync,
     databaseChangesModal,
-    handleDatabaseChangesRefresh
+    handleDatabaseChangesRefresh,
+    isLoadingAllSchemas,
+    loadingProgress,
   } = useApp();
   const { originalSchema, workingSchema, hasUnsavedChanges } = useVirtualSchema();
   
@@ -116,6 +119,14 @@ export const MainPage = () => {
           />
         ))}
       </div>
+
+      {/* Loading Overlay - shown while fetching all schemas from real DB */}
+      {isLoadingAllSchemas && (
+        <LoadingOverlay
+          current={loadingProgress.current}
+          total={loadingProgress.total}
+        />
+      )}
     </AppLayout>
   );
 };

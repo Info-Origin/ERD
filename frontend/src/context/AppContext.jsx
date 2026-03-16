@@ -159,9 +159,15 @@ export const AppProvider = ({ children }) => {
   // Virtual schema context
   const virtualSchema = useVirtualSchema();
 
+  // ==================== LOADING STATE ====================
+  const [isLoadingAllSchemas, setIsLoadingAllSchemas] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0 });
+
   // ==================== LOAD ALL SCHEMAS (First Time) ====================
   // This function loads schemas for the SELECTED APPLICATION from real DB and saves them to persistence DB
   const loadAllSchemasFirstTime = useCallback(async () => {
+    setIsLoadingAllSchemas(true);
+    setLoadingProgress({ current: 0, total: 0 });
     try {
       console.log(`🔄 Loading schemas for application: ${selectedApplication.label}...`);
       
@@ -179,6 +185,8 @@ export const AppProvider = ({ children }) => {
       let successCount = 0;
       let failCount = 0;
       
+      setLoadingProgress({ current: 0, total: schemaList.length });
+
       for (let i = 0; i < schemaList.length; i++) {
         const schemaName = schemaList[i];
         try {
@@ -198,6 +206,7 @@ export const AppProvider = ({ children }) => {
           console.error(`  ❌ Failed to load ${schemaName}:`, error);
           failCount++;
         }
+        setLoadingProgress({ current: i + 1, total: schemaList.length });
       }
       
       console.log(`✅ Loaded ${successCount}/${schemaList.length} schemas (${failCount} failed)`);
@@ -216,6 +225,8 @@ export const AppProvider = ({ children }) => {
     } catch (error) {
       console.error('❌ Error loading schemas:', error);
       throw error;
+    } finally {
+      setIsLoadingAllSchemas(false);
     }
   }, [selectedApplication, connectionId, setSchemasDirectly, originalSelectSchema]);
       
@@ -1093,6 +1104,8 @@ export const AppProvider = ({ children }) => {
     schemasHasLoaded,
     refetchSchemas,
     loadAllSchemasFirstTime, // NEW: Load all schemas from real DB and save to persistence DB
+    isLoadingAllSchemas,
+    loadingProgress,
 
     // ERD Data (with race condition protection during schema switching)
     erdData: (() => {
