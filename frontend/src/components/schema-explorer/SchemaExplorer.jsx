@@ -3,7 +3,8 @@ import { SearchBar } from "./SearchBar";
 import { SchemaTree } from "./SchemaTree";
 import { useApp } from "../../context/AppContext";
 import { useConnection } from "../../context/ConnectionContext";
-import { FiDatabase, FiLock, FiUnlock } from "react-icons/fi";
+import { FiDatabase } from "react-icons/fi";
+import { FaLock, FaLockOpen } from "react-icons/fa";
 import { Loader } from "../common/Loader";
 import { ConnectionModal } from "../modals/ConnectionModal";
 import "./SchemaExplorer.css";
@@ -37,9 +38,7 @@ export const SchemaExplorer = ({ onToggleCollapse, isCollapsed }) => {
   const dragStartY = useRef(0);
   const dragStartHeight = useRef(0);
 
-  // Context menu state
-  const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, schema: null });
-  const contextMenuRef = useRef(null);
+  // Context menu state - removed (lock moved to inline icon)
 
   // Lock confirmation modal state
   const [lockModal, setLockModal] = useState({ visible: false, schema: null, action: null });
@@ -71,28 +70,11 @@ export const SchemaExplorer = ({ onToggleCollapse, isCollapsed }) => {
     };
   }, [isDragging]);
 
-  // Close context menu on outside click
-  useEffect(() => {
-    if (!contextMenu.visible) return;
-    const handleClick = (e) => {
-      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target)) {
-        setContextMenu({ visible: false, x: 0, y: 0, schema: null });
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [contextMenu.visible]);
-
-  const handleRightClick = (e, schemaName) => {
-    e.preventDefault();
+  const handleLockIconClick = (e, schemaName) => {
     e.stopPropagation();
-    setContextMenu({ visible: true, x: e.clientX, y: e.clientY, schema: schemaName });
-  };
-
-  const handleContextMenuAction = (action) => {
-    const schema = contextMenu.schema;
-    setContextMenu({ visible: false, x: 0, y: 0, schema: null });
-    setLockModal({ visible: true, schema, action });
+    if (isSchemaLockedByOther(schemaName)) return; // can't touch someone else's lock
+    const action = isSchemaLockedByMe(schemaName) ? 'unlock' : 'lock';
+    setLockModal({ visible: true, schema: schemaName, action });
   };
 
   const handleLockConfirm = async () => {
@@ -194,17 +176,17 @@ export const SchemaExplorer = ({ onToggleCollapse, isCollapsed }) => {
                     key={schema}
                     className={`schema-item ${selectedSchema === schema && !isAnyModalOpen ? "schema-item-selected" : ""} ${isAnyModalOpen && selectedSchema === schema ? "schema-item-modal-open" : ""} ${lockedByOther ? "schema-item-locked" : ""}`}
                     onClick={() => handleSchemaSelect(schema)}
-                    onContextMenu={(e) => handleRightClick(e, schema)}
                     title={lockedByOther ? `Locked by ${lockInfo?.userDisplayName}` : schema}
                   >
                     <FiDatabase className="schema-item-icon" />
                     <span className="schema-item-name">{schema}</span>
-                    {lockedByMe && (
-                      <FiLock className="schema-lock-icon schema-lock-icon--mine" title="Locked by you" />
-                    )}
-                    {lockedByOther && (
-                      <FiLock className="schema-lock-icon schema-lock-icon--other" title={`Locked by ${lockInfo?.userDisplayName}`} />
-                    )}
+                    <button
+                      className={`schema-lock-btn ${lockedByMe ? 'schema-lock-btn--mine' : lockedByOther ? 'schema-lock-btn--other' : 'schema-lock-btn--unlocked'}`}
+                      onClick={(e) => handleLockIconClick(e, schema)}
+                      title={lockedByMe ? 'Locked by you — click to unlock' : lockedByOther ? `Locked by ${lockInfo?.userDisplayName}` : 'Click to lock schema'}
+                    >
+                      {lockedByMe || lockedByOther ? <FaLock /> : <FaLockOpen />}
+                    </button>
                   </div>
                 );
               })
@@ -223,29 +205,6 @@ export const SchemaExplorer = ({ onToggleCollapse, isCollapsed }) => {
             </>
           )}
         </>
-      )}
-
-      {/* Right-click context menu */}
-      {contextMenu.visible && (
-        <div
-          ref={contextMenuRef}
-          className="schema-context-menu"
-          style={{ top: contextMenu.y, left: contextMenu.x }}
-        >
-          {isSchemaLockedByMe(contextMenu.schema) ? (
-            <button className="schema-context-menu-item" onClick={() => handleContextMenuAction('unlock')}>
-              <FiUnlock /> Unlock Schema
-            </button>
-          ) : isSchemaLockedByOther(contextMenu.schema) ? (
-            <div className="schema-context-menu-item schema-context-menu-item--disabled">
-              <FiLock /> Locked by {schemaLocks[contextMenu.schema]?.userDisplayName}
-            </div>
-          ) : (
-            <button className="schema-context-menu-item" onClick={() => handleContextMenuAction('lock')}>
-              <FiLock /> Lock Schema
-            </button>
-          )}
-        </div>
       )}
 
       {/* Lock confirmation modal */}

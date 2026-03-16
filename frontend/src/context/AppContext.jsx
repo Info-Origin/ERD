@@ -1015,6 +1015,16 @@ export const AppProvider = ({ children }) => {
   };
 
   const deleteRelationships = async (relationships) => {
+    // Block if schema is locked by another user
+    if (isDynamicConnected) {
+      showNotification('Connected to a dynamic database — view only, cannot delete relationships', 'error');
+      return { success: false, reason: 'dynamic_connection_read_only' };
+    }
+    if (isSchemaLockedByOther(selectedSchema)) {
+      const lockInfo = schemaLocks[selectedSchema];
+      showNotification(`Schema is locked by ${lockInfo?.userDisplayName || 'another user'} — cannot delete relationships`, 'error');
+      return { success: false, reason: 'schema_locked' };
+    }
     try {
       // VIRTUAL DELETION ONLY - No real database modifications
       // This function removes relationships from the virtual schema representation only
@@ -1129,6 +1139,49 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  // ==================== GUARDED CONSTRAINT TOGGLES ====================
+  // These wrap VirtualSchemaContext's toggles with lock/dynamic-connection checks
+  // so ALL call sites (ColumnList, ConstraintMenu, EditTableModal) are protected.
+
+  const togglePrimaryKey = useCallback((tableName, columnName) => {
+    if (isDynamicConnected) {
+      showNotification('Connected to a dynamic database — view only, cannot edit constraints', 'error');
+      return;
+    }
+    if (isSchemaLockedByOther(selectedSchema)) {
+      const lockInfo = schemaLocks[selectedSchema];
+      showNotification(`Schema is locked by ${lockInfo?.userDisplayName || 'another user'} — cannot edit constraints`, 'error');
+      return;
+    }
+    virtualSchema.togglePrimaryKey(tableName, columnName);
+  }, [isDynamicConnected, isSchemaLockedByOther, schemaLocks, selectedSchema, showNotification, virtualSchema]);
+
+  const toggleUnique = useCallback((tableName, columnName) => {
+    if (isDynamicConnected) {
+      showNotification('Connected to a dynamic database — view only, cannot edit constraints', 'error');
+      return;
+    }
+    if (isSchemaLockedByOther(selectedSchema)) {
+      const lockInfo = schemaLocks[selectedSchema];
+      showNotification(`Schema is locked by ${lockInfo?.userDisplayName || 'another user'} — cannot edit constraints`, 'error');
+      return;
+    }
+    virtualSchema.toggleUnique(tableName, columnName);
+  }, [isDynamicConnected, isSchemaLockedByOther, schemaLocks, selectedSchema, showNotification, virtualSchema]);
+
+  const toggleNullable = useCallback((tableName, columnName) => {
+    if (isDynamicConnected) {
+      showNotification('Connected to a dynamic database — view only, cannot edit constraints', 'error');
+      return;
+    }
+    if (isSchemaLockedByOther(selectedSchema)) {
+      const lockInfo = schemaLocks[selectedSchema];
+      showNotification(`Schema is locked by ${lockInfo?.userDisplayName || 'another user'} — cannot edit constraints`, 'error');
+      return;
+    }
+    virtualSchema.toggleNullable(tableName, columnName);
+  }, [isDynamicConnected, isSchemaLockedByOther, schemaLocks, selectedSchema, showNotification, virtualSchema]);
+
   // ==================== RELOAD SCHEMAS FOR APPLICATION ====================
   const reloadSchemasForApplication = useCallback(async (applicationUuid) => {
     try {
@@ -1211,6 +1264,10 @@ export const AppProvider = ({ children }) => {
 
     // Virtual Schema
     ...virtualSchema,
+    // Guarded constraint toggles (override VirtualSchemaContext's unguarded versions)
+    togglePrimaryKey,
+    toggleUnique,
+    toggleNullable,
 
     // Selection
     selectedSchema,

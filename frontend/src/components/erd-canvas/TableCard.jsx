@@ -22,25 +22,27 @@ export const TableCard = memo(({ data }) => {
     toggleUnique,
     toggleNullable,
     highlightedRelationship,
-    highlightedNMRelationship, // NEW: N:M relationship highlighting
-    setHighlightedNMRelationshipWithTimer, // NEW: For triggering N:M highlight
+    highlightedNMRelationship,
+    setHighlightedNMRelationshipWithTimer,
     erdData,
-    openEditTableModal, // Use shared modal for constraint editing only
-    openRelationshipDetailsModal, // NEW: For self-join details
-    // NEW: Hover-based relationship highlighting
+    openEditTableModal,
+    openRelationshipDetailsModal,
     hoveredTable,
     hoverHighlightedRelationships,
     handleTableHover,
     handleTableHoverEnd,
-    // NEW: Circular dependency detection
     tablesInCircularDependency,
-    showNotification, // For lock notifications
+    showNotification,
+    isSchemaLockedByOther,
+    schemaLocks,
   } = useApp();
 
   const { tableName, columns, isSelected, isHighlighted, isParent, highlightedColumn, isJunctionTable } = data;
 
   // Check if this table is part of a circular dependency
   const isInCircularDependency = tablesInCircularDependency?.includes(tableName);
+
+  const isLockedByOther = isSchemaLockedByOther?.(erdData?.schemaName);
 
   // State for self-join hover highlighting
   const [selfJoinHover, setSelfJoinHover] = useState(false);
@@ -604,29 +606,31 @@ export const TableCard = memo(({ data }) => {
           >
             {/* Edit Constraints */}
             <div 
-              className="context-menu-item" 
-              onClick={handleEditTable}
+              className={`context-menu-item${isLockedByOther ? ' context-menu-item-disabled' : ''}`}
+              onClick={isLockedByOther ? undefined : handleEditTable}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
                 padding: '8px 12px',
-                cursor: 'pointer',
-                color: 'var(--text-primary)',
+                cursor: isLockedByOther ? 'not-allowed' : 'pointer',
+                color: isLockedByOther ? 'var(--text-tertiary)' : 'var(--text-primary)',
                 fontSize: '0.9rem',
                 transition: 'background-color 0.2s ease',
+                opacity: isLockedByOther ? 0.5 : 1,
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                if (!isLockedByOther) e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
               }}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              title={isLockedByOther ? `Schema locked by ${schemaLocks?.[erdData?.schemaName]?.userDisplayName || 'another user'}` : 'Edit table constraints'}
             >
               <FiSettings 
                 className="context-menu-icon" 
                 style={{
                   width: '16px',
                   height: '16px',
-                  color: 'var(--text-secondary)'
+                  color: isLockedByOther ? 'var(--text-tertiary)' : 'var(--text-secondary)'
                 }}
               />
               Edit Constraints

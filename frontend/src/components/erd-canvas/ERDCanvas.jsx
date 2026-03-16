@@ -50,16 +50,16 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
     selectedTable, 
     setHighlightedRelationship, 
     highlightedRelationship,
-    setHighlightedRelationshipWithTimer, // Add this for relationship creation feedback
-    setHighlightedNMRelationship, // Clear N:M highlight on canvas click
-    setHighlightedNMRelationshipWithTimer, //  Clear N:M highlight with timer cleanup
+    setHighlightedRelationshipWithTimer,
+    setHighlightedNMRelationship,
+    setHighlightedNMRelationshipWithTimer,
     routingMode, 
     crowsFootMode, 
     gridBackground, 
     showNotification,
     schemasHasLoaded,
     refetchSchemas,
-    loadAllSchemasFirstTime, // NEW: Load all schemas from real DB
+    loadAllSchemasFirstTime,
     // Relationship modals
     relationshipDetailsModal,
     closeRelationshipDetailsModal,
@@ -69,7 +69,11 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
     deleteRelationships,
     // Export PDF modal
     exportPDFModal,
-    closeExportPDFModal
+    closeExportPDFModal,
+    // Lock checks
+    isSchemaLockedByOther,
+    schemaLocks,
+    isDynamicConnected,
   } = useApp();
   const virtualSchema = useVirtualSchema(); // Get full virtual schema context
   const { 
@@ -291,6 +295,17 @@ const ERDCanvasInner = ({ isSchemaCollapsed, onControlsReady }) => {
       const relationshipData = completeRelationshipCreation();
       
       if (relationshipData) {
+        // Block if locked by another user or dynamic connection
+        if (isDynamicConnected) {
+          showNotification('Connected to a dynamic database — view only, cannot create relationships', 'error');
+          return;
+        }
+        if (isSchemaLockedByOther(selectedSchema)) {
+          const lockInfo = schemaLocks[selectedSchema];
+          showNotification(`Schema is locked by ${lockInfo?.userDisplayName || 'another user'} — cannot create relationships`, 'error');
+          return;
+        }
+
         try {
           // Validate the relationship
           const errors = validateRelationshipCreation(

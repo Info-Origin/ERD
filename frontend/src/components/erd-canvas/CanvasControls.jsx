@@ -12,8 +12,11 @@ export const CanvasControls = ({ isCollapsed }) => {
     showNotification, 
     openExportPDFModal, 
     showOutOfSyncModal,
-    saveChangesWithDatabaseCheck, // SCENARIO 4: Use new save function with DB check
-    checkForDatabaseChanges // For sync button
+    saveChangesWithDatabaseCheck,
+    checkForDatabaseChanges,
+    isSchemaLockedByOther,
+    schemaLocks,
+    isDynamicConnected,
   } = useApp();
   const { 
     originalSchema, 
@@ -22,6 +25,9 @@ export const CanvasControls = ({ isCollapsed }) => {
   } = useVirtualSchema();
 
   const [showSaveModal, setShowSaveModal] = useState(false);
+
+  const isLockedByOther = isSchemaLockedByOther?.(selectedSchema);
+  const lockInfo = schemaLocks?.[selectedSchema];
 
   const handleCompareClick = () => {
     if (!originalSchema || !workingSchema || !selectedSchema) {
@@ -111,10 +117,10 @@ export const CanvasControls = ({ isCollapsed }) => {
       <div className={`canvas-controls ${isCollapsed ? 'collapsed' : ''}`}>
         {/* Save Changes Button */}
         <button
-          className={`canvas-control-button save-button ${hasUnsavedChanges ? 'has-changes' : ''}`}
-          title={hasUnsavedChanges ? "Save changes to database" : "No changes to save"}
+          className={`canvas-control-button save-button ${hasUnsavedChanges && !isLockedByOther ? 'has-changes' : ''}`}
+          title={isLockedByOther ? `Locked by ${lockInfo?.userDisplayName || 'another user'}` : hasUnsavedChanges ? "Save changes to database" : "No changes to save"}
           onClick={handleSaveClick}
-          disabled={!selectedSchema || !hasUnsavedChanges}
+          disabled={!selectedSchema || !hasUnsavedChanges || isLockedByOther}
         >
           <svg 
             width="16" 
@@ -123,29 +129,29 @@ export const CanvasControls = ({ isCollapsed }) => {
             fill="none" 
             stroke="currentColor" 
             strokeWidth="2"
-            style={{ filter: (!selectedSchema || !hasUnsavedChanges) ? 'grayscale(100%) opacity(0.5)' : 'none' }}
+            style={{ filter: (!selectedSchema || !hasUnsavedChanges || isLockedByOther) ? 'grayscale(100%) opacity(0.5)' : 'none' }}
           >
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
             <polyline points="17 21 17 13 7 13 7 21" />
             <polyline points="7 3 7 8 15 8" />
           </svg>
           <span className="save-button-text">Save Changes</span>
-          {hasUnsavedChanges && <span className="unsaved-indicator">●</span>}
+          {hasUnsavedChanges && !isLockedByOther && <span className="unsaved-indicator">●</span>}
         </button>
 
         {/* Compare Changes Button */}
         <button
           className="canvas-control-button compare-button"
-          title="Compare foreign key changes"
+          title={isLockedByOther ? `Locked by ${lockInfo?.userDisplayName || 'another user'}` : "Compare foreign key changes"}
           onClick={handleCompareClick}
-          disabled={!selectedSchema}
+          disabled={!selectedSchema || isLockedByOther}
         >
           <img 
             src="/compare.png" 
             alt="Compare" 
             width="16" 
             height="16"
-            style={{ filter: !selectedSchema ? 'grayscale(100%) opacity(0.5)' : 'none' }}
+            style={{ filter: (!selectedSchema || isLockedByOther) ? 'grayscale(100%) opacity(0.5)' : 'none' }}
           />
           <span className="compare-button-text">Compare Changes</span>
         </button>
@@ -153,9 +159,9 @@ export const CanvasControls = ({ isCollapsed }) => {
         {/* Export PDF Button */}
         <button
           className="canvas-control-button export-button"
-          title="Export ERD to PDF"
+          title={isLockedByOther ? `Locked by ${lockInfo?.userDisplayName || 'another user'}` : "Export ERD to PDF"}
           onClick={handleExportClick}
-          disabled={!selectedSchema}
+          disabled={!selectedSchema || isLockedByOther}
         >
           <svg 
             width="16" 
@@ -164,7 +170,7 @@ export const CanvasControls = ({ isCollapsed }) => {
             fill="none" 
             stroke="currentColor" 
             strokeWidth="2"
-            style={{ filter: !selectedSchema ? 'grayscale(100%) opacity(0.5)' : 'none' }}
+            style={{ filter: (!selectedSchema || isLockedByOther) ? 'grayscale(100%) opacity(0.5)' : 'none' }}
           >
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
             <polyline points="7 10 12 15 17 10" />
@@ -176,16 +182,16 @@ export const CanvasControls = ({ isCollapsed }) => {
         {/* Sync Button */}
         <button
           className="canvas-control-button sync-button"
-          title="Sync with actual database"
+          title={isLockedByOther ? `Locked by ${lockInfo?.userDisplayName || 'another user'}` : "Sync with actual database"}
           onClick={handleSyncClick}
-          disabled={!selectedSchema}
+          disabled={!selectedSchema || isLockedByOther}
         >
           <img 
             src="/sync.png" 
             alt="Sync" 
             width="16" 
             height="16"
-            style={{ filter: !selectedSchema ? 'grayscale(100%) opacity(0.5)' : 'none' }}
+            style={{ filter: (!selectedSchema || isLockedByOther) ? 'grayscale(100%) opacity(0.5)' : 'none' }}
           />
           <span className="sync-button-text">Pull Changes</span>
         </button>
