@@ -571,51 +571,6 @@ export const TableCard = memo(({ data }) => {
         )}
       </div>
       
-      {/* Lock Icon - Positioned at top-right corner */}
-      {lockState.isLocked && (
-        <div 
-          className="table-lock-icon"
-          style={{
-            position: 'absolute',
-            top: '-12px',
-            right: '-12px',
-            width: '28px',
-            height: '28px',
-            borderRadius: '50%',
-            background: lockState.lockedBy === mySessionId ? '#f59e0b' : '#ef4444',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-            zIndex: 100,
-            cursor: lockState.lockedBy === mySessionId ? 'pointer' : 'not-allowed',
-            transition: 'transform 0.2s ease'
-          }}
-          title={lockState.lockedBy === mySessionId ? 'Click to unlock' : `Locked by ${lockState.userDisplayName}`}
-          onMouseEnter={(e) => {
-            if (lockState.lockedBy === mySessionId) {
-              e.currentTarget.style.transform = 'scale(1.1)';
-            }
-          }}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (lockState.lockedBy === mySessionId) {
-              // Show unlock confirmation modal
-              setLockConfirmModal({ isOpen: true, action: 'unlock' });
-            }
-          }}
-        >
-          <FiLock 
-            style={{
-              width: '14px',
-              height: '14px',
-              color: 'white'
-            }}
-          />
-        </div>
-      )}
-
       {/* Context Menu - Rendered in portal to avoid React Flow z-index issues */}
       {contextMenu.isOpen && createPortal(
         <>
@@ -656,16 +611,13 @@ export const TableCard = memo(({ data }) => {
                 alignItems: 'center',
                 gap: '8px',
                 padding: '8px 12px',
-                cursor: lockState.isLocked && lockState.lockedBy !== mySessionId ? 'not-allowed' : 'pointer',
-                color: lockState.isLocked && lockState.lockedBy !== mySessionId ? 'var(--text-disabled)' : 'var(--text-primary)',
+                cursor: 'pointer',
+                color: 'var(--text-primary)',
                 fontSize: '0.9rem',
                 transition: 'background-color 0.2s ease',
-                opacity: lockState.isLocked && lockState.lockedBy !== mySessionId ? 0.5 : 1
               }}
               onMouseEnter={(e) => {
-                if (!(lockState.isLocked && lockState.lockedBy !== mySessionId)) {
-                  e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                }
+                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
               }}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
@@ -678,194 +630,6 @@ export const TableCard = memo(({ data }) => {
                 }}
               />
               Edit Constraints
-            </div>
-            
-            {/* Lock/Unlock Table */}
-            <div 
-              className="context-menu-item" 
-              onClick={handleLockTable}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 12px',
-                cursor: lockState.isLocked && lockState.lockedBy !== mySessionId ? 'not-allowed' : 'pointer',
-                color: lockState.isLocked && lockState.lockedBy !== mySessionId ? 'var(--text-disabled)' : 'var(--text-primary)',
-                fontSize: '0.9rem',
-                transition: 'background-color 0.2s ease',
-                opacity: lockState.isLocked && lockState.lockedBy !== mySessionId ? 0.5 : 1
-              }}
-              onMouseEnter={(e) => {
-                if (!(lockState.isLocked && lockState.lockedBy !== mySessionId)) {
-                  e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                }
-              }}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-            >
-              {lockState.isLocked && lockState.lockedBy === mySessionId ? (
-                <>
-                  <FiUnlock 
-                    className="context-menu-icon" 
-                    style={{
-                      width: '16px',
-                      height: '16px',
-                      color: 'var(--text-secondary)'
-                    }}
-                  />
-                  Unlock Table
-                </>
-              ) : lockState.isLocked && lockState.lockedBy !== mySessionId ? (
-                <>
-                  <FiLock 
-                    className="context-menu-icon" 
-                    style={{
-                      width: '16px',
-                      height: '16px',
-                      color: 'var(--text-secondary)'
-                    }}
-                  />
-                  Locked by {lockState.userDisplayName}
-                </>
-              ) : (
-                <>
-                  <FiLock 
-                    className="context-menu-icon" 
-                    style={{
-                      width: '16px',
-                      height: '16px',
-                      color: 'var(--text-secondary)'
-                    }}
-                  />
-                  Lock Table
-                </>
-              )}
-            </div>
-          </div>
-        </>,
-        document.body
-      )}
-      
-      {/* Lock/Unlock Confirmation Modal */}
-      {lockConfirmModal.isOpen && createPortal(
-        <>
-          <div 
-            className="modal-overlay"
-            onClick={cancelLockAction}
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 10001
-            }}
-          />
-          <div 
-            className="lock-confirm-modal"
-            style={{
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              backgroundColor: 'var(--bg-primary)',
-              border: '1px solid var(--border-color)',
-              borderRadius: '8px',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
-              padding: '24px',
-              minWidth: '400px',
-              maxWidth: '500px',
-              zIndex: 10002
-            }}
-          >
-            <h3 style={{
-              margin: '0 0 16px 0',
-              fontSize: '1.2rem',
-              color: 'var(--text-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              {lockConfirmModal.action === 'lock' ? (
-                <>
-                  <FiLock size={20} />
-                  Lock Table
-                </>
-              ) : (
-                <>
-                  <FiUnlock size={20} />
-                  Unlock Table
-                </>
-              )}
-            </h3>
-            
-            <p style={{
-              margin: '0 0 24px 0',
-              fontSize: '0.95rem',
-              color: 'var(--text-secondary)',
-              lineHeight: '1.5'
-            }}>
-              {lockConfirmModal.action === 'lock' ? (
-                <>
-                  Are you sure you want to lock the table <strong style={{ color: 'var(--text-primary)' }}>{tableName}</strong>?
-                  <br /><br />
-                  Other users will not be able to edit this table until you unlock it.
-                </>
-              ) : (
-                <>
-                  Are you sure you want to unlock the table <strong style={{ color: 'var(--text-primary)' }}>{tableName}</strong>?
-                  <br /><br />
-                  Other users will be able to edit this table after you unlock it.
-                </>
-              )}
-            </p>
-            
-            <div style={{
-              display: 'flex',
-              gap: '12px',
-              justifyContent: 'flex-end'
-            }}>
-              <button
-                onClick={cancelLockAction}
-                style={{
-                  padding: '8px 16px',
-                  fontSize: '0.9rem',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '6px',
-                  backgroundColor: 'var(--bg-secondary)',
-                  color: 'var(--text-primary)',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--bg-hover)'}
-                onMouseLeave={(e) => e.target.style.backgroundColor = 'var(--bg-secondary)'}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmLockAction}
-                style={{
-                  padding: '8px 16px',
-                  fontSize: '0.9rem',
-                  border: 'none',
-                  borderRadius: '6px',
-                  backgroundColor: lockConfirmModal.action === 'lock' ? '#f59e0b' : '#10b981',
-                  color: 'white',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = lockConfirmModal.action === 'lock' ? '#d97706' : '#059669';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = lockConfirmModal.action === 'lock' ? '#f59e0b' : '#10b981';
-                }}
-              >
-                {lockConfirmModal.action === 'lock' ? 'Lock Table' : 'Unlock Table'}
-              </button>
             </div>
           </div>
         </>,
