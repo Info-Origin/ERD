@@ -9,23 +9,30 @@ export const useSchemaLocks = (schemas) => {
   // Map of schemaName -> { isLocked, lockedBy, userDisplayName, lockedAt }
   const [schemaLocks, setSchemaLocks] = useState({});
   const pollIntervalRef = useRef(null);
+  const schemasRef = useRef(schemas);
+
+  // Keep ref in sync without triggering re-renders
+  useEffect(() => {
+    schemasRef.current = schemas;
+  }, [schemas]);
 
   const fetchLocks = useCallback(async () => {
-    if (!schemas || schemas.length === 0) return;
+    const current = schemasRef.current;
+    if (!current || current.length === 0) return;
     try {
-      const locks = await lockService.getBulkLockStatus(schemas);
+      const locks = await lockService.getBulkLockStatus(current);
       setSchemaLocks(locks);
     } catch (err) {
       // Silently fail - lock status is non-critical
     }
-  }, [schemas]);
+  }, []); // stable - no deps, reads from ref
 
   // Poll every 5 seconds so User B sees lock changes without refresh
   useEffect(() => {
     fetchLocks();
     pollIntervalRef.current = setInterval(fetchLocks, 5000);
     return () => clearInterval(pollIntervalRef.current);
-  }, [fetchLocks]);
+  }, [fetchLocks]); // fetchLocks is now stable, interval never restarts
 
   const acquireLock = useCallback(async (schemaName) => {
     const result = await lockService.acquireLock(schemaName);
