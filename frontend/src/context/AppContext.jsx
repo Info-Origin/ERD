@@ -24,7 +24,7 @@ export const AppProvider = ({ children }) => {
   const [highlightedRelationship, setHighlightedRelationship] = useState(null);
   
   // Get connectionId and dynamic connection state from ConnectionContext
-  const { isDynamicConnected, getDynamicPrefix } = useConnection();
+  const { isDynamicConnected, getDynamicPrefix, setDynamicSchemaCache } = useConnection();
   const connectionId = null; // connectionId for multi-db baseline keys (not used for dynamic)
   
   // NEW: Hover-based relationship highlighting
@@ -360,15 +360,20 @@ export const AppProvider = ({ children }) => {
       const { detectDatabaseChanges } = await import('../utils/databaseChangeDetector');
       const { loadBaselineSchema } = await import('../utils/persistenceAdapter');
 
-      // Load baseline with connectionId for multi-database support
-      const baseline = await loadBaselineSchema(schemaToCheck, connectionId);
+      // Build the correct baseline key - use prefixed key for dynamic connections
+      // (matches how refreshAndMerge and initializeSchema store the baseline)
+      const baselineKey = virtualSchema.connectionPrefix
+        ? `${virtualSchema.connectionPrefix}${schemaToCheck}`
+        : schemaToCheck;
+
+      // Load baseline using the correct key (connectionId=null since key is already prefixed)
+      const baseline = await loadBaselineSchema(baselineKey, null);
       const currentRealDB = await erdService.getERDData(schemaToCheck);
       const changeResult = detectDatabaseChanges(baseline, currentRealDB);
 
       if (changeResult.isFirstLoad) {
         const { saveBaselineSchema } = await import('../utils/persistenceAdapter');
-        await saveBaselineSchema(schemaToCheck, currentRealDB, connectionId);
-        //console.log('📊 First load: Baseline schema saved for', schemaToCheck);
+        await saveBaselineSchema(baselineKey, currentRealDB, null);
         return false;
       }
 
@@ -390,7 +395,7 @@ export const AppProvider = ({ children }) => {
       showNotification('Failed to check for database changes', 'error');
       return false;
     }
-  }, [selectedSchema, showNotification, connectionId]);
+  }, [selectedSchema, showNotification, virtualSchema.connectionPrefix]);
 
   // Handle refresh from Database Changes Modal
   const handleDatabaseChangesRefresh = useCallback(async () => {
@@ -425,10 +430,14 @@ export const AppProvider = ({ children }) => {
           
           // CRITICAL: Save merged schema to persistence DB so it persists after browser refresh
           if (mergedSchema) {
-            await persistenceService.saveVirtualSchema(schemaToRefresh, mergedSchema);
+            // Use prefixed key for dynamic connections so refresh loads the correct data
+            const persistenceKey = virtualSchema.connectionPrefix
+              ? `${virtualSchema.connectionPrefix}${schemaToRefresh}`
+              : schemaToRefresh;
+            await persistenceService.saveVirtualSchema(persistenceKey, mergedSchema);
             
             // Get the actual timestamp from persistence DB after saving
-            const dbTimestamp = await persistenceService.getVirtualSchemaTimestamp(schemaToRefresh);
+            const dbTimestamp = await persistenceService.getVirtualSchemaTimestamp(persistenceKey);
             
             if (dbTimestamp && virtualSchema.setLastSavedTimestamp) {
               virtualSchema.setLastSavedTimestamp(dbTimestamp);
@@ -438,7 +447,13 @@ export const AppProvider = ({ children }) => {
             if (virtualSchema.setHasUnsavedChanges) {
               virtualSchema.setHasUnsavedChanges(false);
             }
-            
+
+            // DYNAMIC CONNECTION FIX: Update the in-memory schema cache with the
+            // fresh real DB data so useERD doesn't re-initialize from stale cache
+            // and overwrite the just-merged workingSchema.
+            if (isDynamicConnected) {
+              setDynamicSchemaCache(schemaToRefresh, currentRealDB);
+            }
           }
         }
       }
@@ -463,7 +478,7 @@ export const AppProvider = ({ children }) => {
       showNotification('Failed to refresh database changes', 'error');
       setDatabaseChangesModal(prev => ({ ...prev, isRefreshing: false }));
     }
-  }, [selectedSchema, virtualSchema, databaseChangesModal.onComplete, databaseChangesModal.targetSchema, showNotification]);
+  }, [selectedSchema, virtualSchema, databaseChangesModal.onComplete, databaseChangesModal.targetSchema, showNotification, isDynamicConnected, setDynamicSchemaCache]);
 
   // Out of sync modal functions (defined early - used by actuallySaveChanges)
   const showOutOfSyncModal = useCallback(() => {

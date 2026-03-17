@@ -446,12 +446,13 @@ export const VirtualSchemaProvider = ({ children }) => {
     // CRITICAL: Load baseline schema separately - NEVER use erdData as originalSchema
     // erdData might come from persistence DB (virtual schema) after "Load Schemas" feature
     // originalSchema must ALWAYS be the frozen baseline from real DB
-    let baselineSchema = await loadBaselineSchema(persistenceKey, connectionId);
+    // persistenceKey is already fully prefixed - pass null connectionId to avoid double-prefixing
+    let baselineSchema = await loadBaselineSchema(persistenceKey, null);
     
     if (!baselineSchema) {
       // No baseline exists - first time loading this schema
       // In this case, erdData IS from real DB (first load), so we can use it
-      await saveBaselineSchema(persistenceKey, erdData, connectionId);
+      await saveBaselineSchema(persistenceKey, erdData, null);
       baselineSchema = erdData;
     }
     
@@ -613,14 +614,14 @@ export const VirtualSchemaProvider = ({ children }) => {
 
     try {
       // CRITICAL FIX: Use the persistent baseline schema for comparison
-      // This ensures that deleted tables/columns are properly detected
-      let baselineSchema = await loadBaselineSchema(pKey, connectionId);
+      // pKey is already fully prefixed - pass null connectionId to avoid double-prefixing
+      let baselineSchema = await loadBaselineSchema(pKey, null);
       
       if (!baselineSchema) {
         // If no baseline exists, use the current originalSchema and save it
         baselineSchema = originalSchema;
         if (baselineSchema) {
-          await saveBaselineSchema(pKey, baselineSchema, connectionId);
+          await saveBaselineSchema(pKey, baselineSchema, null);
         }
       }
       
@@ -713,7 +714,7 @@ export const VirtualSchemaProvider = ({ children }) => {
 
       // Save updated baseline if changes were made
       if (baselineNeedsUpdate) {
-        await saveBaselineSchema(pKey, updatedBaseline, connectionId);
+        await saveBaselineSchema(pKey, updatedBaseline, null);
         baselineSchema = updatedBaseline;
       }
       
@@ -756,7 +757,7 @@ export const VirtualSchemaProvider = ({ children }) => {
         deletedTables.forEach(tableName => {
           delete cleanedBaseline.tables[tableName];
         });
-        await saveBaselineSchema(pKey, cleanedBaseline, connectionId);
+        await saveBaselineSchema(pKey, cleanedBaseline, null);
         
         // CRITICAL: Save the cleaned schema to database
         // This is the KEY fix - we must save the cleaned schema so when table is recreated,
@@ -2176,6 +2177,7 @@ export const VirtualSchemaProvider = ({ children }) => {
     setHasUnsavedChanges, // NEW: Expose setter for unsaved changes flag
     lastSavedTimestamp, // NEW: Expose last saved timestamp
     setLastSavedTimestamp, // NEW: Expose setter for timestamp updates
+    connectionPrefix, // Expose prefix so callers can build correct persistence keys
     isSwitchingSchema,
     canUndo: historyIndex > 0,
     canRedo: historyIndex < history.length - 1,
