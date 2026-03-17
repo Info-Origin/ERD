@@ -304,3 +304,18 @@
 .sync-button-text {
   white-space: nowrap;
 }
+
+.canvas-btn-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: canvas-btn-spin 0.6s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes canvas-btn-spin {
+  to { transform: rotate(360deg); }
+}

@@ -25,6 +25,8 @@ export const CanvasControls = ({ isCollapsed }) => {
   } = useVirtualSchema();
 
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const isLockedByOther = isSchemaLockedByOther?.(selectedSchema);
   const lockInfo = schemaLocks?.[selectedSchema];
@@ -62,12 +64,14 @@ export const CanvasControls = ({ isCollapsed }) => {
       return;
     }
     
-    // Check for database changes and show sync modal
-    const hasChanges = await checkForDatabaseChanges?.();
-    
-    // If no changes detected, show notification
-    if (hasChanges === false) {
-      showNotification?.("No changes to sync. Database is up to date.", "info");
+    setIsSyncing(true);
+    try {
+      const hasChanges = await checkForDatabaseChanges?.();
+      if (hasChanges === false) {
+        showNotification?.("No changes to sync. Database is up to date.", "info");
+      }
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -87,23 +91,16 @@ export const CanvasControls = ({ isCollapsed }) => {
   };
 
   const handleSaveConfirm = async () => {
-    // SCENARIO 4: Use new save function that checks for database changes first
-    const result = await saveChangesWithDatabaseCheck?.();
-    
-    if (result?.success) {
-      // Success handled by the function itself
-      setShowSaveModal(false);
-    } else if (result?.reason === 'database_changes_detected') {
-      // Database changes modal will be shown, close save modal
-      setShowSaveModal(false);
-    } else if (result?.reason === 'conflict') {
-      // Conflict detected - out of sync modal already shown
-      setShowSaveModal(false);
-    } else if (result?.reason === 'no_changes') {
-      // No changes notification already shown
-      setShowSaveModal(false);
-    } else {
-      // Error notification already shown
+    setIsSaving(true);
+    try {
+      const result = await saveChangesWithDatabaseCheck?.();
+      
+      if (result?.reason === 'database_changes_detected') {
+        // Database changes modal will be shown, close save modal
+      }
+      // All other cases (success, conflict, no_changes, error) — just close
+    } finally {
+      setIsSaving(false);
       setShowSaveModal(false);
     }
   };
@@ -184,16 +181,20 @@ export const CanvasControls = ({ isCollapsed }) => {
           className="canvas-control-button sync-button"
           title={isLockedByOther ? `Locked by ${lockInfo?.userDisplayName || 'another user'}` : "Sync with actual database"}
           onClick={handleSyncClick}
-          disabled={!selectedSchema || isLockedByOther}
+          disabled={!selectedSchema || isLockedByOther || isSyncing}
         >
-          <img 
-            src="/sync.png" 
-            alt="Sync" 
-            width="16" 
-            height="16"
-            style={{ filter: (!selectedSchema || isLockedByOther) ? 'grayscale(100%) opacity(0.5)' : 'none' }}
-          />
-          <span className="sync-button-text">Pull Changes</span>
+          {isSyncing ? (
+            <span className="canvas-btn-spinner" />
+          ) : (
+            <img 
+              src="/sync.png" 
+              alt="Sync" 
+              width="16" 
+              height="16"
+              style={{ filter: (!selectedSchema || isLockedByOther) ? 'grayscale(100%) opacity(0.5)' : 'none' }}
+            />
+          )}
+          <span className="sync-button-text">{isSyncing ? 'Pulling...' : 'Pull Changes'}</span>
         </button>
       </div>
 
@@ -202,6 +203,7 @@ export const CanvasControls = ({ isCollapsed }) => {
         isOpen={showSaveModal}
         onConfirm={handleSaveConfirm}
         onCancel={handleSaveCancel}
+        isSaving={isSaving}
       />
     </>
   );
