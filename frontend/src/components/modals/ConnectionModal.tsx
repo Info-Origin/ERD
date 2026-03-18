@@ -3,7 +3,7 @@ import { useConnection } from '../../context/ConnectionContext';
 import './Modal.css';
 import './ConnectionModal.css';
 
-const API_BASE_URL = (import.meta as unknown as { env: { VITE_API_BASE_URL?: string } }).env.VITE_API_BASE_URL || 'http://localhost:4001/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:4001/api';
 
 interface ConnectionModalProps {
   isOpen: boolean;

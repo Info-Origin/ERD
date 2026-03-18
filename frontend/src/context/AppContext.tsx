@@ -624,7 +624,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           });
         });
       }
-      const response = await fetch(`${(import.meta as unknown as { env: { VITE_API_BASE_URL?: string } }).env.VITE_API_BASE_URL || 'http://localhost:4001/api'}/schemas/${selectedSchema}/relationships`, {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:4001/api'}/schemas/${selectedSchema}/relationships`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ relationships: allRelationshipsToDelete, junctionTables: Array.from(junctionTables) }),

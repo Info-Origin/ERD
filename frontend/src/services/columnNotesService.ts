@@ -1,6 +1,6 @@
 import type { ColumnNotes } from '../types';
 
-const API_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:4001';
+const API_URL = (process.env.REACT_APP_API_BASE_URL || 'http://localhost:4001/api').replace('/api', '');
 
 export const getColumnNotes = async (schemaName: string): Promise<ColumnNotes> => {
   try {

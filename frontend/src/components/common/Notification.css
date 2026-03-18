@@ -101,23 +101,6 @@
   color: white;
 }
 
-/* Position Classes */
-.notification-top-right {
-  /* Positioned by container */
-}
-
-.notification-top-left {
-  /* Positioned by container */
-}
-
-.notification-bottom-right {
-  /* Positioned by container */
-}
-
-.notification-bottom-left {
-  /* Positioned by container */
-}
-
 /* Notification Container */
 .notification-container {
   position: fixed;

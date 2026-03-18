@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 
 const api: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:4001/api',
+  baseURL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:4001/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

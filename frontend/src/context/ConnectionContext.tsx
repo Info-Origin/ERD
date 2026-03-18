@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import type { ActiveConnection, ConnectionInfo, ERDData } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4001/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:4001/api';
 
 interface ConnectionContextValue {
   activeConnection: ActiveConnection | null;

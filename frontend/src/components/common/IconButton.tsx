@@ -1,9 +1,10 @@
-import { ComponentType, ButtonHTMLAttributes } from 'react';
+import { ButtonHTMLAttributes } from 'react';
+import type { IconType } from 'react-icons/lib';
 import { clsx } from 'clsx';
 import './IconButton.css';
 
 interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  icon: ComponentType<{ className?: string }>;
+  icon: IconType;
   title?: string;
   variant?: string;
   size?: string;

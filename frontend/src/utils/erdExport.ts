@@ -46,7 +46,7 @@ const exportViaServer = async (
   const imageDataUrl = canvas.toDataURL('image/png');
 
   progressCallback(60, 'Sending to server...');
-  const backendURL = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:4001';
+  const backendURL = (process.env.REACT_APP_API_BASE_URL || 'http://localhost:4001/api').replace('/api', '');
 
   const response = await fetch(`${backendURL}/api/export/pdf`, {
     method: 'POST',
